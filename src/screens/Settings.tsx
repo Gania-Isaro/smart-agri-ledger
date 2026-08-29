@@ -234,7 +234,7 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <Callout tone="info" icon="shield">
-              Every record lives in this device’s database first. The app is fully usable with no signal — recording a
+              Every record lives in this device’s database first. The app is fully usable with no signal, recording a
               harvest in a field with no bars behaves exactly as it does in the office.
             </Callout>
 
@@ -286,7 +286,7 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-4)' }}>
-              The owner and the manager share one account, which holds every permission — both sign in to the same place
+              The owner and the manager share one account, which holds every permission. Both sign in to the same place
               and see the same figures. The roles below are still enforced in the service layer rather than by hiding
               buttons, so if this cooperative ever wants a separate field officer or accountant login, it is a new
               account rather than a rebuild.
@@ -327,7 +327,7 @@ function SettingsHome() {
                           <span className="cell num">{ROLE_PERMISSIONS[role].length}</span>
                         </td>
                         <td>
-                          <span className="cell muted">{holders.map((h) => h.name).join(', ') || '—'}</span>
+                          <span className="cell muted">{holders.map((h) => h.name).join(', ') || '-'}</span>
                         </td>
                       </tr>
                     );

@@ -2,7 +2,7 @@
  * Translations.
  *
  * English and Kinyarwanda. A key with no Kinyarwanda entry falls back to the
- * English string rather than rendering blank — a cooperative officer would
+ * English string rather than rendering blank. A cooperative officer would
  * rather read one English word than an empty button.
  *
  * Data the users typed (farmer names, villages, notes, references) is never
@@ -93,6 +93,10 @@ export const EN: Dict = {
   /* fields */
   'field.farmer': 'Farmer',
   'field.farmerId': 'Farmer ID',
+  'field.idNumber': 'ID or member number',
+  'field.idNumberHelp': 'National ID, or the number your cooperative already uses for this farmer.',
+  'field.farmerIdHelp': 'Leave empty and the next code in sequence is used.',
+  'field.farmerIdAuto': 'Auto',
   'field.activity': 'Activity',
   'field.crop': 'Crop',
   'field.quantity': 'Quantity',
@@ -184,7 +188,7 @@ export const EN: Dict = {
   'role.viewer.desc': 'Read-only access to every screen.',
   /* payments */
   'pay.outstandingTitle': 'Outstanding balances',
-  'pay.outstandingSub': 'Every farmer the cooperative still owes. Each figure is folded from that farmer\u2019s ledger, so it is correct by construction — there is no stored balance to drift.',
+  'pay.outstandingSub': 'Every farmer the cooperative still owes. Each figure is folded from that farmer\u2019s ledger, so it is correct by construction. There is no stored balance to drift.',
   'pay.payAFarmer': 'Pay a farmer',
   'pay.totalOutstanding': 'Total outstanding',
   'pay.acrossFarmers': 'RWF across {count} farmers',
@@ -208,7 +212,7 @@ export const EN: Dict = {
   'pay.batchRemaining': 'Remaining',
   /* production */
   'prod.harvestsTitle': 'Harvests',
-  'prod.harvestsSub': 'Every delivery received, with what it was worth. Total value is quantity × price and is recalculated on save — it is never a typed-in number.',
+  'prod.harvestsSub': 'Every delivery received, with what it was worth. Total value is quantity × price and is recalculated on save. It is never a typed-in number.',
   'prod.cropsTitle': 'Crops',
   'prod.cropsSub': 'What each crop produced this season, and what it was worth.',
   'prod.qualityTitle': 'Quality',
@@ -217,9 +221,9 @@ export const EN: Dict = {
   'led.farmersTitle': 'Farmer ledgers',
   'led.farmersSub': 'One account per farmer. Click a row to read the full account.',
   'led.txTitle': 'Transactions',
-  'led.txSub': 'The complete journal. Nothing here can be edited or deleted — a mistake is voided, which appends a reversing entry and keeps both on the record.',
+  'led.txSub': 'The complete journal. Nothing here can be edited or deleted. A mistake is voided, which appends a reversing entry and keeps both on the record.',
   'led.adjTitle': 'Adjustments',
-  'led.adjSub': 'Corrections, voided entries and their reversals — every change anyone made to a farmer balance, with a name against it.',
+  'led.adjSub': 'Corrections, voided entries and their reversals: every change anyone made to a farmer balance, with a name against it.',
   'led.entriesShown': 'Entries shown',
   'led.totalCredits': 'Total credits',
   'led.totalDebits': 'Total debits',
@@ -263,7 +267,7 @@ export const EN: Dict = {
   'auth.pinHelp': '4 to 8 digits. Avoid 1234 or repeated digits.',
   'auth.confirmPin': 'Confirm PIN',
   'auth.pinMismatch': 'The two PINs do not match.',
-  'auth.blankStart': 'Your account starts completely empty \u2014 no farmers, no harvests, no money. You add your own, and only you can see them.',
+  'auth.blankStart': 'Your account starts completely empty: no farmers, no harvests, no money. You add your own, and only you can see them.',
   'auth.forgotPin': 'Forgotten your PIN?',
   'auth.resetTitle': 'Reset your PIN',
   'auth.resetSub': 'Enter the email on the account and the recovery code you saved when you signed up.',
@@ -272,21 +276,21 @@ export const EN: Dict = {
   'auth.newPin': 'New PIN',
   'auth.setNewPin': 'Set new PIN',
   'auth.backToSignIn': 'Back to sign in',
-  'auth.emailDeliveryNote': 'Emailing a reset link needs a mail server, and this version runs entirely on your device with none \u2014 so recovery uses the code you saved instead of an email. Connect it to a server and the same flow sends that code to your address.',
+  'auth.emailDeliveryNote': 'Emailing a reset link needs a mail server, and this version runs entirely on your device with none. Recovery uses the code you saved instead of an email. Connect it to a server and the same flow sends that code to your address.',
   'auth.saveCodeTitle': 'Save your recovery code',
   'auth.saveCodeSub': 'This is the only way back into your account if you forget your PIN.',
   'auth.copyCode': 'Copy code',
   'auth.codeCopied': 'Recovery code copied',
-  'auth.copyFailed': 'Could not copy \u2014 write it down instead',
-  'auth.codeOnceWarning': 'Shown once, now. It is stored only as a fingerprint, so nobody \u2014 including this app \u2014 can show it to you again. Write it somewhere safe before continuing.',
+  'auth.copyFailed': 'Could not copy. Write it down instead',
+  'auth.codeOnceWarning': 'Shown once, now. It is stored only as a fingerprint, so nobody, including this app, can show it to you again. Write it somewhere safe before continuing.',
   'auth.confirmSaved': 'I have written down or copied this code somewhere safe.',
   'auth.continue': 'Continue',
   'auth.demoTitle': 'Just want to look around?',
   'auth.demoBody': 'Open the demo cooperative: 26 farmers, real harvests, payments and a full ledger, already filled in.',
   'auth.demoButton': 'Open the demo cooperative',
-  'auth.demoBanner': 'You are in the demo cooperative. The data here is generated for illustration \u2014 create your own account to start an empty book.',
+  'auth.demoBanner': 'You are in the demo cooperative. The data here is generated for illustration. Create your own account to start an empty book.',
   'auth.emptyFarmers': 'No farmers yet',
-  'auth.emptyFarmersHelp': 'Add your first farmer to begin. Everything else \u2014 activities, harvests, payments, the ledger \u2014 follows from the register.',
+  'auth.emptyFarmersHelp': 'Add your first farmer to begin. Everything else (activities, harvests, payments, the ledger) follows from the register.',
   'login.email': 'Email',
   'login.pin': 'PIN',
   'login.showPin': 'Show PIN',
@@ -334,7 +338,7 @@ export const EN: Dict = {
 
   /* misc */
   'misc.online': 'Online',
-  'misc.offline': 'Offline — still working',
+  'misc.offline': 'Offline, still working',
   'misc.notifications': 'Notifications',
   'misc.rows': 'rows',
   'misc.row': 'row',
@@ -351,7 +355,7 @@ export const EN: Dict = {
   /* the + flow */
   'composer.pickTitle': 'What would you like to record?',
   'composer.pickSub': 'Pick the activity that happened. The form adapts to what you choose.',
-  'composer.searchTypes': 'Search activities — harvest, payment, planting…',
+  'composer.searchTypes': 'Search activities: harvest, payment, planting…',
   'composer.notYourRole': 'Your role cannot record this',
   'composer.postsLedger': 'Posts to ledger',
   'composer.yourType': 'Added by your cooperative',
@@ -480,6 +484,10 @@ export const RW: Dict = {
 
   'field.farmer': 'Umuhinzi',
   'field.farmerId': 'Nomero y’umuhinzi',
+  'field.idNumber': 'Indangamuntu cyangwa nomero y\u2019umunyamuryango',
+  'field.idNumberHelp': 'Indangamuntu, cyangwa nomero koperative yanyu isanzwe ikoresha kuri uyu muhinzi.',
+  'field.farmerIdHelp': 'Nusiga ubusa, hakoreshwa nomero ikurikira.',
+  'field.farmerIdAuto': 'Iyikora',
   'field.activity': 'Igikorwa',
   'field.crop': 'Igihingwa',
   'field.quantity': 'Ingano',
@@ -566,7 +574,7 @@ export const RW: Dict = {
   'role.accountant.desc': 'Ashinzwe ubwishyu, amatsinda n\u2019igitabo. Ntashobora kwandika imirimo yo mu murima.',
   'role.viewer.desc': 'Areba gusa ku mapaji yose.',
   'pay.outstandingTitle': 'Imyenda isigaye',
-  'pay.outstandingSub': 'Buri muhinzi koperative igifitiye umwenda. Buri mubare ubarwa uvuye mu gitabo cy\u2019uwo muhinzi, bityo uba ari wo — nta mubare ubitswe ushobora kwibeshya.',
+  'pay.outstandingSub': 'Buri muhinzi koperative igifitiye umwenda. Buri mubare ubarwa uvuye mu gitabo cy\u2019uwo muhinzi, bityo uba ari wo. Nta mubare ubitswe ushobora kwibeshya.',
   'pay.payAFarmer': 'Ishyura umuhinzi',
   'pay.totalOutstanding': 'Umwenda wose usigaye',
   'pay.acrossFarmers': 'RWF ku bahinzi {count}',
@@ -589,7 +597,7 @@ export const RW: Dict = {
   'pay.batchPaid': 'Byishyuwe',
   'pay.batchRemaining': 'Bisigaye',
   'prod.harvestsTitle': 'Isarura',
-  'prod.harvestsSub': 'Buri musaruro wakiriwe n\u2019agaciro kawo. Agaciro kose ni ingano × igiciro kandi kabarwa mu kubika — ntabwo ari umubare wanditswe n\u2019intoki.',
+  'prod.harvestsSub': 'Buri musaruro wakiriwe n\u2019agaciro kawo. Agaciro kose ni ingano × igiciro kandi kabarwa mu kubika. Ntabwo ari umubare wanditswe n\u2019intoki.',
   'prod.cropsTitle': 'Imyaka',
   'prod.cropsSub': 'Icyo buri gihingwa cyeze muri iki gihembwe n\u2019agaciro kacyo.',
   'prod.qualityTitle': 'Ubwiza',
@@ -597,9 +605,9 @@ export const RW: Dict = {
   'led.farmersTitle': 'Ibitabo by\u2019abahinzi',
   'led.farmersSub': 'Konti imwe kuri buri muhinzi. Kanda ku murongo urebe konti yose.',
   'led.txTitle': 'Ibikorwa by\u2019amafaranga',
-  'led.txSub': 'Igitabo cyuzuye. Nta kintu gishobora guhindurwa cyangwa gusibwa — ikosa rikurwaho hongerwaho igikorwa kibihindura, byombi bigasigara mu nyandiko.',
+  'led.txSub': 'Igitabo cyuzuye. Nta kintu gishobora guhindurwa cyangwa gusibwa. Ikosa rikurwaho hongerwaho igikorwa kibihindura, byombi bigasigara mu nyandiko.',
   'led.adjTitle': 'Amakosora',
-  'led.adjSub': 'Amakosora, ibyakuweho n\u2019ibibisimbura — buri mpinduka yakozwe ku mwenda w\u2019umuhinzi, hamwe n\u2019uwayikoze.',
+  'led.adjSub': 'Amakosora, ibyakuweho n\u2019ibibisimbura: buri mpinduka yakozwe ku mwenda w\u2019umuhinzi, hamwe n\u2019uwayikoze.',
   'led.entriesShown': 'Ibyanditswe bigaragara',
   'led.totalCredits': 'Ibyinjiye byose',
   'led.totalDebits': 'Ibyasohotse byose',
@@ -641,7 +649,7 @@ export const RW: Dict = {
   'auth.pinHelp': 'Imibare 4 kugeza kuri 8. Wirinde 1234 cyangwa imibare isubiramo.',
   'auth.confirmPin': 'Emeza PIN',
   'auth.pinMismatch': 'PIN zombi ntizihuye.',
-  'auth.blankStart': 'Konti yawe itangira ubusa rwose \u2014 nta bahinzi, nta isarura, nta mafaranga. Wowe ni wowe wongeramo ibyawe, kandi ni wowe wenyine ubibona.',
+  'auth.blankStart': 'Konti yawe itangira ubusa rwose: nta bahinzi, nta isarura, nta mafaranga. Wowe ni wowe wongeramo ibyawe, kandi ni wowe wenyine ubibona.',
   'auth.forgotPin': 'Wibagiwe PIN yawe?',
   'auth.resetTitle': 'Hindura PIN yawe',
   'auth.resetSub': 'Andika imeyili ya konti n\u2019ikodi yo gusubiza wabitse igihe wafungura konti.',
@@ -650,21 +658,21 @@ export const RW: Dict = {
   'auth.newPin': 'PIN nshya',
   'auth.setNewPin': 'Shyiraho PIN nshya',
   'auth.backToSignIn': 'Subira ku kwinjira',
-  'auth.emailDeliveryNote': 'Kohereza imeyili yo gusubiza bisaba seriveri y\u2019imeyili, kandi iyi verisiyo ikorera ku gikoresho cyawe gusa nta yo ifite \u2014 ni yo mpamvu hakoreshwa ikodi wabitse aho kohereza imeyili. Nihamara guhuzwa na seriveri, iyo kodi izajya yoherezwa kuri imeyili yawe.',
+  'auth.emailDeliveryNote': 'Kohereza imeyili yo gusubiza bisaba seriveri y\u2019imeyili, kandi iyi verisiyo ikorera ku gikoresho cyawe gusa nta yo ifite. Ni yo mpamvu hakoreshwa ikodi wabitse aho kohereza imeyili. Nihamara guhuzwa na seriveri, iyo kodi izajya yoherezwa kuri imeyili yawe.',
   'auth.saveCodeTitle': 'Bika ikodi yawe yo gusubiza',
   'auth.saveCodeSub': 'Ni yo nzira yonyine yo kongera kwinjira muri konti yawe nutibagirwa PIN.',
   'auth.copyCode': 'Koporora ikodi',
   'auth.codeCopied': 'Ikodi yakoporowe',
-  'auth.copyFailed': 'Ntibyakunze gukoporora \u2014 yandike ku rupapuro',
-  'auth.codeOnceWarning': 'Igaragara rimwe gusa, ubu. Ibikwa nk\u2019ikimenyetso gusa, bityo nta muntu \u2014 na porogaramu ubwayo \u2014 ushobora kongera kuyikwereka. Yandike ahantu hizewe mbere yo gukomeza.',
+  'auth.copyFailed': 'Ntibyakunze gukoporora. Yandike ku rupapuro',
+  'auth.codeOnceWarning': 'Igaragara rimwe gusa, ubu. Ibikwa nk\u2019ikimenyetso gusa, bityo nta muntu, na porogaramu ubwayo, ushobora kongera kuyikwereka. Yandike ahantu hizewe mbere yo gukomeza.',
   'auth.confirmSaved': 'Naranditse cyangwa nakoporoye iyi kodi ahantu hizewe.',
   'auth.continue': 'Komeza',
   'auth.demoTitle': 'Urashaka kubanza kureba gusa?',
   'auth.demoBody': 'Fungura koperative y\u2019icyitegererezo: abahinzi 26, isarura, ubwishyu n\u2019igitabo cyuzuye.',
   'auth.demoButton': 'Fungura koperative y\u2019icyitegererezo',
-  'auth.demoBanner': 'Uri muri koperative y\u2019icyitegererezo. Aya makuru ni ay\u2019icyitegererezo \u2014 fungura konti yawe kugira ngo utangire igitabo gishya.',
+  'auth.demoBanner': 'Uri muri koperative y\u2019icyitegererezo. Aya makuru ni ay\u2019icyitegererezo. Fungura konti yawe kugira ngo utangire igitabo gishya.',
   'auth.emptyFarmers': 'Nta muhinzi urahari',
-  'auth.emptyFarmersHelp': 'Ongeraho umuhinzi wa mbere kugira ngo utangire. Ibindi byose \u2014 ibikorwa, isarura, ubwishyu n\u2019igitabo \u2014 bikurikira urutonde rw\u2019abahinzi.',
+  'auth.emptyFarmersHelp': 'Ongeraho umuhinzi wa mbere kugira ngo utangire. Ibindi byose (ibikorwa, isarura, ubwishyu n\u2019igitabo) bikurikira urutonde rw\u2019abahinzi.',
   'login.email': 'Imeyili',
   'login.pin': 'PIN',
   'login.showPin': 'Erekana PIN',
@@ -709,7 +717,7 @@ export const RW: Dict = {
   'settings.resetData': 'Gusiba amakuru',
 
   'misc.online': 'Kuri interineti',
-  'misc.offline': 'Nta interineti — birakomeza gukora',
+  'misc.offline': 'Nta interineti, birakomeza gukora',
   'misc.notifications': 'Amatangazo',
   'misc.rows': 'imirongo',
   'misc.row': 'umurongo',
@@ -725,7 +733,7 @@ export const RW: Dict = {
   'misc.you': 'Wowe',
   'composer.pickTitle': 'Ni iki ushaka kwandika?',
   'composer.pickSub': 'Hitamo igikorwa cyabaye. Ifishi ihinduka ukurikije icyo watoranyije.',
-  'composer.searchTypes': 'Shakisha ibikorwa — isarura, ubwishyu, gutera…',
+  'composer.searchTypes': 'Shakisha ibikorwa: isarura, ubwishyu, gutera…',
   'composer.notYourRole': 'Inshingano zawe ntizikwemerera kwandika ibi',
   'composer.postsLedger': 'Bihita byandikwa mu gitabo',
   'composer.yourType': 'Cyongewemo na koperative yanyu',
@@ -907,7 +915,7 @@ export const FIELD_LABELS_RW: Dict = {
 
 /**
  * Crop names for the crops this app ships with, keyed by crop id. A crop the
- * cooperative adds itself keeps the name they typed — translating a name
+ * cooperative adds itself keeps the name they typed, translating a name
  * somebody chose would be rewriting their data.
  */
 export const CROP_NAMES_RW: Dict = {

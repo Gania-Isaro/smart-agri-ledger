@@ -124,7 +124,7 @@ function FarmerLedgers({ search }: { search: string }) {
         sortValue: (r) => r.financials.lastActivityDate ?? '',
         searchValue: (r) => r.financials.lastActivityDate ?? '',
         exportValue: (r) => r.financials.lastActivityDate ?? '',
-        render: (r) => <span className="num">{r.financials.lastActivityDate ? formatDateShort(r.financials.lastActivityDate) : '—'}</span>,
+        render: (r) => <span className="num">{r.financials.lastActivityDate ? formatDateShort(r.financials.lastActivityDate) : '-'}</span>,
       },
       {
         key: 'coop',
@@ -231,7 +231,7 @@ function Transactions({ search }: { search: string }) {
       message: (
         <>
           <p>
-            {tx.description} — <b>{formatMoney(tx.amount)}</b> ({tx.direction}).
+            {tx.description}, <b>{formatMoney(tx.amount)}</b> ({tx.direction}).
           </p>
           <p style={{ marginTop: 'var(--s-2)' }}>
             The entry is not deleted. It stays on the account marked voided, and a reversing entry is appended so the
@@ -288,7 +288,7 @@ function Transactions({ search }: { search: string }) {
         sortValue: (r) => r.farmer?.lastName ?? '',
         searchValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''} ${r.farmer?.code ?? ''}`,
         exportValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''}`,
-        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '—'}</span>,
+        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '-'}</span>,
       },
       {
         key: 'type',

@@ -4,7 +4,7 @@
  * Filters stack: every one narrows what the previous ones left, so
  * "maize farmers in Rwamagana who delivered over 100 KG in August and have not
  * been paid" is five clicks rather than a query language. Active filters stay
- * visible as removable chips — a filter you have forgotten about is how people
+ * visible as removable chips. A filter you have forgotten about is how people
  * end up trusting a wrong number.
  */
 
@@ -222,7 +222,7 @@ function describe(spec: FilterSpec, value: FilterValues[string]): string | null 
   if (spec.type === 'numrange') {
     const v = value as { min?: string; max?: string };
     if (!v.min && !v.max) return null;
-    if (v.min && v.max) return `${v.min} – ${v.max}`;
+    if (v.min && v.max) return `${v.min} - ${v.max}`;
     return v.min ? `≥ ${v.min}` : `≤ ${v.max}`;
   }
 

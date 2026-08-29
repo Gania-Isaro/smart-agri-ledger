@@ -7,7 +7,7 @@
  * The categorical palette below was validated for lightness band, chroma floor,
  * colour-vision separation (adjacent pairs), normal-vision separation and
  * contrast against the cream surface. Hues are assigned in this fixed order and
- * never cycled — the ninth series folds into "Other" rather than repeating a
+ * never cycled. The ninth series folds into "Other" rather than repeating a
  * colour, and colour follows the crop, never its rank in the current sort, so
  * filtering the list never repaints the survivors.
  */
@@ -87,7 +87,7 @@ export function Legend({ items }: { items: { label: string; colour: string }[] }
 /* ------------------------------------------------------------------ hbars */
 
 /**
- * Horizontal bars. Used wherever the category labels are words — words read
+ * Horizontal bars. Used wherever the category labels are words, words read
  * badly rotated under a vertical axis, and this shape gives every bar a direct
  * label and value, so identity never rests on colour alone.
  */
@@ -139,7 +139,7 @@ export function HBars({
 /**
  * One or two series over months, on a single shared axis. Both series are the
  * same measure in the same unit, which is the only case where two lines belong
- * in one frame — a second y-scale would let the shapes tell any story we liked.
+ * in one frame. A second y-scale would let the shapes tell any story we liked.
  */
 export function TimeChart({
   data,
@@ -355,7 +355,7 @@ export function Meter({
 }
 
 /**
- * Two totals side by side on one scale — how much is owed against how much has
+ * Two totals side by side on one scale, how much is owed against how much has
  * been paid. Stacking them would hide the gap, which is the only thing anyone
  * looks at this for.
  */

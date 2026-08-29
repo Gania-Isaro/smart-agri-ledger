@@ -4,7 +4,7 @@
  * One context holds the signed-in user, the reference data every screen needs
  * (crops, cooperatives, activity catalog), a revision counter that screens watch
  * to refetch after a write, plus toasts and the confirmation dialog. Record data
- * itself is not cached here — screens query IndexedDB, which is local and fast,
+ * itself is not cached here, screens query IndexedDB, which is local and fast,
  * so there is no second copy of the truth to fall out of sync.
  */
 
@@ -115,7 +115,7 @@ const SESSION_KEY = 'agri.session';
 /*
  * The session lives in localStorage, not in a database. It has to be readable
  * before any account database is open, and writable during sign-out after the
- * account database has been released — storing it in IndexedDB meant it landed
+ * account database has been released, storing it in IndexedDB meant it landed
  * in whichever database happened to be open at the time.
  */
 function readSession(): string | null {
@@ -305,7 +305,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /*
    * Creating the account deliberately does NOT sign the user in. The recovery
    * code is shown exactly once, and dropping them straight onto the dashboard
-   * would sweep it off screen before they had written it down — leaving an
+   * would sweep it off screen before they had written it down, leaving an
    * account nobody can ever get back into. Login calls signIn once they have
    * confirmed they saved it.
    */
@@ -383,10 +383,10 @@ export function useLookups() {
       coop: new Map(cooperatives.map((c) => [c.id, c])),
       user: new Map(users.map((u) => [u.id, u])),
       type: new Map(activityTypes.map((t) => [t.id, t])),
-      cropName: (id?: string) => (id ? crops.find((c) => c.id === id)?.name ?? '—' : '—'),
-      coopName: (id?: string) => (id ? cooperatives.find((c) => c.id === id)?.name ?? '—' : '—'),
+      cropName: (id?: string) => (id ? crops.find((c) => c.id === id)?.name ?? '-' : '-'),
+      coopName: (id?: string) => (id ? cooperatives.find((c) => c.id === id)?.name ?? '-' : '-'),
       userName: (id?: string) => (id ? users.find((u) => u.id === id)?.name ?? 'System' : 'System'),
-      typeLabel: (id?: string) => (id ? activityTypes.find((t) => t.id === id)?.label ?? id : '—'),
+      typeLabel: (id?: string) => (id ? activityTypes.find((t) => t.id === id)?.label ?? id : '-'),
     }),
     [crops, cooperatives, users, activityTypes],
   );

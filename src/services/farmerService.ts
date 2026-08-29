@@ -20,7 +20,12 @@ export class ValidationError extends Error {
 
 export type FarmerDraft = Omit<Farmer, 'id' | 'code' | 'status' | 'archived'> & {
   status?: FarmerStatus;
+  /** Leave empty to generate the next code in sequence. */
+  code?: string;
 };
+
+/** Farmer codes are typed by hand, so keep them short and predictable. */
+const CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{1,23}$/;
 
 function validate(draft: Partial<FarmerDraft>) {
   if (!draft.firstName?.trim()) throw new ValidationError('First name is required.', 'firstName');
@@ -37,19 +42,45 @@ function validate(draft: Partial<FarmerDraft>) {
   if (draft.plots !== undefined && (draft.plots < 0 || !Number.isInteger(draft.plots))) {
     throw new ValidationError('Number of plots must be a whole number.', 'plots');
   }
+  if (draft.code && !CODE_PATTERN.test(draft.code.trim())) {
+    throw new ValidationError('A farmer ID must be 2 to 24 letters, digits, spaces or . _ - /', 'code');
+  }
+}
+
+/**
+ * A farmer ID has to be unique: it is what appears on payment references and
+ * exports, and two farmers sharing one is how money reaches the wrong person.
+ */
+async function assertCodeFree(code: string, exceptId?: ID) {
+  const clash = await db.farmers.where('code').equals(code).first();
+  if (clash && clash.id !== exceptId) {
+    throw new ValidationError(`Farmer ID ${code} is already used by ${clash.firstName} ${clash.lastName}.`, 'code');
+  }
 }
 
 export async function create(user: User, draft: FarmerDraft): Promise<Farmer> {
   assertCan(user, 'farmer.create');
   validate(draft);
 
-  const n = await nextCounter('farmer');
   const crops = draft.crops?.length ? draft.crops : [draft.primaryCropId];
+
+  // A typed code is used as given; an empty one continues the sequence.
+  let code = draft.code?.trim() ?? '';
+  if (code) {
+    await assertCodeFree(code);
+  } else {
+    code = padCode('FR-', await nextCounter('farmer'));
+    // The counter can fall behind if codes were typed in by hand, so step
+    // past anything already taken rather than failing on a duplicate.
+    while (await db.farmers.where('code').equals(code).first()) {
+      code = padCode('FR-', await nextCounter('farmer'));
+    }
+  }
 
   const farmer: Farmer = {
     ...draft,
     id: uid('frm'),
-    code: padCode('FR-', n),
+    code,
     crops: Array.from(new Set([draft.primaryCropId, ...crops])),
     status: draft.status ?? 'active',
     registeredAt: draft.registeredAt || today(),
@@ -57,7 +88,7 @@ export async function create(user: User, draft: FarmerDraft): Promise<Farmer> {
   };
 
   await db.farmers.put(farmer);
-  await audit.record(user, 'farmer', farmer.id, 'create', `Registered ${farmer.code} — ${farmer.firstName} ${farmer.lastName}`, { after: farmer });
+  await audit.record(user, 'farmer', farmer.id, 'create', `Registered ${farmer.code}, ${farmer.firstName} ${farmer.lastName}`, { after: farmer });
   return farmer;
 }
 
@@ -66,8 +97,10 @@ export async function update(user: User, id: ID, patch: Partial<Farmer>): Promis
   const before = await db.farmers.get(id);
   if (!before) throw new ValidationError('That farmer no longer exists.');
 
-  const after: Farmer = { ...before, ...patch, id: before.id, code: before.code };
+  const after: Farmer = { ...before, ...patch, id: before.id };
+  after.code = (patch.code?.trim() || before.code).trim();
   validate(after);
+  if (after.code !== before.code) await assertCodeFree(after.code, before.id);
   if (after.primaryCropId && !after.crops.includes(after.primaryCropId)) {
     after.crops = [after.primaryCropId, ...after.crops];
   }

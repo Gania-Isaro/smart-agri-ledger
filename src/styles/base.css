@@ -64,7 +64,7 @@ svg {
   border-radius: var(--r-sm);
 }
 
-/* Never remove the outline outright — keyboard users navigate the whole grid. */
+/* Never remove the outline outright, keyboard users navigate the whole grid. */
 :focus:not(:focus-visible) {
   outline: none;
 }

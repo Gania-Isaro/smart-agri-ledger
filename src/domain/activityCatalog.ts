@@ -82,10 +82,10 @@ const UNIT_OPTIONS = [
 ];
 
 const GRADE_OPTIONS = [
-  { value: 'A', label: 'Grade A — premium' },
-  { value: 'B', label: 'Grade B — standard' },
-  { value: 'C', label: 'Grade C — low' },
-  { value: 'REJECT', label: 'Reject — not accepted' },
+  { value: 'A', label: 'Grade A, premium' },
+  { value: 'B', label: 'Grade B, standard' },
+  { value: 'C', label: 'Grade C, low' },
+  { value: 'REJECT', label: 'Reject, not accepted' },
 ];
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -318,8 +318,8 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
       half: true,
       help: 'On credit posts a debit to the farmer account, recovered at harvest.',
       options: [
-        { value: 'no', label: 'No — free / already paid' },
-        { value: 'yes', label: 'Yes — recover from harvest' },
+        { value: 'no', label: 'No, free / already paid' },
+        { value: 'yes', label: 'Yes, recover from harvest' },
       ],
     },
     { key: 'value', label: 'Value of inputs', type: 'currency', min: 0, half: true },
@@ -433,8 +433,8 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
       half: true,
       help: 'Credit increases what the farmer is owed. Debit reduces it.',
       options: [
-        { value: 'credit', label: 'Credit — increase what we owe' },
-        { value: 'debit', label: 'Debit — reduce what we owe' },
+        { value: 'credit', label: 'Credit, increase what we owe' },
+        { value: 'debit', label: 'Debit, reduce what we owe' },
       ],
     },
     reason('Correction being made. Required for the audit trail.'),

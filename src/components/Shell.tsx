@@ -281,7 +281,7 @@ export function TopBar({
         title={
           online
             ? 'Connected. Records are saved on this device first, so nothing is lost if you lose signal.'
-            : 'No connection. Everything still works — records are saved on this device.'
+            : 'No connection. Everything still works, records are saved on this device.'
         }
       >
         <i />

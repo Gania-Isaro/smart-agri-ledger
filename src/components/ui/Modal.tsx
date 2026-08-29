@@ -64,7 +64,7 @@ export function Modal({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus the first real control, not the close button — the user came here
+    // Focus the first real control, not the close button, the user came here
     // to fill something in.
     const t = window.setTimeout(() => {
       const nodes = ref.current?.querySelectorAll<HTMLElement>(FOCUSABLE);

@@ -82,7 +82,7 @@ export class AgriLedgerDB extends Dexie {
     });
 
     /*
-     * v2 — crop colours moved from fixed hex to design-system tokens so charts
+     * v2, crop colours moved from fixed hex to design-system tokens so charts
      * follow the light/dark theme. Same schema, so this only rewrites data.
      */
     this.version(2).upgrade(async (tx) => {

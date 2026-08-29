@@ -2,8 +2,8 @@
  * Application root: route to a screen, and hold the shell around it.
  *
  * Search lives here rather than in each screen so that the one box in the
- * topbar filters whatever is on screen — farmers, activities, harvests,
- * payments or transactions — instead of every screen growing its own.
+ * topbar filters whatever is on screen, farmers, activities, harvests,
+ * payments or transactions, instead of every screen growing its own.
  */
 
 import { useEffect, useState } from 'react';
@@ -48,7 +48,7 @@ export function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
 
-  /* Clear the search box when moving between screens — a filter left behind
+  /* Clear the search box when moving between screens, a filter left behind
      from another page is how people conclude their data has vanished. */
   useEffect(() => {
     setSearch('');

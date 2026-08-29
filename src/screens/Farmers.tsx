@@ -1,5 +1,5 @@
 /**
- * The farmer register — the screen the spec calls the Excel-inspired table.
+ * The farmer register. The screen the spec calls the Excel-inspired table.
  *
  * One row per farmer, carrying what they are doing, what they delivered, and
  * what they are owed, so the four questions a manager asks (who farms, who
@@ -110,7 +110,7 @@ export function Farmers({ search }: { search: string }) {
   /* ---------------------------------------------------------- columns */
 
   const activityLabel = (r: Row) =>
-    r.latestActivity ? tActivity(r.latestActivity.typeId, lookups.typeLabel(r.latestActivity.typeId)) : '—';
+    r.latestActivity ? tActivity(r.latestActivity.typeId, lookups.typeLabel(r.latestActivity.typeId)) : '-';
 
   const columns = useMemo<ColumnDef<Row>[]>(
     () => [
@@ -120,7 +120,7 @@ export function Farmers({ search }: { search: string }) {
         width: 208,
         mobile: 'title',
         sortValue: (r) => `${r.lastName} ${r.firstName}`,
-        searchValue: (r) => `${r.firstName} ${r.lastName} ${r.code} ${r.phone} ${r.village}`,
+        searchValue: (r) => `${r.firstName} ${r.lastName} ${r.code} ${r.phone} ${r.village} ${r.idNumber ?? ''}`,
         exportValue: (r) => `${r.firstName} ${r.lastName}`,
         render: (r) => (
           <>
@@ -137,12 +137,47 @@ export function Farmers({ search }: { search: string }) {
       {
         key: 'code',
         header: t('field.farmerId'),
-        width: 96,
+        width: 110,
         mobile: 'subtitle',
         sortValue: (r) => r.code,
         searchValue: (r) => r.code,
         exportValue: (r) => r.code,
+        edit: can('farmer.edit')
+          ? {
+              type: 'text',
+              value: (r) => r.code,
+              commit: async (r, next) => {
+                if (!user) return;
+                // Rejected if it collides: two farmers sharing an ID is how a
+                // payment reaches the wrong person.
+                await farmerService.update(user, r.id, { code: next });
+                refresh();
+                toast({ tone: 'success', title: `Farmer ID changed to ${next.trim()}` });
+              },
+            }
+          : undefined,
         render: (r) => <span className="grid__code">{r.code}</span>,
+      },
+      {
+        key: 'idNumber',
+        header: t('field.idNumber'),
+        width: 170,
+        optional: true,
+        sortValue: (r) => r.idNumber ?? '',
+        searchValue: (r) => r.idNumber ?? '',
+        exportValue: (r) => r.idNumber ?? '',
+        edit: can('farmer.edit')
+          ? {
+              type: 'text',
+              value: (r) => r.idNumber ?? '',
+              commit: async (r, next) => {
+                if (!user) return;
+                await farmerService.update(user, r.id, { idNumber: next.trim() || undefined });
+                refresh();
+              },
+            }
+          : undefined,
+        render: (r) => (r.idNumber ? <span className="num truncate">{r.idNumber}</span> : <span className="muted">-</span>),
       },
       {
         key: 'activity',
@@ -155,7 +190,7 @@ export function Farmers({ search }: { search: string }) {
         // a Kinyarwanda and an English user still reconciles column for column.
         exportValue: (r) => (r.latestActivity ? lookups.typeLabel(r.latestActivity.typeId) : ''),
         render: (r) =>
-          r.latestActivity ? <span className="truncate">{activityLabel(r)}</span> : <span className="muted">—</span>,
+          r.latestActivity ? <span className="truncate">{activityLabel(r)}</span> : <span className="muted">-</span>,
       },
       {
         key: 'crop',
@@ -203,7 +238,7 @@ export function Farmers({ search }: { search: string }) {
         sortValue: (r) => r.totalQuantity,
         searchValue: (r) => String(r.totalQuantity),
         exportValue: (r) => r.totalQuantity,
-        render: (r) => (r.totalQuantity > 0 ? <span className="num">{formatNumber(r.totalQuantity)}</span> : <span className="muted">—</span>),
+        render: (r) => (r.totalQuantity > 0 ? <span className="num">{formatNumber(r.totalQuantity)}</span> : <span className="muted">-</span>),
       },
       {
         key: 'unit',
@@ -213,7 +248,7 @@ export function Farmers({ search }: { search: string }) {
         sortValue: (r) => r.unit,
         searchValue: (r) => r.unit,
         exportValue: (r) => r.unit,
-        render: (r) => <span className="muted">{r.unit || '—'}</span>,
+        render: (r) => <span className="muted">{r.unit || '-'}</span>,
       },
       {
         key: 'date',
@@ -225,7 +260,7 @@ export function Farmers({ search }: { search: string }) {
         exportValue: (r) => r.latestHarvest?.date ?? r.latestActivity?.date ?? '',
         render: (r) => {
           const d = r.latestHarvest?.date ?? r.latestActivity?.date;
-          return d ? <span className="num">{formatDateShort(d)}</span> : <span className="muted">—</span>;
+          return d ? <span className="num">{formatDateShort(d)}</span> : <span className="muted">-</span>;
         },
       },
       {
@@ -259,7 +294,7 @@ export function Farmers({ search }: { search: string }) {
         sortValue: (r) => r.financials.earned,
         searchValue: (r) => String(r.financials.earned),
         exportValue: (r) => r.financials.earned,
-        render: (r) => (r.financials.earned > 0 ? <span className="num">{formatMoney(r.financials.earned)}</span> : <span className="muted">—</span>),
+        render: (r) => (r.financials.earned > 0 ? <span className="num">{formatMoney(r.financials.earned)}</span> : <span className="muted">-</span>),
       },
       {
         key: 'paid',
@@ -270,7 +305,7 @@ export function Farmers({ search }: { search: string }) {
         sortValue: (r) => r.financials.paid,
         exportValue: (r) => r.financials.paid,
         searchValue: (r) => String(r.financials.paid),
-        render: (r) => <span className="num">{r.financials.paid > 0 ? formatMoney(r.financials.paid) : '—'}</span>,
+        render: (r) => <span className="num">{r.financials.paid > 0 ? formatMoney(r.financials.paid) : '-'}</span>,
       },
       {
         key: 'advances',
@@ -281,7 +316,7 @@ export function Farmers({ search }: { search: string }) {
         sortValue: (r) => r.financials.advances,
         exportValue: (r) => r.financials.advances,
         searchValue: (r) => String(r.financials.advances),
-        render: (r) => <span className="num">{r.financials.advances > 0 ? formatMoney(r.financials.advances) : '—'}</span>,
+        render: (r) => <span className="num">{r.financials.advances > 0 ? formatMoney(r.financials.advances) : '-'}</span>,
       },
       {
         key: 'balance',
@@ -433,7 +468,7 @@ export function Farmers({ search }: { search: string }) {
           if (!answer.ok || !user) return;
           try {
             const { batch } = await paymentService.createBatch(user, {
-              name: `Payment batch — ${today()}`,
+              name: `Payment batch, ${today()}`,
               farmerIds: owed.map((r) => r.id),
             });
             refresh();
@@ -567,7 +602,7 @@ export function Farmers({ search }: { search: string }) {
  */
 function paymentLabel(r: Row) {
   const { balance, paid, earned } = r.financials;
-  if (earned === 0) return { labelKey: 'pay.nothingOwed', helpKey: 'pay.nothingOwedHelp', label: '', glyph: '—', tone: 'slate' as const };
+  if (earned === 0) return { labelKey: 'pay.nothingOwed', helpKey: 'pay.nothingOwedHelp', label: '', glyph: '-', tone: 'slate' as const };
   if (balance > 0 && paid > 0) return { labelKey: 'pay.partPaid', helpKey: 'pay.partPaidHelp', label: '', glyph: '◒', tone: 'orange' as const };
   if (balance > 0) return { labelKey: 'pay.pending', helpKey: 'pay.pendingHelp', label: '', glyph: '○', tone: 'amber' as const };
   if (balance < 0) return { labelKey: 'pay.inAdvance', helpKey: 'pay.inAdvanceHelp', label: '', glyph: '◆', tone: 'blue' as const };
@@ -582,7 +617,10 @@ function uniq(xs: string[]): string[] {
 
 function AddFarmerModal({ onClose }: { onClose: () => void }) {
   const { user, crops, cooperatives, refresh, toast, fail } = useStore();
+  const { t } = usePrefs();
   const [form, setForm] = useState({
+    code: '',
+    idNumber: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -611,6 +649,8 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const farmer = await farmerService.create(user, {
+        code: form.code.trim() || undefined,
+        idNumber: form.idNumber.trim() || undefined,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         phone: form.phone.trim(),
@@ -663,6 +703,22 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
       }
     >
       <form id="add-farmer" onSubmit={submit} className="formgrid">
+        <Field label={t('field.farmerId')} error={errors.code} help={t('field.farmerIdHelp')}>
+          <Input
+            value={form.code}
+            onChange={(e) => set('code', e.target.value)}
+            placeholder={t('field.farmerIdAuto')}
+            invalid={Boolean(errors.code)}
+          />
+        </Field>
+        <Field label={t('field.idNumber')} error={errors.idNumber} help={t('field.idNumberHelp')}>
+          <Input
+            value={form.idNumber}
+            onChange={(e) => set('idNumber', e.target.value)}
+            inputMode="numeric"
+            invalid={Boolean(errors.idNumber)}
+          />
+        </Field>
         <Field label="First name" required error={errors.firstName}>
           <Input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} invalid={Boolean(errors.firstName)} autoFocus />
         </Field>
@@ -721,7 +777,8 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const template = 'firstName,lastName,phone,district,sector,cell,village,cooperative,primaryCrop,farmSizeHa,plots';
+  const template =
+    'code,idNumber,firstName,lastName,phone,district,sector,cell,village,cooperative,primaryCrop,farmSizeHa,plots';
 
   const onFile = async (file: File) => {
     setError('');
@@ -746,6 +803,8 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
         const coop = cooperatives.find((c) => c.name.toLowerCase() === (row.cooperative ?? '').toLowerCase() || c.code.toLowerCase() === (row.cooperative ?? '').toLowerCase());
         const crop = crops.find((c) => c.name.toLowerCase() === (row.primaryCrop ?? '').toLowerCase());
         return {
+          code: row.code?.trim() || undefined,
+          idNumber: row.idNumber?.trim() || undefined,
           firstName: row.firstName ?? '',
           lastName: row.lastName ?? '',
           phone: row.phone ?? '',
@@ -818,7 +877,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
         {preview && (
           <div>
             <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              Preview — first 5 of {preview.length} rows
+              Preview, first 5 of {preview.length} rows
             </p>
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
               <table className="grid" style={{ width: '100%' }}>

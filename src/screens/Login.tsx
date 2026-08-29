@@ -1,13 +1,13 @@
 /**
  * Sign in, create an account, and recover a forgotten PIN.
  *
- * A new account starts with an empty book — no farmers, no money, nothing to
+ * A new account starts with an empty book, no farmers, no money, nothing to
  * delete before it is theirs. The demo account is kept alongside, with its PIN
  * printed on the screen, so anyone can see a working cooperative in ten seconds
  * without signing up for anything.
  *
  * On recovery: a real "email me a reset link" needs a server to send the mail
- * and verify the token, and this app has neither — it runs entirely on the
+ * and verify the token, and this app has neither, it runs entirely on the
  * device. Rather than show a "check your email" message that no email would
  * ever follow, recovery uses a code issued at sign-up. The screen says plainly
  * which of the two is happening, because a login screen that lies about having

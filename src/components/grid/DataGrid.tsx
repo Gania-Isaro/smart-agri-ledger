@@ -1,5 +1,5 @@
 /**
- * DataGrid — the spreadsheet.
+ * DataGrid, the spreadsheet.
  *
  * Aims to feel like Excel where that helps (click a cell and type, arrow keys,
  * frozen columns, sticky header) and deliberately unlike Excel where Excel is
@@ -615,7 +615,7 @@ export function DataGrid<T>({
           <div className="gridfoot">
             <div className="row gap-3 wrap">
               <span>
-                Showing {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, sorted.length)} of{' '}
+                Showing {safePage * pageSize + 1}-{Math.min((safePage + 1) * pageSize, sorted.length)} of{' '}
                 {sorted.length.toLocaleString()}
               </span>
               <label className="row gap-2">
@@ -771,6 +771,6 @@ function writeStored(key: string, part: string, value: unknown) {
   try {
     localStorage.setItem(`grid:${key}:${part}`, JSON.stringify(value));
   } catch {
-    /* private browsing, quota — the grid still works, it just forgets. */
+    /* private browsing, quota. The grid still works, it just forgets. */
   }
 }

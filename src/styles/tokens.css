@@ -4,7 +4,7 @@
  * Green and cream, black type. Cream carries the page so the interface reads
  * warm rather than clinical; white is reserved for surfaces that hold data, so
  * a table or a card lifts off the background without needing a heavy shadow.
- * Green is structural — navigation, primary actions, positive money — and never
+ * Green is structural, navigation, primary actions, positive money, and never
  * decorative. Colour is never the only carrier of meaning: every status also
  * ships a glyph and a word.
  */
@@ -60,7 +60,7 @@
   /* --- categorical chart ramp ---
      Fixed order, never cycled. Validated for lightness band, chroma floor,
      colour-vision separation of adjacent pairs, and contrast against the
-     surface — in BOTH themes, with the dark steps chosen rather than flipped. */
+     surface, in BOTH themes, with the dark steps chosen rather than flipped. */
   --cat-1: #2E8F61;
   --cat-2: #2C6497;
   --cat-3: #C0533F;
@@ -92,12 +92,12 @@
   --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
   --font-num: 'Inter', 'SF Mono', 'Segoe UI', system-ui, sans-serif;
 
-  --fs-xs: 0.6875rem;   /* 11px — labels, table meta */
-  --fs-sm: 0.8125rem;   /* 13px — table body, secondary */
-  --fs-md: 0.875rem;    /* 14px — body */
-  --fs-lg: 1rem;        /* 16px — section titles */
-  --fs-xl: 1.25rem;     /* 20px — page titles */
-  --fs-2xl: 1.625rem;   /* 26px — metrics */
+  --fs-xs: 0.6875rem;   /* 11px, labels, table meta */
+  --fs-sm: 0.8125rem;   /* 13px, table body, secondary */
+  --fs-md: 0.875rem;    /* 14px, body */
+  --fs-lg: 1rem;        /* 16px, section titles */
+  --fs-xl: 1.25rem;     /* 20px, page titles */
+  --fs-2xl: 1.625rem;   /* 26px, metrics */
   --fs-3xl: 2rem;
 
   /* --- space --- */
@@ -144,7 +144,7 @@
  * paper that carries the light design is replaced by a deep green-tinted ink so
  * the app still reads as the same product, and the greens are stepped LIGHTER
  * because a deep green on a dark ground disappears. Body text goes near-white
- * here — black type on black is not a preference anyone can honour.
+ * here, black type on black is not a preference anyone can honour.
  *
  * Applied when the user picks dark, and when they leave the choice to the
  * system and the system says dark.

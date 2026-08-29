@@ -6,7 +6,7 @@
  * ask completely different questions without either being a bespoke screen.
  *
  * Anything money-related shows the farmer's live balance and what the entry
- * will do to it before the user commits — the single most useful thing this
+ * will do to it before the user commits. The single most useful thing this
  * screen can show, and the reason a cooperative would trust it over a notebook.
  */
 
@@ -389,7 +389,7 @@ function ActivityForm({
   const cropOptions = crops.map((c) => ({ value: c.id, label: tCrop(c.id, c.name) }));
   const farmerOptions = farmers.map((f) => ({
     value: f.id,
-    label: `${f.code} — ${f.firstName} ${f.lastName} · ${f.village}, ${f.district}`,
+    label: `${f.code}, ${f.firstName} ${f.lastName} · ${f.village}, ${f.district}`,
   }));
 
   const isMoney = Boolean(type.postsLedger && !type.createsHarvest);
@@ -483,7 +483,7 @@ function ActivityForm({
           ))}
         </div>
 
-        {/* Live arithmetic. Nothing here is stored — it is recalculated on the
+        {/* Live arithmetic. Nothing here is stored, it is recalculated on the
             way in by the service, so the preview cannot disagree with the ledger. */}
         {type.createsHarvest && quantity > 0 && price > 0 && (
           <div className="calc">
@@ -514,7 +514,7 @@ function ActivityForm({
             </div>
             <div className="calc__row">
               <span>This {type.label.toLowerCase()}</span>
-              <b className="num">{amount ? formatMoney(amount) : '—'}</b>
+              <b className="num">{amount ? formatMoney(amount) : '-'}</b>
             </div>
             <div className="calc__row calc__total">
               <span>Balance after</span>

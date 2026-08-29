@@ -129,12 +129,12 @@ export async function transition(
 
   if (to === 'paid') {
     after.paidAt = at;
-    /* This is the moment money actually leaves — post the debit now. */
+    /* This is the moment money actually leaves, post the debit now. */
     const tx = await postSystem(user, {
       farmerId: before.farmerId,
       type: 'payment',
       amount: before.amount,
-      description: `Payment ${before.reference} — ${before.reason}`,
+      description: `Payment ${before.reference}, ${before.reason}`,
       date: today(),
       reference: before.reference,
       paymentId: before.id,
@@ -156,7 +156,7 @@ export async function transition(
   await db.payments.put(after);
   await refreshFarmerStatus(before.farmerId);
   if (before.batchId) await refreshBatchStatus(before.batchId);
-  await audit.record(user, 'payment', id, to === 'paid' ? 'pay' : to === 'approved' ? 'approve' : to === 'cancelled' ? 'cancel' : 'update', `${before.reference}: ${before.status} to ${to}${opts.reason ? ` — ${opts.reason}` : ''}`, { before, after });
+  await audit.record(user, 'payment', id, to === 'paid' ? 'pay' : to === 'approved' ? 'approve' : to === 'cancelled' ? 'cancel' : 'update', `${before.reference}: ${before.status} to ${to}${opts.reason ? `, ${opts.reason}` : ''}`, { before, after });
   return after;
 }
 

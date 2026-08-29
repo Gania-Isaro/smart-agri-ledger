@@ -2,7 +2,7 @@
  * Status vocabulary.
  *
  * Every status carries a label, a short glyph and a tone. Colour is never the
- * only signal — badges render the glyph and the words too, so the table stays
+ * only signal, badges render the glyph and the words too, so the table stays
  * readable in greyscale, in sunlight, and for colour-blind users.
  */
 

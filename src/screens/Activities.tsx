@@ -23,7 +23,7 @@ interface Row extends Activity {
 const SECTION: Record<string, { title: string; blurb: string; categories: ActivityCategory[] }> = {
   farming: {
     title: 'Farming activities',
-    blurb: 'Land preparation through to crop monitoring — everything before the harvest.',
+    blurb: 'Land preparation through to crop monitoring. Everything before the harvest.',
     categories: ['farming'],
   },
   harvest: {
@@ -135,7 +135,7 @@ export function Activities({ search }: { search: string }) {
           r.cropId ? (
             <span className="truncate">{tCrop(r.cropId, lookups.cropName(r.cropId))}</span>
           ) : (
-            <span className="muted">—</span>
+            <span className="muted">-</span>
           ),
       },
       {
@@ -153,7 +153,7 @@ export function Activities({ search }: { search: string }) {
               {formatNumber(Number(r.data.quantity))} {r.data.unit ?? ''}
             </span>
           ) : (
-            <span className="muted">—</span>
+            <span className="muted">-</span>
           ),
       },
       {
@@ -167,7 +167,7 @@ export function Activities({ search }: { search: string }) {
         exportValue: (r) => Number(r.data.grossValue ?? r.data.amount ?? 0) || '',
         render: (r) => {
           const v = Number(r.data.grossValue ?? r.data.amount ?? 0);
-          return v > 0 ? <span className="num">{formatMoney(v)}</span> : <span className="muted">—</span>;
+          return v > 0 ? <span className="num">{formatMoney(v)}</span> : <span className="muted">-</span>;
         },
       },
       {
@@ -194,7 +194,7 @@ export function Activities({ search }: { search: string }) {
               Posted
             </span>
           ) : (
-            <span className="muted">—</span>
+            <span className="muted">-</span>
           ),
       },
       {
@@ -215,7 +215,7 @@ export function Activities({ search }: { search: string }) {
         searchValue: (r) => r.notes ?? '',
         exportValue: (r) => r.notes ?? '',
         sortValue: (r) => r.notes ?? '',
-        render: (r) => <span className="truncate muted">{r.notes ?? '—'}</span>,
+        render: (r) => <span className="truncate muted">{r.notes ?? '-'}</span>,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

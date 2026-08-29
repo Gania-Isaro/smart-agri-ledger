@@ -1,5 +1,5 @@
 /**
- * Ledger service — the only way money is allowed to move.
+ * Ledger service. The only way money is allowed to move.
  *
  * Rules enforced here, not in the UI:
  *   - a balance is never stored, only folded from transactions
@@ -67,7 +67,7 @@ export async function post(user: User, input: PostInput): Promise<LedgerTransact
 
 /**
  * Post an entry that is a consequence of an already-authorised action rather
- * than a discretionary accounting decision — the credit that must accompany a
+ * than a discretionary accounting decision. The credit that must accompany a
  * harvest, the debit that must accompany a settled payment. The caller has
  * already checked its own permission (`harvest.create`, `payment.settle`), and
  * refusing here would leave produce recorded with no money against it, which is
@@ -109,7 +109,7 @@ async function write(user: User, input: PostInput): Promise<LedgerTransaction> {
   };
 
   await db.transactions.put(tx);
-  await audit.record(user, 'transaction', tx.id, 'create', `${tx.code}: ${tx.direction} ${amount} RWF — ${description}`, { after: tx });
+  await audit.record(user, 'transaction', tx.id, 'create', `${tx.code}: ${tx.direction} ${amount} RWF, ${description}`, { after: tx });
   return tx;
 }
 
@@ -149,7 +149,7 @@ export async function voidTransaction(
     await db.transactions.put(reversal);
   });
 
-  await audit.record(user, 'transaction', original.id, 'void', `Voided ${original.code} (${original.amount} RWF) — ${trimmed}`, { before: original, after: voided });
+  await audit.record(user, 'transaction', original.id, 'void', `Voided ${original.code} (${original.amount} RWF), ${trimmed}`, { before: original, after: voided });
   return { voided, reversal };
 }
 

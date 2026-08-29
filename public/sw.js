@@ -10,7 +10,7 @@
  * '/', because the app is served from a project subpath on GitHub Pages and
  * from the root in local development. Hard-coding either one breaks the other.
  *
- * Records are never cached here — they live in IndexedDB, which is the real
+ * Records are never cached here. They live in IndexedDB, which is the real
  * offline store. This only keeps the application itself loadable.
  */
 

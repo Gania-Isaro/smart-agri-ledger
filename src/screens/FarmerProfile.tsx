@@ -183,6 +183,10 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               <div className="card__body">
                 <dl className="deflist">
                   <div>
+                    <dt>{tr('field.idNumber')}</dt>
+                    <dd>{farmer.idNumber || '-'}</dd>
+                  </div>
+                  <div>
                     <dt>Farm size</dt>
                     <dd>{farmer.farmSizeHa} hectares</dd>
                   </div>
@@ -314,7 +318,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                         <td><span className="cell"><Badge meta={GRADE_META[h.grade]} /></span></td>
                         <td className="num"><span className="cell num">{formatMoney(h.pricePerUnit)}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(h.gross)}</span></td>
-                        <td className="num"><span className="cell num neg">{h.deductions ? `− ${formatMoney(h.deductions)}` : '—'}</span></td>
+                        <td className="num"><span className="cell num neg">{h.deductions ? `− ${formatMoney(h.deductions)}` : '-'}</span></td>
                         <td className="num"><span className="cell num strong">{formatMoney(h.net)}</span></td>
                         <td><span className="cell"><Badge meta={HARVEST_STATUS[h.status]} /></span></td>
                       </tr>
@@ -331,7 +335,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
             {financials.balance > 0 && can('payment.create') && (
               <Callout tone="info" icon="coins">
                 <b>{formatMoney(financials.balance)}</b> is still owed to this farmer. Use{' '}
-                <b>Record activity → Farmer payment</b> to settle it — the amount is checked against this balance before
+                <b>Record activity → Farmer payment</b> to settle it. The amount is checked against this balance before
                 it posts.
               </Callout>
             )}
@@ -359,7 +363,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                           <td><span className="cell">{PAYMENT_METHOD_LABEL[p.method]}</span></td>
                           <td><span className="cell truncate">{p.reason}</span></td>
                           <td><span className="cell"><Badge meta={PAYMENT_STATUS[p.status]} /></span></td>
-                          <td><span className="cell muted">{p.approvedBy ? lookups.userName(p.approvedBy) : '—'}</span></td>
+                          <td><span className="cell muted">{p.approvedBy ? lookups.userName(p.approvedBy) : '-'}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -512,7 +516,7 @@ function humanise(key: string): string {
 }
 
 function formatValue(key: string, value: string | number | undefined): string {
-  if (value === undefined) return '—';
+  if (value === undefined) return '-';
   if (['amount', 'pricePerUnit', 'grossValue', 'value', 'cost', 'deductions'].includes(key)) {
     return formatMoney(Number(value));
   }

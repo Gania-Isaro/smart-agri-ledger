@@ -1,7 +1,7 @@
 /**
  * Icon set.
  *
- * Hand-drawn on a 24-grid, 1.7 stroke, round caps — one visual family so the
+ * Hand-drawn on a 24-grid, 1.7 stroke, round caps, one visual family so the
  * interface does not look assembled from three icon packs. Shipping them inline
  * also means no icon font to fetch, which matters for an app that runs offline.
  */

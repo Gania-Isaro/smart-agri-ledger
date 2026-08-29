@@ -61,7 +61,7 @@ export async function setStatus(user: User, ids: ID[], status: HarvestStatus): P
 /**
  * Correct a harvest. Quantity, price and grade all feed the farmer credit, so
  * changing them writes a balancing ledger entry rather than quietly rewriting
- * history — the farmer must be able to see why their balance moved.
+ * history. The farmer must be able to see why their balance moved.
  */
 export async function correct(
   user: User,
@@ -99,7 +99,7 @@ export async function correct(
       type: 'adjustment',
       direction: delta > 0 ? 'credit' : 'debit',
       amount: Math.abs(delta),
-      description: `Harvest correction — ${reason.trim()}`,
+      description: `Harvest correction, ${reason.trim()}`,
       date: after.date,
       harvestId: after.id,
     });

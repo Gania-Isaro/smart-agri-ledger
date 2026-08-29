@@ -37,7 +37,7 @@ import type {
 
 /* --------------------------------------------------------------- helpers */
 
-/** Mulberry32 — small, fast, deterministic. */
+/** Mulberry32, small, fast, deterministic. */
 function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -76,7 +76,7 @@ const DEMO_USERS: User[] = [
   /*
    * One account. The owner and the manager run this cooperative together and
    * share these credentials, so they sign in to the same place and see exactly
-   * the same thing — there is no second view of the business to reconcile.
+   * the same thing. There is no second view of the business to reconcile.
    *
    * The role system underneath is still real and still enforced (see rbac.ts);
    * this account simply holds every permission. That matters if the cooperative
@@ -188,7 +188,7 @@ export async function seedDatabase(): Promise<SeedResult> {
   const batch: PaymentBatch = {
     id: 'batch_current',
     code: 'PB-2026-08',
-    name: 'Harvest Payment Batch — August 2026',
+    name: 'Harvest Payment Batch, August 2026',
     period: monthKey(anchor),
     status: 'partially_paid',
     createdBy: 'acc_demo',
@@ -200,7 +200,7 @@ export async function seedDatabase(): Promise<SeedResult> {
   const priorBatch: PaymentBatch = {
     id: 'batch_july',
     code: 'PB-2026-07',
-    name: 'Harvest Payment Batch — July 2026',
+    name: 'Harvest Payment Batch, July 2026',
     period: '2026-07',
     status: 'completed',
     createdBy: 'acc_demo',
@@ -228,7 +228,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       lastName: LAST_NAMES[(i * 3 + 5) % LAST_NAMES.length]!,
       phone: `+250 78${between(0, 9)} ${between(100, 999)} ${between(100, 999)}`,
       gender: chance(0.55) ? 'F' : 'M',
-      nationalIdLast4: String(between(1000, 9999)),
+      idNumber: `119${between(70, 99)}8${between(1000000, 9999999)}${between(10, 99)}`,
       village: pick(place.villages),
       cell: pick(place.cells),
       sector: pick(place.sectors),
@@ -357,7 +357,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       harvests.push(harvest);
       delivered += gross;
 
-      const tx = post(farmer.id, 'harvest', gross, `${crop.name} delivery — ${quantity} ${unit} @ ${pricePerUnit} RWF`, date, { harvestId: harvest.id, batchId: harvest.batchId }, 'acc_demo');
+      const tx = post(farmer.id, 'harvest', gross, `${crop.name} delivery, ${quantity} ${unit} @ ${pricePerUnit} RWF`, date, { harvestId: harvest.id, batchId: harvest.batchId }, 'acc_demo');
 
       const act: Activity = {
         id: uid('act'), farmerId: farmer.id, typeId: 'harvesting', category: 'harvest',
@@ -381,7 +381,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
     /*
      * Payments for anything delivered in an earlier month were settled with the
-     * July batch, which is marked completed — so it has to actually contain the
+     * July batch, which is marked completed, so it has to actually contain the
      * payments that completed it.
      */
     const earlier = harvests.filter((h) => h.farmerId === farmer.id && monthKey(h.date) !== batch.period);
@@ -448,7 +448,7 @@ export async function seedDatabase(): Promise<SeedResult> {
         payments.push(payment);
         log('payment', payment.id, 'pay', `Paid ${amt} RWF to ${farmer.firstName} ${farmer.lastName}`, 'acc_demo', `${date}T16:00:00.000Z`);
       } else if (chance(0.6)) {
-        /* Sitting in the batch waiting for approval — the work queue. */
+        /* Sitting in the batch waiting for approval, the work queue. */
         const date = addDays(anchor, -between(0, 4));
         const amt = Math.round(Math.max(delivered * 0.6, 10000) / 500) * 500;
         payments.push({
@@ -477,7 +477,7 @@ export async function seedDatabase(): Promise<SeedResult> {
   const disputedFarmer = farmers[7]!;
   const dDate = addDays(anchor, -3);
   post(disputedFarmer.id, 'adjustment', 12000, 'Weight correction disputed by farmer', dDate, { direction: 'debit' }, 'acc_demo');
-  log('transaction', 'adjustment', 'update', `Balance adjusted for ${disputedFarmer.code} — under review`, 'acc_demo', `${dDate}T10:00:00.000Z`);
+  log('transaction', 'adjustment', 'update', `Balance adjusted for ${disputedFarmer.code}, under review`, 'acc_demo', `${dDate}T10:00:00.000Z`);
 
   /* ---- derive farmer status from what actually happened ---- */
   const byFarmer = new Map<string, LedgerTransaction[]>();
@@ -580,7 +580,7 @@ export interface NewAccountSeed {
 }
 
 /**
- * A brand-new account starts empty — no farmers, no harvests, no money.
+ * A brand-new account starts empty, no farmers, no harvests, no money.
  *
  * What it does get is the reference data the app cannot function without: the
  * crop price list and the activity catalog. Starting with zero crops would mean

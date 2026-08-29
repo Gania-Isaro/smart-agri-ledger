@@ -2,7 +2,7 @@
  * Activity service.
  *
  * This is where the "+" button lands. One recorded activity can touch three
- * tables at once — the activity itself, a harvest record, and a ledger entry —
+ * tables at once. The activity itself, a harvest record, and a ledger entry,
  * and they are written in a single Dexie transaction so a phone that dies
  * mid-save can never leave produce recorded with no money against it.
  */
@@ -115,8 +115,8 @@ function slugify(label: string): string {
  *
  * Custom types are deliberately limited to descriptive fields: they can record
  * what happened, but they cannot post to the ledger. Letting a user invent a
- * money-moving activity would put the posting rules — the one thing the whole
- * ledger depends on — into a text box. Money still moves only through the
+ * money-moving activity would put the posting rules, the one thing the whole
+ * ledger depends on, into a text box. Money still moves only through the
  * built-in financial activities, which have reviewed posting rules behind them.
  */
 export async function createActivityType(
@@ -359,10 +359,10 @@ function describeTransaction(
   unit?: string,
 ): string {
   if (type.createsHarvest) {
-    return `${type.label} — ${data.quantity} ${unit ?? data.unit ?? ''} @ ${data.pricePerUnit} RWF`.trim();
+    return `${type.label}, ${data.quantity} ${unit ?? data.unit ?? ''} @ ${data.pricePerUnit} RWF`.trim();
   }
   const reason = (data.reason as string | undefined)?.trim();
-  return reason ? `${type.label} — ${reason}` : type.label;
+  return reason ? `${type.label}, ${reason}` : type.label;
 }
 
 /* ---------------------------------------------------------------- update */
@@ -416,7 +416,7 @@ export async function listActivities(filter?: { farmerId?: ID; category?: Activi
 
 /**
  * Keep the farmer status honest. Status is a summary of what the records say,
- * so it is recomputed rather than typed — the one exception is `disputed`,
+ * so it is recomputed rather than typed. The one exception is `disputed`,
  * which a human sets deliberately and which this must not clear.
  */
 export async function refreshFarmerStatus(farmerId: ID): Promise<void> {

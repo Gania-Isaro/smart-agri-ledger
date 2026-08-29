@@ -80,7 +80,7 @@ function Harvests({ search }: { search: string }) {
         sortValue: (r) => `${r.farmer?.lastName ?? ''}`,
         searchValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''} ${r.farmer?.code ?? ''}`,
         exportValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''}`,
-        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '—'}</span>,
+        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '-'}</span>,
       },
       {
         key: 'code',
@@ -204,7 +204,7 @@ function Harvests({ search }: { search: string }) {
         sortValue: (r) => r.deductions,
         searchValue: (r) => String(r.deductions),
         exportValue: (r) => r.deductions,
-        render: (r) => <span className="num neg">{r.deductions ? `− ${formatMoney(r.deductions)}` : '—'}</span>,
+        render: (r) => <span className="num neg">{r.deductions ? `− ${formatMoney(r.deductions)}` : '-'}</span>,
       },
       {
         key: 'net',
@@ -394,10 +394,10 @@ function Crops() {
                     <td><span className="cell muted">{c.defaultUnit}</span></td>
                     <td className="num"><span className="cell num">{formatMoney(c.defaultPricePerUnit)}</span></td>
                     <td className="num"><span className="cell num">{formatNumber(t?.deliveries ?? 0)}</span></td>
-                    <td className="num"><span className="cell num">{t ? `${formatNumber(t.quantity)} ${t.unit}` : '—'}</span></td>
-                    <td className="num"><span className="cell num strong">{value ? formatMoney(value) : '—'}</span></td>
+                    <td className="num"><span className="cell num">{t ? `${formatNumber(t.quantity)} ${t.unit}` : '-'}</span></td>
+                    <td className="num"><span className="cell num strong">{value ? formatMoney(value) : '-'}</span></td>
                     <td className="num">
-                      <span className="cell num">{grand > 0 ? `${Math.round((value / grand) * 100)}%` : '—'}</span>
+                      <span className="cell num">{grand > 0 ? `${Math.round((value / grand) * 100)}%` : '-'}</span>
                     </td>
                   </tr>
                 );
@@ -414,7 +414,7 @@ function Crops() {
         </div>
       </div>
       <p className="muted" style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--s-2)' }}>
-        Quantities mix units only where they are comparable — bunches and crates are counted separately from kilograms.
+        Quantities mix units only where they are comparable, bunches and crates are counted separately from kilograms.
         {lookups.crop.size > 0 ? '' : ''}
       </p>
     </>

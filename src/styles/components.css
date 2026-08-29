@@ -1749,7 +1749,7 @@ table.grid {
   gap: var(--s-3);
 }
 
-/* horizontal bars — used where labels are words, not dates */
+/* horizontal bars, used where labels are words, not dates */
 .hbars {
   display: flex;
   flex-direction: column;

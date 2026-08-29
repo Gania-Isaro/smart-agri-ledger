@@ -3,7 +3,7 @@
  *
  * Two separate databases, deliberately:
  *
- *   smart_agri_accounts        the list of accounts — shared, so the login
+ *   smart_agri_accounts        the list of accounts, shared, so the login
  *                              screen can find an account before it knows
  *                              which cooperative it belongs to
  *   smart_agri_data_<id>       one per account, holding that cooperative's
@@ -11,7 +11,7 @@
  *
  * Splitting them is what makes a new sign-up genuinely empty. Tagging every
  * record with an owner id instead would mean a single missed `where` clause
- * leaks one cooperative's farmers — and their balances — into another's
+ * leaks one cooperative's farmers, and their balances, into another's
  * screens. A separate database per account cannot leak by omission.
  */
 
@@ -247,7 +247,7 @@ export const DEMO_ACCOUNT_ID = 'acc_demo';
 /**
  * The demo account exists so somebody can see a working cooperative in ten
  * seconds without signing up. Its PIN is published in the README on purpose,
- * which is exactly why it is the only account allowed to use '1234' — the
+ * which is exactly why it is the only account allowed to use '1234', the
  * sign-up form rejects that PIN for everyone else.
  */
 export async function ensureDemoAccount(): Promise<Account> {

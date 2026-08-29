@@ -11,7 +11,7 @@
  * A negative balance means the farmer is carrying an advance or loan.
  *
  * Nothing in this file touches storage, so the same rules can run on a server
- * unchanged — which is the point: the numbers must not depend on the UI.
+ * unchanged, which is the point: the numbers must not depend on the UI.
  */
 
 import type { Direction, LedgerLine, LedgerTransaction, LedgerTxType } from './types';
@@ -180,7 +180,7 @@ export function reversalOf(
     id: opts.id,
     code: opts.code,
     direction: tx.direction === 'credit' ? 'debit' : 'credit',
-    description: `Reversal of ${tx.code} — ${opts.reason}`,
+    description: `Reversal of ${tx.code}, ${opts.reason}`,
     date: opts.date,
     reversesId: tx.id,
     voided: false,

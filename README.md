@@ -16,7 +16,7 @@ npm run build    # production bundle in dist/
 
 ## Two ways in
 
-**Look around first** — the demo cooperative, already full of data:
+**Look around first.** The demo cooperative, already full of data:
 
 ```
 owner@agriledger.rw   PIN 1234
@@ -25,8 +25,8 @@ owner@agriledger.rw   PIN 1234
 26 farmers, real harvests, payments and a complete ledger. A banner across the top
 says plainly that the figures are generated, so nobody mistakes them for their own.
 
-**Or create an account** — it starts completely empty. No farmers, no harvests, no
-money; nothing to delete before it is yours. You get the crop price list and the
+**Or create an account.** It starts completely empty: no farmers, no harvests, no
+money, and nothing to delete before it is yours. You get the crop price list and the
 activity catalog, because a cooperative with zero crops can register a farmer but
 can never record a harvest against them, which is empty in the unhelpful sense.
 
@@ -54,8 +54,8 @@ returns the figure. That single decision is why:
 
 - no screen can show a number that disagrees with another screen,
 - editing a harvest quantity *posts a correction* rather than silently rewriting history,
-- a mistake is **voided** — the original row stays, flagged, and a reversing entry is
-  appended — because deleting money is how ledgers stop being trustworthy,
+- a mistake is **voided**: the original row stays, flagged, and a reversing entry is
+  appended, because deleting money is how ledgers stop being trustworthy,
 - the numbers survived an independent recomputation straight from IndexedDB: posted
   harvest credits matched quantity × price to the franc, and payment debits matched
   settled payments exactly.
@@ -64,7 +64,7 @@ returns the figure. That single decision is why:
 
 ```
 src/
-  domain/     pure rules — money, ledger posting, permissions, activity catalog
+  domain/     pure rules: money, ledger posting, permissions, activity catalog
   services/   the "backend": every write goes through here, with permission
               checks, validation and an audit entry. No component touches the DB.
   db/         Dexie/IndexedDB schema + deterministic demo data
@@ -75,12 +75,12 @@ src/
 
 `domain/` and `services/` have no React in them. If this ever grows a server, those
 two folders move across unchanged and the permission checks run on the request path
-instead — which is the point of putting them there rather than in a component.
+instead, which is the point of putting them there rather than in a component.
 
 ### Offline
 
 Records live in IndexedDB on the device, so the app is not "degraded" without a
-network — it is simply working. A service worker keeps the app shell loadable, and
+network; it is simply working. A service worker keeps the app shell loadable, and
 the manifest makes it installable to a home screen. The connection pill in the header
 tells the user which state they are in, and says the app still works either way.
 
@@ -92,12 +92,12 @@ figure you can act on and one you have to double-check.
 
 **Custom activity types cannot post to the ledger.** Admins can add activity types
 that fit how they actually work (see the `+` menu). Those record what happened but
-never move money — putting posting rules into a text box would undermine the one thing
+never move money. Putting posting rules into a text box would undermine the one thing
 the ledger depends on.
 
 **Colour is never the only signal.** Every status ships a glyph and a word alongside
 its colour. The chart palette was validated for lightness band, chroma floor,
-colour-vision separation and contrast against the surface — in both themes, with the
+colour-vision separation and contrast against the surface, in both themes, with the
 dark steps chosen separately rather than flipped.
 
 **Roles are enforced in the service layer, not by hiding buttons.** The owner and
@@ -106,14 +106,14 @@ every mutation, so a narrower account is a new row rather than a rewrite.
 
 ## Installing it on a phone
 
-It is a PWA, so it installs from the browser and then behaves like any other app —
-own icon, own window, no address bar, works with the network off.
+It is a PWA, so it installs from the browser and then behaves like any other app:
+its own icon, its own window, no address bar, and it works with the network off.
 
 - **Android (Chrome):** menu → *Add to Home screen* / *Install app*
 - **iPhone (Safari):** Share → *Add to Home Screen*
 
 It is **not** on the Play Store or App Store. Getting there means wrapping the same
-code with Capacitor or a Trusted Web Activity and paying the developer fees — the app
+code with Capacitor or a Trusted Web Activity and paying the developer fees. The app
 itself would not need rewriting.
 
 ## Signing in
@@ -125,7 +125,7 @@ the PIN was wrong, since naming which half failed tells whoever is holding the p
 which addresses are real.
 
 **Forgotten PIN.** Emailing a reset link needs a server to send the mail and verify
-the token, and this build has neither — it runs entirely on the device. So recovery
+the token, and this build has neither: it runs entirely on the device. So recovery
 uses a code issued once at sign-up, and the screen says exactly that rather than
 showing a "check your email" that no email would ever follow. Using a code spends it
 and issues a new one, so an old screenshot cannot be replayed. Connect this to a mail
@@ -139,10 +139,10 @@ server and the same flow sends that code to the address on the account.
   the device, so anyone with the device and the PIN is in. Real multi-device
   deployment swaps `screens/Login.tsx` and `db/accounts.ts` for an identity provider;
   nothing behind them changes.
-- **No password reset by email**, for the reason above — recovery is by saved code.
+- **No password reset by email**, for the reason above. Recovery is by a saved code.
 - **The demo PIN is published** in this README on purpose. It is the only account
   allowed to use `1234`; the sign-up form rejects that PIN for everyone else.
-- **Kinyarwanda covers the interface**, not user-entered data — farmer names,
+- **Kinyarwanda covers the interface**, not user-entered data: farmer names,
   villages and notes stay exactly as typed, and CSV exports keep English column
   headers so a file shared between two users still reconciles.
 - The bundle is a single ~180 KB gzipped chunk; code-splitting by route would help
@@ -152,6 +152,6 @@ server and the same flow sends that code to the address on the account.
 
 Pushing to `main` triggers `.github/workflows/deploy.yml`, which typechecks, builds
 and publishes to GitHub Pages. Because Pages serves a project site from a subpath,
-the build sets `base` to `/smart-agri-ledger/` only under CI — local `npm run dev`
+the build sets `base` to `/smart-agri-ledger/` only under CI; local `npm run dev`
 stays at the root. The manifest uses relative paths and the service worker derives
 every path from its own scope, so the same files work in both places.

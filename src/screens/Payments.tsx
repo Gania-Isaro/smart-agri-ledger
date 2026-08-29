@@ -2,8 +2,8 @@
  * Payments, outstanding balances and payment batches.
  *
  * The rule the whole screen is built around: a payment only touches the ledger
- * at the moment it is actually settled. Everything before that — pending,
- * approved, processing — is a promise, and promises do not move balances.
+ * at the moment it is actually settled. Everything before that, pending,
+ * approved, processing, is a promise, and promises do not move balances.
  */
 
 import { useMemo, useState } from 'react';
@@ -144,7 +144,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
         sortValue: (r) => r.farmer?.lastName ?? '',
         searchValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''} ${r.farmer?.code ?? ''}`,
         exportValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''}`,
-        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '—'}</span>,
+        render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '-'}</span>,
       },
       {
         key: 'amount',
@@ -204,7 +204,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
         sortValue: (r) => (r.approvedBy ? lookups.userName(r.approvedBy) : ''),
         searchValue: (r) => (r.approvedBy ? lookups.userName(r.approvedBy) : ''),
         exportValue: (r) => (r.approvedBy ? lookups.userName(r.approvedBy) : ''),
-        render: (r) => <span className="muted truncate">{r.approvedBy ? lookups.userName(r.approvedBy) : '—'}</span>,
+        render: (r) => <span className="muted truncate">{r.approvedBy ? lookups.userName(r.approvedBy) : '-'}</span>,
       },
       {
         key: 'paidAt',
@@ -214,7 +214,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
         sortValue: (r) => r.paidAt ?? '',
         searchValue: (r) => r.paidAt ?? '',
         exportValue: (r) => (r.paidAt ? formatDateTime(r.paidAt) : ''),
-        render: (r) => <span className="muted num">{r.paidAt ? formatDateTime(r.paidAt) : '—'}</span>,
+        render: (r) => <span className="muted num">{r.paidAt ? formatDateTime(r.paidAt) : '-'}</span>,
       },
     ],
     [lookups],
@@ -450,7 +450,7 @@ function Outstanding({ search }: { search: string }) {
             if (!answer.ok || !user) return;
             try {
               const { batch } = await paymentService.createBatch(user, {
-                name: `Harvest payment batch — ${today()}`,
+                name: `Harvest payment batch, ${today()}`,
                 farmerIds: subset.map((f) => f.id),
               });
               refresh();
@@ -532,7 +532,7 @@ function Batches() {
   const t = useT();
   const query = useQuery(() => paymentService.listBatches());
   const [newOpen, setNewOpen] = useState(false);
-  const [name, setName] = useState(`Harvest payment batch — ${today()}`);
+  const [name, setName] = useState(`Harvest payment batch, ${today()}`);
   const [busy, setBusy] = useState(false);
 
   const batches = query.data ?? [];
@@ -648,7 +648,7 @@ function Batches() {
           </Field>
           <Callout tone="info">
             Amounts are taken from each farmer’s ledger balance at the moment the batch is created. Creating a batch does
-            not pay anyone — it creates pending payments for review.
+            not pay anyone. It creates pending payments for review.
           </Callout>
         </div>
       </Modal>
@@ -839,7 +839,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
                   <td>
                     <span className="cell">
                       <a href={`#/farmers/${p.farmerId}`} className="grid__link truncate">
-                        {p.farmer ? `${p.farmer.firstName} ${p.farmer.lastName}` : '—'}
+                        {p.farmer ? `${p.farmer.firstName} ${p.farmer.lastName}` : '-'}
                       </a>
                     </span>
                   </td>

@@ -43,13 +43,21 @@ export type FarmerStatus =
 
 export interface Farmer {
   id: ID;
-  /** Human-facing code, e.g. FR-001. Unique. */
+  /**
+   * Human-facing code, e.g. FR-001. Unique, and generated automatically unless
+   * the cooperative types its own when registering the farmer.
+   */
   code: string;
   firstName: string;
   lastName: string;
   phone: string;
   gender: 'F' | 'M' | 'other' | 'undisclosed';
-  nationalIdLast4?: string;
+  /**
+   * National ID, membership number, or whatever number this cooperative
+   * already writes next to the farmer in its own books. Free text on purpose:
+   * a register that refuses the number people actually use gets ignored.
+   */
+  idNumber?: string;
 
   village: string;
   cell: string;

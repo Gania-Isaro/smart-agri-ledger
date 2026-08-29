@@ -3,7 +3,7 @@
  *
  * Every monetary value in the system is a whole number of RWF held in a
  * JavaScript number. RWF amounts in a cooperative stay far below
- * Number.MAX_SAFE_INTEGER, so integer arithmetic here is exact — but only as
+ * Number.MAX_SAFE_INTEGER, so integer arithmetic here is exact, but only as
  * long as nothing introduces a fraction. `toMoney` is the single gate that
  * guarantees that, and every service rounds through it before storing.
  */
@@ -62,9 +62,9 @@ const rwf = new Intl.NumberFormat('en-RW', {
 const plain = new Intl.NumberFormat('en-RW', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-RW', { maximumFractionDigits: 2 });
 
-/** `180,000 RWF` — the house style, currency after the number. */
+/** `180,000 RWF`. The house style, currency after the number. */
 export function formatMoney(amount: number | null | undefined): string {
-  if (amount === null || amount === undefined || !Number.isFinite(amount)) return '—';
+  if (amount === null || amount === undefined || !Number.isFinite(amount)) return '-';
   return `${plain.format(Math.round(amount))} ${CURRENCY}`;
 }
 
@@ -84,7 +84,7 @@ export function formatSignedMoney(amount: number): string {
 }
 
 export function formatNumber(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  if (n === null || n === undefined || !Number.isFinite(n)) return '-';
   return Number.isInteger(n) ? plain.format(n) : decimal.format(n);
 }
 

@@ -3,7 +3,7 @@
  *
  * Every report is generated from the same services the screens use, so a
  * printed report and the app can never disagree. Export is CSV (which Excel
- * opens directly) and PDF via the browser print dialog — both work with no
+ * opens directly) and PDF via the browser print dialog, both work with no
  * network, which a hosted converter would not.
  */
 
@@ -159,7 +159,7 @@ function ReportModal({ id, onClose }: { id: ReportId; onClose: () => void }) {
     printHTML(
       data.title,
       `<h1>${escapeHTML(data.title)}</h1>
-       <p class="meta">Smart Agri-Ledger · ${from ? `${formatDate(from)} – ` : 'All records up to '}${formatDate(to)} · generated ${formatDate(today())}</p>
+       <p class="meta">Smart Agri-Ledger · ${from ? `${formatDate(from)} - ` : 'All records up to '}${formatDate(to)} · generated ${formatDate(today())}</p>
        ${cards}
        <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>`,
     );

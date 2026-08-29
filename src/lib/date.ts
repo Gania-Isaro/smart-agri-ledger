@@ -22,34 +22,34 @@ export function parseISODate(iso: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-/** `24 Aug` — the compact form used in table cells. */
+/** `24 Aug`. The compact form used in table cells. */
 export function formatDateShort(iso: string | undefined | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = parseISODate(iso.slice(0, 10));
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-/** `24 Aug 2026` — used in detail views and reports. */
+/** `24 Aug 2026`, used in detail views and reports. */
 export function formatDate(iso: string | undefined | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = parseISODate(iso.slice(0, 10));
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export function formatDateTime(isoStamp: string | undefined | null): string {
-  if (!isoStamp) return '—';
+  if (!isoStamp) return '-';
   const d = new Date(isoStamp);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${time}`;
 }
 
-/** `3 days ago` — for audit trails and notifications. */
+/** `3 days ago`, for audit trails and notifications. */
 export function timeAgo(isoStamp: string): string {
   const then = new Date(isoStamp).getTime();
-  if (Number.isNaN(then)) return '—';
+  if (Number.isNaN(then)) return '-';
   const secs = Math.floor((Date.now() - then) / 1000);
   if (secs < 60) return 'just now';
   const mins = Math.floor(secs / 60);
