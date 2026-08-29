@@ -18,8 +18,10 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { db, getSetting, setSetting } from '../db/db';
-import { ensureSeeded } from '../db/seed';
+import { closeAccountDatabase, db, openAccountDatabase } from '../db/db';
+import { prepareAccount } from '../db/seed';
+import * as auth from '../db/accounts';
+import type { Account } from '../db/accounts';
 import { uid } from '../lib/id';
 import type {
   ActivityType,
@@ -68,6 +70,9 @@ export interface ConfirmResult {
 interface Store {
   ready: boolean;
   user: User | null;
+  /** The signed-in account. Null on the login screen. */
+  account: Account | null;
+  isDemo: boolean;
   users: User[];
   crops: Crop[];
   cooperatives: Cooperative[];
@@ -77,7 +82,9 @@ interface Store {
   /** Bumped after every write; screens depend on it to refetch. */
   revision: number;
 
-  signIn: (userId: string, pin: string) => Promise<void>;
+  signIn: (email: string, pin: string) => Promise<void>;
+  signUp: (input: auth.SignUpInput) => Promise<auth.SignUpResult>;
+  resetPin: (email: string, code: string, newPin: string) => Promise<auth.SignUpResult>;
   signOut: () => void;
   refresh: () => void;
   can: (permission: Permission) => boolean;
@@ -103,11 +110,35 @@ export function useStore(): Store {
   return ctx;
 }
 
-const SESSION_KEY = 'session_user';
+const SESSION_KEY = 'agri.session';
+
+/*
+ * The session lives in localStorage, not in a database. It has to be readable
+ * before any account database is open, and writable during sign-out after the
+ * account database has been released — storing it in IndexedDB meant it landed
+ * in whichever database happened to be open at the time.
+ */
+function readSession(): string | null {
+  try {
+    return localStorage.getItem(SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(id: string | null): void {
+  try {
+    if (id) localStorage.setItem(SESSION_KEY, id);
+    else localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* private browsing: the user simply signs in again next time */
+  }
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
@@ -125,28 +156,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        await ensureSeeded();
+        // The demo account always exists so anyone can look around without
+        // signing up. It is created here, not at sign-in, so its email is
+        // already known to the login screen.
+        await auth.ensureDemoAccount();
       } catch (e) {
-        // A failed seed must not leave the user staring at a spinner: carry on
-        // and let the app open, empty, with the reason on the console.
-        console.error('Could not prepare the demo data', e);
+        console.error('Could not prepare the demo account', e);
       }
-      const [u, c, co, types, notifs, sessionId] = await Promise.all([
-        db.users.toArray(),
-        db.crops.toArray(),
-        db.cooperatives.toArray(),
-        catalog(),
-        db.notifications.toArray(),
-        getSetting<string | null>(SESSION_KEY, null),
-      ]);
-      if (cancelled) return;
-      setUsers(u);
-      setCrops(c);
-      setCooperatives(co);
-      setActivityTypes(types);
-      setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
-      if (sessionId) setUser(u.find((x) => x.id === sessionId) ?? null);
-      setReady(true);
+
+      const sessionId = readSession();
+      const restored = sessionId ? await auth.accountsDb.accounts.get(sessionId) : undefined;
+
+      if (restored) {
+        await activate(restored);
+      }
+      if (!cancelled) setReady(true);
     })().catch((e) => {
       console.error('Startup failed', e);
       if (!cancelled) setReady(true);
@@ -154,17 +178,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Point the app at an account: open its database, make sure it has been
+   * prepared, then load the reference data the screens need. Everything after
+   * this reads through the `db` binding, which now refers to this account.
+   */
+  const activate = useCallback(async (acc: Account) => {
+    openAccountDatabase(acc.id);
+    await prepareAccount(acc.id, {
+      cooperativeName: acc.cooperativeName,
+      ownerId: acc.id,
+      ownerName: acc.name,
+      ownerEmail: acc.email,
+    });
+
+    const [u, c, co, types, notifs] = await Promise.all([
+      db.users.toArray(),
+      db.crops.toArray(),
+      db.cooperatives.toArray(),
+      catalog(),
+      db.notifications.toArray(),
+    ]);
+
+    setUsers(u);
+    setCrops(c);
+    setCooperatives(co);
+    setActivityTypes(types);
+    setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
+    setAccount(acc);
+    setUser(u.find((x) => x.id === acc.id) ?? null);
+    setRevision((r) => r + 1);
   }, []);
 
   /* ---- reference data follows writes ---- */
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !account) return;
     (async () => {
       const [notifs, types] = await Promise.all([db.notifications.toArray(), catalog()]);
       setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
       setActivityTypes(types);
     })();
-  }, [revision, ready]);
+  }, [revision, ready, account]);
 
   /* ---- connectivity ---- */
   useEffect(() => {
@@ -237,21 +294,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const signIn = useCallback<Store['signIn']>(
-    async (userId, pin) => {
-      const found = users.find((u) => u.id === userId);
-      if (!found) throw new Error('That account does not exist.');
-      if (!found.active) throw new Error('That account has been deactivated.');
-      if (found.pin !== pin) throw new Error('That PIN is not correct.');
-      await setSetting(SESSION_KEY, found.id);
-      setUser(found);
-      refresh();
+    async (email, pin) => {
+      const acc = await auth.verifyPin(email, pin);
+      writeSession(acc.id);
+      await activate(acc);
     },
-    [users, refresh],
+    [activate],
   );
 
+  /*
+   * Creating the account deliberately does NOT sign the user in. The recovery
+   * code is shown exactly once, and dropping them straight onto the dashboard
+   * would sweep it off screen before they had written it down — leaving an
+   * account nobody can ever get back into. Login calls signIn once they have
+   * confirmed they saved it.
+   */
+  const signUp = useCallback<Store['signUp']>(async (input) => auth.createAccount(input), []);
+
+  const resetPinFn = useCallback<Store['resetPin']>(async (email, code, newPin) => {
+    return auth.resetPin(email, code, newPin);
+  }, []);
+
   const signOut = useCallback(() => {
-    void setSetting(SESSION_KEY, null);
+    writeSession(null);
     setUser(null);
+    setAccount(null);
+    setUsers([]);
+    setCrops([]);
+    setCooperatives([]);
+    setNotifications([]);
+    // Release the handle so the next account opens a clean connection.
+    closeAccountDatabase();
     window.location.hash = '#/overview';
   }, []);
 
@@ -266,6 +339,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({
       ready,
       user,
+      account,
+      isDemo: account?.isDemo ?? false,
       users,
       crops,
       cooperatives,
@@ -274,6 +349,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       online,
       revision,
       signIn,
+      signUp,
+      resetPin: resetPinFn,
       signOut,
       refresh,
       can: (permission) => can(user, permission),
@@ -287,9 +364,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       markNotificationsRead,
     }),
     [
-      ready, user, users, crops, cooperatives, activityTypes, notifications, online, revision,
-      signIn, signOut, refresh, toasts, toast, dismissToast, fail, confirm, confirmState,
-      closeConfirm, markNotificationsRead,
+      ready, user, account, users, crops, cooperatives, activityTypes, notifications, online, revision,
+      signIn, signUp, resetPinFn, signOut, refresh, toasts, toast, dismissToast, fail, confirm,
+      confirmState, closeConfirm, markNotificationsRead,
     ],
   );
 

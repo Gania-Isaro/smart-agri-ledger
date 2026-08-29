@@ -5,9 +5,13 @@
  * first, so the device holds the real records and nothing is lost when the
  * network is not there. Every write goes through the service layer, never
  * straight from a component.
+ *
+ * One database per account (see accounts.ts). The exported `db` binding is
+ * swapped at sign-in, so a cooperative can only ever read its own records.
  */
 
 import Dexie, { type Table } from 'dexie';
+import { dataDbName } from './accounts';
 import type {
   Activity,
   ActivityType,
@@ -54,8 +58,8 @@ export class AgriLedgerDB extends Dexie {
   counters!: Table<Counter, string>;
   settings!: Table<Setting, string>;
 
-  constructor() {
-    super('smart_agri_ledger');
+  constructor(name: string) {
+    super(name);
 
     this.version(1).stores({
       users: 'id, email, role',
@@ -99,7 +103,33 @@ export class AgriLedgerDB extends Dexie {
   }
 }
 
-export const db = new AgriLedgerDB();
+/*
+ * `db` points at the signed-in account's database and is reassigned by
+ * `openAccountDatabase`. Every service imports this binding rather than
+ * receiving a handle, and ES modules make those imports live, so switching
+ * accounts switches the data everywhere at once with no wiring to forget.
+ *
+ * It starts on a placeholder rather than undefined: the login screen renders
+ * before any account is chosen, and a stray query there should read empty
+ * rather than throw.
+ */
+export let db = new AgriLedgerDB('smart_agri_data_none');
+
+/** Point the app at one account's data. Safe to call repeatedly. */
+export function openAccountDatabase(accountId: string): AgriLedgerDB {
+  const name = dataDbName(accountId);
+  if (db.name === name) return db;
+  db.close();
+  db = new AgriLedgerDB(name);
+  return db;
+}
+
+/** Release the current account's database on sign-out. */
+export function closeAccountDatabase(): void {
+  if (db.name === 'smart_agri_data_none') return;
+  db.close();
+  db = new AgriLedgerDB('smart_agri_data_none');
+}
 
 /**
  * Next value of a named counter, inside whatever transaction the caller already

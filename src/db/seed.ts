@@ -9,6 +9,7 @@
  */
 
 import { db, type Counter } from './db';
+import { DEMO_ACCOUNT_ID, DEMO_EMAIL } from './accounts';
 import { uid, padCode } from '../lib/id';
 import { addDays, monthKey, nowStamp, seasonFor, today, toISODate } from '../lib/date';
 import { grossValue } from '../domain/money';
@@ -71,7 +72,7 @@ const CROPS: Crop[] = [
   { id: 'crop_soy', name: 'Soybean', defaultUnit: 'KG', defaultPricePerUnit: 690, colour: 'var(--cat-8)' },
 ];
 
-const USERS: User[] = [
+const DEMO_USERS: User[] = [
   /*
    * One account. The owner and the manager run this cooperative together and
    * share these credentials, so they sign in to the same place and see exactly
@@ -83,9 +84,9 @@ const USERS: User[] = [
    * adding one is a new row here, not a rewrite.
    */
   {
-    id: 'usr_owner',
+    id: DEMO_ACCOUNT_ID,
     name: 'Isaro Gania',
-    email: 'owner@agriledger.rw',
+    email: DEMO_EMAIL,
     pin: '1234',
     role: 'super_admin',
     cooperativeId: null,
@@ -159,7 +160,7 @@ export async function seedDatabase(): Promise<SeedResult> {
     description: string,
     date: string,
     extra: Partial<LedgerTransaction> = {},
-    createdBy = 'usr_owner',
+    createdBy = 'acc_demo',
   ): LedgerTransaction {
     const tx: LedgerTransaction = {
       id: uid('tx'),
@@ -190,9 +191,9 @@ export async function seedDatabase(): Promise<SeedResult> {
     name: 'Harvest Payment Batch — August 2026',
     period: monthKey(anchor),
     status: 'partially_paid',
-    createdBy: 'usr_owner',
+    createdBy: 'acc_demo',
     createdAt: `${anchor.slice(0, 7)}-20T10:00:00.000Z`,
-    approvedBy: 'usr_owner',
+    approvedBy: 'acc_demo',
     approvedAt: `${anchor.slice(0, 7)}-21T14:30:00.000Z`,
     notes: 'Covers maize, beans and Irish potato deliveries received in August.',
   };
@@ -202,9 +203,9 @@ export async function seedDatabase(): Promise<SeedResult> {
     name: 'Harvest Payment Batch — July 2026',
     period: '2026-07',
     status: 'completed',
-    createdBy: 'usr_owner',
+    createdBy: 'acc_demo',
     createdAt: '2026-07-22T10:00:00.000Z',
-    approvedBy: 'usr_owner',
+    approvedBy: 'acc_demo',
     approvedAt: '2026-07-23T09:00:00.000Z',
     completedAt: '2026-07-28T16:00:00.000Z',
     notes: 'Season B closing payments. Fully settled.',
@@ -243,7 +244,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       archived: false,
       notes: chance(0.25) ? 'Member of the savings group. Prefers mobile money payouts.' : undefined,
     });
-    log('farmer', farmers[i]!.id, 'create', `Registered ${farmers[i]!.firstName} ${farmers[i]!.lastName}`, 'usr_owner', `${registeredAt}T08:00:00.000Z`);
+    log('farmer', farmers[i]!.id, 'create', `Registered ${farmers[i]!.firstName} ${farmers[i]!.lastName}`, 'acc_demo', `${registeredAt}T08:00:00.000Z`);
   }
 
   /* ---- activity + financial history per farmer ---- */
@@ -282,7 +283,7 @@ export async function seedDatabase(): Promise<SeedResult> {
           ...(step.typeId === 'crop_monitoring' ? { condition: pick(['excellent', 'good', 'good', 'fair']), expectedYield: between(200, 1400) } : {}),
         },
         documentIds: [],
-        createdBy: 'usr_owner',
+        createdBy: 'acc_demo',
         createdAt: `${date}T10:00:00.000Z`,
         updatedAt: `${date}T10:00:00.000Z`,
       });
@@ -294,21 +295,21 @@ export async function seedDatabase(): Promise<SeedResult> {
       hasAdvance = true;
       const date = addDays(anchor, -between(35, 75));
       const amt = between(2, 8) * 5000;
-      const tx = post(farmer.id, 'advance', amt, 'Pre-harvest advance', date, { reference: `ADV-${between(1000, 9999)}` }, 'usr_owner');
+      const tx = post(farmer.id, 'advance', amt, 'Pre-harvest advance', date, { reference: `ADV-${between(1000, 9999)}` }, 'acc_demo');
       activities.push({
         id: uid('act'), farmerId: farmer.id, typeId: 'advance_payment', category: 'financial',
         status: 'completed', date, data: { amount: amt, method: 'mobile_money', reason: 'Pre-harvest advance for inputs' },
-        transactionId: tx.id, documentIds: [], createdBy: 'usr_owner',
+        transactionId: tx.id, documentIds: [], createdBy: 'acc_demo',
         createdAt: `${date}T09:00:00.000Z`, updatedAt: `${date}T09:00:00.000Z`,
       });
-      log('transaction', tx.id, 'create', `Advance of ${amt} RWF issued`, 'usr_owner', `${date}T09:00:00.000Z`);
+      log('transaction', tx.id, 'create', `Advance of ${amt} RWF issued`, 'acc_demo', `${date}T09:00:00.000Z`);
     }
 
     /* Input credit for some farmers. */
     if (chance(0.22)) {
       const date = addDays(anchor, -between(50, 90));
       const amt = between(3, 9) * 2500;
-      post(farmer.id, 'loan', amt, 'Fertilizer issued on credit', date, {}, 'usr_owner');
+      post(farmer.id, 'loan', amt, 'Fertilizer issued on credit', date, {}, 'acc_demo');
     }
 
     /*
@@ -348,7 +349,7 @@ export async function seedDatabase(): Promise<SeedResult> {
         deductions,
         status: verified ? 'verified' : 'recorded',
         batchId: monthKey(date) === batch.period ? batch.id : priorBatch.id,
-        createdBy: 'usr_owner',
+        createdBy: 'acc_demo',
         createdAt: `${date}T11:00:00.000Z`,
         updatedAt: `${date}T11:00:00.000Z`,
         notes: grade === 'C' ? 'High moisture content at intake.' : undefined,
@@ -356,25 +357,25 @@ export async function seedDatabase(): Promise<SeedResult> {
       harvests.push(harvest);
       delivered += gross;
 
-      const tx = post(farmer.id, 'harvest', gross, `${crop.name} delivery — ${quantity} ${unit} @ ${pricePerUnit} RWF`, date, { harvestId: harvest.id, batchId: harvest.batchId }, 'usr_owner');
+      const tx = post(farmer.id, 'harvest', gross, `${crop.name} delivery — ${quantity} ${unit} @ ${pricePerUnit} RWF`, date, { harvestId: harvest.id, batchId: harvest.batchId }, 'acc_demo');
 
       const act: Activity = {
         id: uid('act'), farmerId: farmer.id, typeId: 'harvesting', category: 'harvest',
         status: verified ? 'verified' : 'completed', date, cropId: crop.id,
         data: { quantity, unit, grade, pricePerUnit, deductions, grossValue: gross },
         harvestId: harvest.id, transactionId: tx.id, documentIds: [],
-        createdBy: 'usr_owner', createdAt: `${date}T11:00:00.000Z`, updatedAt: `${date}T11:00:00.000Z`,
+        createdBy: 'acc_demo', createdAt: `${date}T11:00:00.000Z`, updatedAt: `${date}T11:00:00.000Z`,
       };
       activities.push(act);
       harvest.activityId = act.id;
       tx.activityId = act.id;
-      log('harvest', harvest.id, 'create', `Recorded ${quantity} ${unit} of ${crop.name}`, 'usr_owner', `${date}T11:00:00.000Z`);
+      log('harvest', harvest.id, 'create', `Recorded ${quantity} ${unit} of ${crop.name}`, 'acc_demo', `${date}T11:00:00.000Z`);
 
       if (deductions > 0) {
-        post(farmer.id, 'deduction', deductions, 'Transport and drying at intake', date, { harvestId: harvest.id }, 'usr_owner');
+        post(farmer.id, 'deduction', deductions, 'Transport and drying at intake', date, { harvestId: harvest.id }, 'acc_demo');
       }
       if (grade === 'A' && chance(0.45)) {
-        post(farmer.id, 'bonus', between(2, 6) * 2500, 'Grade A quality bonus', addDays(date, 1), { harvestId: harvest.id }, 'usr_owner');
+        post(farmer.id, 'bonus', between(2, 6) * 2500, 'Grade A quality bonus', addDays(date, 1), { harvestId: harvest.id }, 'acc_demo');
       }
     }
 
@@ -401,13 +402,13 @@ export async function seedDatabase(): Promise<SeedResult> {
           reason: `${priorBatch.name} settlement`,
           batchId: priorBatch.id,
           harvestIds: earlier.map((h) => h.id),
-          createdBy: 'usr_owner',
+          createdBy: 'acc_demo',
           createdAt: `${payDate}T15:00:00.000Z`,
-          approvedBy: 'usr_owner',
+          approvedBy: 'acc_demo',
           approvedAt: `${payDate}T15:30:00.000Z`,
           paidAt: `${payDate}T16:00:00.000Z`,
         };
-        const tx = post(farmer.id, 'payment', amt, `Payment ${ref}`, payDate, { paymentId: payment.id, batchId: priorBatch.id, reference: ref }, 'usr_owner');
+        const tx = post(farmer.id, 'payment', amt, `Payment ${ref}`, payDate, { paymentId: payment.id, batchId: priorBatch.id, reference: ref }, 'acc_demo');
         payment.transactionId = tx.id;
         payments.push(payment);
         delivered -= amt;
@@ -436,16 +437,16 @@ export async function seedDatabase(): Promise<SeedResult> {
           reason: 'August harvest settlement',
           batchId: batch.id,
           harvestIds: harvests.filter((h) => h.farmerId === farmer.id).map((h) => h.id),
-          createdBy: 'usr_owner',
+          createdBy: 'acc_demo',
           createdAt: `${date}T15:00:00.000Z`,
-          approvedBy: 'usr_owner',
+          approvedBy: 'acc_demo',
           approvedAt: `${date}T15:30:00.000Z`,
           paidAt: `${date}T16:00:00.000Z`,
         };
-        const tx = post(farmer.id, 'payment', amt, `Payment ${payment.reference}`, date, { paymentId: payment.id, batchId: batch.id, reference: payment.reference }, 'usr_owner');
+        const tx = post(farmer.id, 'payment', amt, `Payment ${payment.reference}`, date, { paymentId: payment.id, batchId: batch.id, reference: payment.reference }, 'acc_demo');
         payment.transactionId = tx.id;
         payments.push(payment);
-        log('payment', payment.id, 'pay', `Paid ${amt} RWF to ${farmer.firstName} ${farmer.lastName}`, 'usr_owner', `${date}T16:00:00.000Z`);
+        log('payment', payment.id, 'pay', `Paid ${amt} RWF to ${farmer.firstName} ${farmer.lastName}`, 'acc_demo', `${date}T16:00:00.000Z`);
       } else if (chance(0.6)) {
         /* Sitting in the batch waiting for approval — the work queue. */
         const date = addDays(anchor, -between(0, 4));
@@ -456,7 +457,7 @@ export async function seedDatabase(): Promise<SeedResult> {
           reference: `PAY-${anchor.slice(2, 4)}${String(index + 1).padStart(3, '0')}-${between(100, 999)}`,
           reason: 'August harvest settlement', batchId: batch.id,
           harvestIds: harvests.filter((h) => h.farmerId === farmer.id).map((h) => h.id),
-          createdBy: 'usr_owner', createdAt: `${date}T15:00:00.000Z`,
+          createdBy: 'acc_demo', createdAt: `${date}T15:00:00.000Z`,
         });
       }
     }
@@ -467,7 +468,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       activities.push({
         id: uid('act'), farmerId: farmer.id, typeId: 'training', category: 'other', status: 'completed',
         date, data: { topic: pick(['Post-harvest handling', 'Soil fertility', 'Cooperative bookkeeping']), hours: between(2, 6), trainer: 'RAB extension officer' },
-        documentIds: [], createdBy: 'usr_owner', createdAt: `${date}T13:00:00.000Z`, updatedAt: `${date}T13:00:00.000Z`,
+        documentIds: [], createdBy: 'acc_demo', createdAt: `${date}T13:00:00.000Z`, updatedAt: `${date}T13:00:00.000Z`,
       });
     }
   });
@@ -475,8 +476,8 @@ export async function seedDatabase(): Promise<SeedResult> {
   /* ---- one disputed account, so the status vocabulary is exercised ---- */
   const disputedFarmer = farmers[7]!;
   const dDate = addDays(anchor, -3);
-  post(disputedFarmer.id, 'adjustment', 12000, 'Weight correction disputed by farmer', dDate, { direction: 'debit' }, 'usr_owner');
-  log('transaction', 'adjustment', 'update', `Balance adjusted for ${disputedFarmer.code} — under review`, 'usr_owner', `${dDate}T10:00:00.000Z`);
+  post(disputedFarmer.id, 'adjustment', 12000, 'Weight correction disputed by farmer', dDate, { direction: 'debit' }, 'acc_demo');
+  log('transaction', 'adjustment', 'update', `Balance adjusted for ${disputedFarmer.code} — under review`, 'acc_demo', `${dDate}T10:00:00.000Z`);
 
   /* ---- derive farmer status from what actually happened ---- */
   const byFarmer = new Map<string, LedgerTransaction[]>();
@@ -531,7 +532,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       // committed, abandon this one rather than writing duplicate codes.
       if (await db.settings.get('seeded')) return;
       await Promise.all([
-        db.users.bulkPut(USERS),
+        db.users.bulkPut(DEMO_USERS),
         db.cooperatives.bulkPut(COOPERATIVES),
         db.crops.bulkPut(CROPS),
         db.activityTypes.bulkPut(BUILT_IN_ACTIVITY_TYPES),
@@ -563,20 +564,77 @@ function addStamp(hoursAgo: number): string {
 }
 
 /**
- * Runs once on first launch. Safe to call on every boot, and safe to call twice
- * at once: React StrictMode fires the boot effect twice in development, and two
- * concurrent seed runs would collide on the unique transaction codes. The
- * in-flight promise collapses those into one run, and the marker is re-checked
- * inside the write transaction so a second caller cannot slip past it.
+ * Runs once per account database. Safe to call on every boot, and safe to call
+ * twice at once: React StrictMode fires the boot effect twice in development,
+ * and two concurrent seed runs would collide on the unique transaction codes.
+ * The in-flight promise collapses those into one run, and the marker is
+ * re-checked inside the write transaction so a second caller cannot slip past.
  */
 let seeding: Promise<boolean> | null = null;
 
-export async function ensureSeeded(): Promise<boolean> {
+export interface NewAccountSeed {
+  cooperativeName: string;
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+}
+
+/**
+ * A brand-new account starts empty — no farmers, no harvests, no money.
+ *
+ * What it does get is the reference data the app cannot function without: the
+ * crop price list and the activity catalog. Starting with zero crops would mean
+ * a farmer could be registered but no harvest could ever be recorded against
+ * them, which is an empty app in the unhelpful sense. Every one of these is
+ * editable, so a cooperative growing something else can change it.
+ */
+export async function seedNewAccount(input: NewAccountSeed): Promise<void> {
+  const now = nowStamp();
+
+  const owner: User = {
+    id: input.ownerId,
+    name: input.ownerName,
+    email: input.ownerEmail,
+    pin: '',
+    role: 'super_admin',
+    cooperativeId: 'coop_own',
+    active: true,
+    createdAt: now,
+  };
+
+  const cooperative: Cooperative = {
+    id: 'coop_own',
+    code: input.cooperativeName.slice(0, 3).toUpperCase(),
+    name: input.cooperativeName,
+    district: '',
+    contact: '',
+  };
+
+  await db.transaction(
+    'rw',
+    [db.users, db.cooperatives, db.crops, db.activityTypes, db.settings],
+    async () => {
+      if (await db.settings.get('seeded')) return;
+      await Promise.all([
+        db.users.put(owner),
+        db.cooperatives.put(cooperative),
+        db.crops.bulkPut(CROPS),
+        db.activityTypes.bulkPut(BUILT_IN_ACTIVITY_TYPES),
+        db.settings.put({ key: 'seeded', value: now }),
+        db.settings.put({ key: 'isDemo', value: false }),
+      ]);
+    },
+  );
+}
+
+/** Fills the demo account with a full working cooperative. */
+export async function ensureDemoSeeded(): Promise<boolean> {
   if (seeding) return seeding;
   seeding = (async () => {
     const marker = await db.settings.get('seeded');
     if (marker) return false;
     await seedDatabase();
+    await db.settings.put({ key: 'isDemo', value: true });
     return true;
   })().finally(() => {
     seeding = null;
@@ -584,8 +642,26 @@ export async function ensureSeeded(): Promise<boolean> {
   return seeding;
 }
 
-/** Wipes everything and regenerates. Used by the Settings screen. */
+/**
+ * Prepare whichever account just signed in. The demo gets the generated
+ * cooperative; everybody else gets an empty book and their own name on it.
+ */
+export async function prepareAccount(accountId: string, blank: NewAccountSeed): Promise<void> {
+  if (accountId === DEMO_ACCOUNT_ID) {
+    await ensureDemoSeeded();
+    return;
+  }
+  await seedNewAccount(blank);
+}
+
+/** Wipes the current account and regenerates it. Used by the Settings screen. */
 export async function resetDatabase(): Promise<SeedResult> {
   await Promise.all(db.tables.map((t) => t.clear()));
   return seedDatabase();
+}
+
+/** Clears the current account back to empty, keeping only reference data. */
+export async function clearAccountData(input: NewAccountSeed): Promise<void> {
+  await Promise.all(db.tables.map((t) => t.clear()));
+  await seedNewAccount(input);
 }

@@ -8,7 +8,7 @@ import { Badge, Button, Callout, EmptyState, Skeleton } from '../components/ui/p
 import { ROLE_LABELS, ROLE_PERMISSIONS } from '../domain/rbac';
 import { formatDateTime, timeAgo } from '../lib/date';
 import { db } from '../db/db';
-import { resetDatabase } from '../db/seed';
+import { clearAccountData, resetDatabase } from '../db/seed';
 import * as audit from '../services/audit';
 import { initials } from '../components/Shell';
 import type { ActivityType, Role } from '../domain/types';
@@ -22,7 +22,7 @@ export function Settings() {
 }
 
 function SettingsHome() {
-  const { user, users, cooperatives, crops, online, can, refresh, toast, fail, confirm } = useStore();
+  const { user, account, isDemo, users, cooperatives, crops, online, can, refresh, toast, fail, confirm } = useStore();
   const { t, lang, setLang, theme, setTheme } = usePrefs();
   const [busy, setBusy] = useState(false);
 
@@ -67,32 +67,45 @@ function SettingsHome() {
 
   const reset = async () => {
     const answer = await confirm({
-      title: 'Reset all data?',
+      title: isDemo ? 'Rebuild the demo cooperative?' : 'Delete all your data?',
       message: (
         <>
           <p>
-            This deletes every farmer, activity, harvest, payment and ledger transaction on this device, then rebuilds
-            the demo cooperative.
+            This deletes every farmer, activity, harvest, payment and ledger transaction in this account
+            {isDemo ? ', then regenerates the demo cooperative.' : '. Your account and sign-in stay as they are.'}
           </p>
           <p style={{ marginTop: 'var(--s-2)' }} className="muted">
             There is no undo, and nothing is backed up anywhere else.
           </p>
         </>
       ),
-      confirmLabel: 'Delete everything and reseed',
+      confirmLabel: isDemo ? 'Rebuild the demo' : 'Delete everything',
       tone: 'danger',
       typeToConfirm: 'RESET',
     });
-    if (!answer.ok) return;
+    if (!answer.ok || !account) return;
     setBusy(true);
     try {
-      const result = await resetDatabase();
-      refresh();
-      toast({
-        tone: 'success',
-        title: 'Data reset',
-        message: `${result.farmers} farmers, ${result.transactions} transactions regenerated.`,
-      });
+      if (isDemo) {
+        // Only the demo gets generated data back. Reseeding a real
+        // cooperative with invented farmers would be worse than useless.
+        const result = await resetDatabase();
+        refresh();
+        toast({
+          tone: 'success',
+          title: 'Demo rebuilt',
+          message: `${result.farmers} farmers, ${result.transactions} transactions regenerated.`,
+        });
+      } else {
+        await clearAccountData({
+          cooperativeName: account.cooperativeName,
+          ownerId: account.id,
+          ownerName: account.name,
+          ownerEmail: account.email,
+        });
+        refresh();
+        toast({ tone: 'success', title: 'All data deleted', message: 'Your account is empty and ready to start again.' });
+      }
     } catch (e) {
       fail(e);
     } finally {
@@ -370,7 +383,9 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
-              Wipes this device and regenerates the demo cooperative. Useful for demonstrations; permanent for real data.
+              {isDemo
+                ? 'Regenerates the demo cooperative from scratch. Useful when a demonstration has left it in a strange state.'
+                : 'Deletes every record in your account and leaves you with an empty book. Your sign-in is unaffected. This cannot be undone.'}
             </p>
             <Button variant="quiet-danger" icon="refresh" onClick={reset} loading={busy}>
               {t('settings.resetData')}

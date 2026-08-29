@@ -14,7 +14,25 @@ npm run dev      # http://localhost:5173
 npm run build    # production bundle in dist/
 ```
 
-Sign in with **owner@agriledger.rw**, PIN **1234**.
+## Two ways in
+
+**Look around first** — the demo cooperative, already full of data:
+
+```
+owner@agriledger.rw   PIN 1234
+```
+
+26 farmers, real harvests, payments and a complete ledger. A banner across the top
+says plainly that the figures are generated, so nobody mistakes them for their own.
+
+**Or create an account** — it starts completely empty. No farmers, no harvests, no
+money; nothing to delete before it is yours. You get the crop price list and the
+activity catalog, because a cooperative with zero crops can register a farmer but
+can never record a harvest against them, which is empty in the unhelpful sense.
+
+Each account gets **its own database** (`smart_agri_data_<id>`). Tagging rows with an
+owner id would mean one missed `where` clause leaks another cooperative's farmers and
+balances into your screens; a separate database cannot leak by omission.
 
 ---
 
@@ -86,13 +104,44 @@ dark steps chosen separately rather than flipped.
 manager share one account that holds every permission, but `assertCan` still runs on
 every mutation, so a narrower account is a new row rather than a rewrite.
 
+## Installing it on a phone
+
+It is a PWA, so it installs from the browser and then behaves like any other app —
+own icon, own window, no address bar, works with the network off.
+
+- **Android (Chrome):** menu → *Add to Home screen* / *Install app*
+- **iPhone (Safari):** Share → *Add to Home Screen*
+
+It is **not** on the Play Store or App Store. Getting there means wrapping the same
+code with Capacitor or a Trusted Web Activity and paying the developer fees — the app
+itself would not need rewriting.
+
+## Signing in
+
+PINs are never stored. Each account keeps a PBKDF2-SHA256 hash at 150,000 iterations
+with a per-account salt, so a four-digit PIN is slow to brute-force off a stolen
+device rather than instant. Sign-in failures say the same thing whether the email or
+the PIN was wrong, since naming which half failed tells whoever is holding the phone
+which addresses are real.
+
+**Forgotten PIN.** Emailing a reset link needs a server to send the mail and verify
+the token, and this build has neither — it runs entirely on the device. So recovery
+uses a code issued once at sign-up, and the screen says exactly that rather than
+showing a "check your email" that no email would ever follow. Using a code spends it
+and issues a new one, so an old screenshot cannot be replayed. Connect this to a mail
+server and the same flow sends that code to the address on the account.
+
 ## Known limits
 
 - **Single device.** There is no server, so data does not sync between phones. The
   architecture is ready for one; the sync itself is not built.
-- **Demo authentication.** The PIN is checked against the local database. Real
-  deployment swaps `screens/Login.tsx` for an identity provider; nothing behind it
-  changes.
+- **Authentication is local.** PINs are hashed properly, but verification happens on
+  the device, so anyone with the device and the PIN is in. Real multi-device
+  deployment swaps `screens/Login.tsx` and `db/accounts.ts` for an identity provider;
+  nothing behind them changes.
+- **No password reset by email**, for the reason above — recovery is by saved code.
+- **The demo PIN is published** in this README on purpose. It is the only account
+  allowed to use `1234`; the sign-up form rejects that PIN for everyone else.
 - **Kinyarwanda covers the interface**, not user-entered data — farmer names,
   villages and notes stay exactly as typed, and CSV exports keep English column
   headers so a file shared between two users still reconciles.

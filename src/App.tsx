@@ -41,7 +41,7 @@ const TITLES: Record<string, string> = {
 };
 
 export function App() {
-  const { ready, user, can } = useStore();
+  const { ready, user, isDemo, can } = useStore();
   const t = useT();
   const route = useRoute();
   const [search, setSearch] = useState('');
@@ -106,6 +106,13 @@ export function App() {
         <TopBar title={title} search={search} onSearch={setSearch} onOpenNotifications={() => setNotifOpen(true)} />
 
         <main className="app__content" id="main">
+          {/* Nobody should mistake generated figures for their own records. */}
+          {isDemo && (
+            <div className="callout callout--warn no-print" style={{ marginBottom: 'var(--s-4)' }}>
+              <Icon name="eye" size={17} />
+              <div>{t('auth.demoBanner')}</div>
+            </div>
+          )}
           <Screen section={section} route={route} search={search} />
         </main>
       </div>
