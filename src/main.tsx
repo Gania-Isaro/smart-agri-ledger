@@ -24,6 +24,10 @@ createRoot(document.getElementById('root')!).render(
  */
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('Service worker not registered', e));
+    // BASE_URL, not '/': on GitHub Pages the app lives under /smart-agri-ledger/,
+    // and a worker registered at the domain root would be out of scope.
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
+      .catch((e) => console.warn('Service worker not registered', e));
   });
 }

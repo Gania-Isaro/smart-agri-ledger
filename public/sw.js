@@ -6,12 +6,21 @@
  * would go stale on every build, this caches what the app actually asks for
  * and serves it back when the network is gone.
  *
+ * Every path here is derived from the worker's own scope rather than written as
+ * '/', because the app is served from a project subpath on GitHub Pages and
+ * from the root in local development. Hard-coding either one breaks the other.
+ *
  * Records are never cached here — they live in IndexedDB, which is the real
  * offline store. This only keeps the application itself loadable.
  */
 
 const VERSION = 'agri-ledger-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SCOPE = new URL(self.registration.scope);
+const INDEX = new URL('index.html', SCOPE).pathname;
+
+const SHELL = ['', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'].map(
+  (path) => new URL(path, SCOPE).pathname,
+);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -49,10 +58,10 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+          caches.open(VERSION).then((cache) => cache.put(INDEX, copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then((hit) => hit ?? caches.match('/'))),
+        .catch(() => caches.match(INDEX).then((hit) => hit ?? caches.match(SCOPE.pathname))),
     );
     return;
   }

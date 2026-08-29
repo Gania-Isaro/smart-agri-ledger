@@ -6,6 +6,8 @@ as a full spreadsheet.
 
 **English and Kinyarwanda. Light and dark. One shared owner/manager account.**
 
+**Live:** https://gania-isaro.github.io/smart-agri-ledger/
+
 ```bash
 npm install
 npm run dev      # http://localhost:5173
@@ -96,3 +98,11 @@ every mutation, so a narrower account is a new row rather than a rewrite.
   headers so a file shared between two users still reconciles.
 - The bundle is a single ~180 KB gzipped chunk; code-splitting by route would help
   first load on a slow connection.
+
+## Deployment
+
+Pushing to `main` triggers `.github/workflows/deploy.yml`, which typechecks, builds
+and publishes to GitHub Pages. Because Pages serves a project site from a subpath,
+the build sets `base` to `/smart-agri-ledger/` only under CI — local `npm run dev`
+stays at the root. The manifest uses relative paths and the service worker derives
+every path from its own scope, so the same files work in both places.
