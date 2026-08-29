@@ -41,7 +41,7 @@ export const CATEGORY_META: Record<
   financial: {
     label: 'Financial',
     icon: 'coins',
-    blurb: 'Anything that moves money on a farmer account',
+    blurb: 'Anything that changes what a farmer is owed',
     accent: 'var(--c-purple-600)',
   },
   other: {
@@ -382,20 +382,20 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
 
   /* ---- Financial ---- */
   type('farmer_payment', 'Farmer payment', 'financial', 'coins', [
-    amount('Amount to pay', 'Checked against the farmer outstanding balance before posting.'),
+    amount('Amount paid', 'Checked against the farmer outstanding balance before posting.'),
     { key: 'method', label: 'Payment method', type: 'select', required: true, options: PAYMENT_METHOD_OPTIONS, half: true },
     reference,
     reason('What this payment settles, e.g. August maize delivery.'),
     notes,
-  ], { postsLedger: 'payment', description: 'Pays a farmer and debits their account.' }),
+  ], { postsLedger: 'payment', description: 'Records money you have already paid a farmer, and debits their account.' }),
 
   type('advance_payment', 'Advance payment', 'financial', 'hand-coins', [
-    amount('Advance amount', 'Recovered automatically from future harvest credits.'),
+    amount('Advance amount', 'Money already handed over. Recovered automatically from future harvest credits.'),
     { key: 'method', label: 'Payment method', type: 'select', required: true, options: PAYMENT_METHOD_OPTIONS, half: true },
     reference,
     reason('Why the advance is being issued.'),
     notes,
-  ], { postsLedger: 'advance', description: 'Money paid before harvest, carried as a negative balance.' }),
+  ], { postsLedger: 'advance', description: 'Money handed over before harvest, carried as a negative balance.' }),
 
   type('bonus', 'Bonus', 'financial', 'gift', [
     amount('Bonus amount'),

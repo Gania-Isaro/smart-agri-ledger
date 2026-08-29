@@ -19,6 +19,12 @@ interface Prefs {
   /** True when dark is actually being shown, whatever the setting says. */
   isDark: boolean;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  /**
+   * Count-aware lookup: reads `<key>.one` when count is 1, `<key>` otherwise.
+   * English needs it for "1 payment" against "3 payments"; Kinyarwanda mostly
+   * does not, but the same call works for both.
+   */
+  tn: (key: string, count: number, vars?: Record<string, string | number>) => string;
   /** Translate an activity type label, falling back to the catalog English. */
   tActivity: (id: string, fallback: string) => string;
   /** Translate a dynamic form field label by its field key. */
@@ -97,6 +103,12 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     [lang],
   );
 
+  const tn = useCallback(
+    (key: string, count: number, vars?: Record<string, string | number>) =>
+      t(count === 1 ? `${key}.one` : key, { count, ...vars }),
+    [t],
+  );
+
   const tActivity = useCallback(
     (id: string, fallback: string) => (lang === 'rw' ? ACTIVITY_LABELS_RW[id] ?? fallback : fallback),
     [lang],
@@ -114,8 +126,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<Prefs>(
-    () => ({ lang, setLang, theme, setTheme, isDark, t, tActivity, tField, tCrop }),
-    [lang, setLang, theme, setTheme, isDark, t, tActivity, tField, tCrop],
+    () => ({ lang, setLang, theme, setTheme, isDark, t, tn, tActivity, tField, tCrop }),
+    [lang, setLang, theme, setTheme, isDark, t, tn, tActivity, tField, tCrop],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -18,11 +18,11 @@ import { FARMER_STATUS } from '../domain/status';
 import * as analytics from '../services/analyticsService';
 import * as paymentService from '../services/paymentService';
 import { ActivityComposer } from '../components/ActivityComposer';
-import { useT } from '../i18n';
+import { usePrefs } from '../i18n';
 
 export function Dashboard() {
   const { user, can } = useStore();
-  const t = useT();
+  const { t, tn } = usePrefs();
   const [composerOpen, setComposerOpen] = useState(false);
 
   const overview = useQuery(() => analytics.overview());
@@ -87,17 +87,17 @@ export function Dashboard() {
             <div className="row gap-2 wrap">
               {o.farmersOwed > 0 && (
                 <Button icon="coins" onClick={() => navigate('/payments/outstanding')}>
-                  {t('dash.payFarmers', { count: o.farmersOwed, amount: formatMoneyShort(o.outstanding) })}
+                  {tn('dash.payFarmers', o.farmersOwed, { amount: formatMoneyShort(o.outstanding) })}
                 </Button>
               )}
               {o.unverifiedHarvests > 0 && (
                 <Button icon="badge-check" onClick={() => navigate('/production/harvests')}>
-                  {t('dash.verifyHarvests', { count: o.unverifiedHarvests })}
+                  {tn('dash.verifyHarvests', o.unverifiedHarvests)}
                 </Button>
               )}
               {o.pendingPayments > 0 && can('payment.approve') && (
                 <Button icon="check-double" onClick={() => navigate('/payments/pending')}>
-                  {t('dash.approvePayments', { count: o.pendingPayments })}
+                  {tn('dash.approvePayments', o.pendingPayments)}
                 </Button>
               )}
               {openBatch && (
@@ -117,7 +117,7 @@ export function Dashboard() {
         <div className="metrics">
           <Metric label={t('metric.totalFarmers')} value={formatNumber(o.totalFarmers)} foot={t('dash.activeThisSeason', { count: formatNumber(o.activeFarmers) })} onClick={() => navigate('/farmers')} />
           <Metric label={t('metric.currentlyFarming')} value={formatNumber(o.farmersFarming)} foot={t('dash.fieldWork')} onClick={() => navigate('/activities/farming')} />
-          <Metric label={t('metric.haveHarvested')} value={formatNumber(o.farmersHarvested)} foot={t('dash.deliveries', { count: formatNumber(o.deliveries) })} onClick={() => navigate('/production/harvests')} />
+          <Metric label={t('metric.haveHarvested')} value={formatNumber(o.farmersHarvested)} foot={tn('dash.deliveries', o.deliveries, { count: formatNumber(o.deliveries) })} onClick={() => navigate('/production/harvests')} />
           <Metric label={t('metric.produceCollected')} value={`${formatNumber(Math.round(o.produceKg))}`} foot={t('dash.kgWeight')} accent />
           <Metric label={t('metric.totalEarned')} value={formatMoneyShort(o.totalOwed)} foot={t('dash.rwfCredits')} />
           <Metric label={t('metric.totalPaid')} value={formatMoneyShort(o.totalPaid)} foot={t('dash.rwfSettled')} />

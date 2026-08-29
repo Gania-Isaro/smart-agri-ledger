@@ -60,9 +60,9 @@ export const HARVEST_STATUS: Record<HarvestStatus, StatusMeta> = keyed({
 
 export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = keyed({
   pending: { label: 'Pending', glyph: '○', tone: 'slate', help: 'Created, not yet approved.' },
-  approved: { label: 'Approved', glyph: '◆', tone: 'blue', help: 'Cleared for payout.' },
-  processing: { label: 'Processing', glyph: '◐', tone: 'amber', help: 'Sent to the payment provider.' },
-  paid: { label: 'Paid', glyph: '✓', tone: 'green', help: 'Settled and posted to the ledger.' },
+  approved: { label: 'Approved', glyph: '◆', tone: 'blue', help: 'Cleared to be paid. Not yet handed over.' },
+  processing: { label: 'Processing', glyph: '◐', tone: 'amber', help: 'Being paid out right now.' },
+  paid: { label: 'Paid', glyph: '✓', tone: 'green', help: 'Handed over, and recorded in the ledger.' },
   cancelled: { label: 'Cancelled', glyph: '✕', tone: 'slate', help: 'Withdrawn before payout.' },
   disputed: { label: 'Disputed', glyph: '!', tone: 'red', help: 'Contested by the farmer.' },
 });
@@ -70,9 +70,9 @@ export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = keyed({
 export const BATCH_STATUS: Record<BatchStatus, StatusMeta> = keyed({
   draft: { label: 'Draft', glyph: '○', tone: 'slate', help: 'Being assembled. Nothing has moved.' },
   pending_approval: { label: 'Pending approval', glyph: '◐', tone: 'amber', help: 'Waiting on an approver.' },
-  approved: { label: 'Approved', glyph: '◆', tone: 'blue', help: 'Cleared to pay out.' },
+  approved: { label: 'Approved', glyph: '◆', tone: 'blue', help: 'Cleared to be paid.' },
   partially_paid: { label: 'Partially paid', glyph: '◒', tone: 'orange', help: 'Some farmers still unpaid.' },
-  completed: { label: 'Completed', glyph: '✓', tone: 'green', help: 'Every farmer in the batch is paid.' },
+  completed: { label: 'Completed', glyph: '✓', tone: 'green', help: 'Every farmer in the list has been paid and recorded.' },
   cancelled: { label: 'Cancelled', glyph: '✕', tone: 'slate' },
 });
 

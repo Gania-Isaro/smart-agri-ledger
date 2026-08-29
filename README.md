@@ -1,8 +1,13 @@
 # Smart Agri-Ledger
 
-Offline-first farmer operations, harvest and payment management for an agricultural
-cooperative. Runs on a phone in a field with no signal, and on a laptop in the office
-as a full spreadsheet.
+Offline-first record keeping for an agricultural cooperative: farmers, field
+activities, harvests, and the money owed against them. Runs on a phone in a field
+with no signal, and on a laptop in the office as a full spreadsheet.
+
+**It is a ledger, not a payment app.** You pay farmers the way you always have, in
+cash or by mobile money, in person. This records what was paid so every balance
+stays correct, and tells you who is still owed. Nothing here talks to a bank, and no
+button in it sends money to anyone.
 
 **English and Kinyarwanda. Light and dark. One shared owner/manager account.**
 
@@ -86,9 +91,16 @@ tells the user which state they are in, and says the app still works either way.
 
 ## Notable decisions
 
-**Payments post to the ledger only when settled.** Pending and approved payments are
-promises; promises do not move balances. This is the difference between an outstanding
-figure you can act on and one you have to double-check.
+**Payments post to the ledger only when recorded as paid.** Pending and approved
+payments are intentions, and intentions do not move balances. The "paid" step is a
+human confirming that money genuinely changed hands outside the app, which is the
+difference between an outstanding figure you can act on and one you have to
+double-check. Record it early and the ledger will claim a farmer was paid when they
+were not.
+
+**The payment list is meant to be exported.** Build it from who is owed, check the
+amounts, export it as CSV, then take that to the pay table or the mobile money agent.
+Come back and record what you actually paid.
 
 **Custom activity types cannot post to the ledger.** Admins can add activity types
 that fit how they actually work (see the `+` menu). Those record what happened but

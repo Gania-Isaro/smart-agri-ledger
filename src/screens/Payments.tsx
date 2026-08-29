@@ -23,7 +23,7 @@ import * as paymentService from '../services/paymentService';
 import * as farmerService from '../services/farmerService';
 import { ActivityComposer } from '../components/ActivityComposer';
 import type { Farmer, Payment, PaymentStatus } from '../domain/types';
-import { useT } from '../i18n';
+import { usePrefs, useT } from '../i18n';
 
 export function Payments({ search }: { search: string }) {
   const route = useRoute();
@@ -46,7 +46,7 @@ interface Row extends Payment {
 function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'completed' }) {
   const { user, can, refresh, toast, fail, confirm } = useStore();
   const lookups = useLookups();
-  const t = useT();
+  const { t, tn } = usePrefs();
   const [filters, setFilters] = useState<FilterValues>({});
 
   const query = useQuery(async () => {
@@ -82,28 +82,31 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
     const total = subset.reduce((s, p) => s + p.amount, 0);
 
     const answer = await confirm({
-      title: to === 'paid' ? `Mark ${ids.length} payments as paid?` : `Approve ${ids.length} payments?`,
+      title:
+        to === 'paid'
+          ? tn('pay.markPaidTitle', ids.length)
+          : tn('pay.approveTitle', ids.length),
       message:
         to === 'paid' ? (
           <>
             <p>
-              This releases <b>{formatMoney(total)}</b> to {new Set(subset.map((p) => p.farmerId)).size} farmers and posts
-              a debit to each of their accounts.
+              {t('pay.markPaidBody', {
+                amount: formatMoney(total),
+                who: tn('pay.manyFarmers', new Set(subset.map((p) => p.farmerId)).size),
+              })}
             </p>
             <p className="muted" style={{ marginTop: 'var(--s-2)' }}>
-              This is the step that actually moves money in the ledger. It can be reversed later, but only by cancelling
-              the payment, which writes a reversing entry.
+              {t('pay.markPaidNote')}
             </p>
           </>
         ) : (
-          <p>
-            Approving clears <b>{formatMoney(total)}</b> for payout. Nothing is posted to the ledger until the payments
-            are marked as paid.
-          </p>
+          <p>{t('pay.approveBody', { amount: formatMoney(total) })}</p>
         ),
-      confirmLabel: to === 'paid' ? `Pay ${formatMoneyShort(total)} RWF` : 'Approve',
+      confirmLabel: to === 'paid' ? t('pay.recordPaid') : t('action.approve'),
       tone: to === 'paid' ? 'danger' : 'default',
-      typeToConfirm: to === 'paid' && total > 1_000_000 ? 'PAY' : undefined,
+      // A large sum still deserves a deliberate pause, because recording a
+      // payment that never happened is just as wrong as missing one.
+      typeToConfirm: to === 'paid' && total > 1_000_000 ? 'PAID' : undefined,
     });
     if (!answer.ok) return;
 
@@ -225,7 +228,11 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
     bulkActions.push({ label: 'Approve', icon: 'check' as const, run: (ids: string[]) => void settle(ids, 'approved') });
   }
   if (mode === 'pending' && can('payment.settle')) {
-    bulkActions.push({ label: 'Mark as paid', icon: 'coins' as const, run: (ids: string[]) => void settle(ids, 'paid') });
+    bulkActions.push({
+      label: t('pay.recordPaid'),
+      icon: 'coins' as const,
+      run: (ids: string[]) => void settle(ids, 'paid'),
+    });
   }
   if (can('payment.cancel')) {
     bulkActions.push({
@@ -301,7 +308,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
 function Outstanding({ search }: { search: string }) {
   const { user, can, refresh, toast, fail, confirm } = useStore();
   const lookups = useLookups();
-  const t = useT();
+  const { t, tn } = usePrefs();
   const [composer, setComposer] = useState<{ open: boolean; farmerId?: string }>({ open: false });
 
   const query = useQuery(() => farmerService.listWithFinancials());
@@ -482,11 +489,17 @@ function Outstanding({ search }: { search: string }) {
         </div>
       </div>
 
-      <div className="metrics" style={{ marginBottom: 'var(--s-4)' }}>
+      {/* Say plainly what this screen is for, so nobody waits for the app to
+          send anything. */}
+      <Callout tone="info" icon="info">
+        {t('pay.notAPaymentApp')}
+      </Callout>
+
+      <div className="metrics" style={{ marginTop: 'var(--s-4)', marginBottom: 'var(--s-4)' }}>
         <div className="metric metric--warn">
           <span className="metric__label">{t('pay.totalOutstanding')}</span>
           <span className="metric__value num">{formatMoneyShort(totalOwed)}</span>
-          <span className="metric__foot">{t('pay.acrossFarmers', { count: formatNumber(owed.length) })}</span>
+          <span className="metric__foot">{tn('pay.acrossFarmers', owed.length)}</span>
         </div>
         <div className="metric">
           <span className="metric__label">{t('pay.largestBalance')}</span>
@@ -566,6 +579,12 @@ function Batches() {
           </Button>
         )}
       </div>
+
+      <Callout tone="info" icon="info">
+        {t('pay.exportHint')}
+      </Callout>
+
+      <div style={{ height: 'var(--s-4)' }} />
 
       {query.loading ? (
         <Skeleton height={160} />
@@ -660,6 +679,7 @@ function Batches() {
 
 function BatchDetail({ batchId }: { batchId: string }) {
   const { user, can, refresh, toast, fail, confirm } = useStore();
+  const { t, tn } = usePrefs();
 
   const query = useQuery(async () => {
     const [batch, payments, farmers] = await Promise.all([
@@ -711,22 +731,20 @@ function BatchDetail({ batchId }: { batchId: string }) {
   const payout = async () => {
     if (!user) return;
     const answer = await confirm({
-      title: `Pay out ${batch.code}?`,
+      title: t('pay.batchRecordTitle', { code: batch.code }),
       message: (
         <>
           <p>
-            This settles <b>{formatMoney(batch.remaining)}</b> to {unpaid.length} farmers and posts a debit to each of
-            their ledgers.
+            {tn('pay.batchRecordBody', unpaid.length, { amount: formatMoney(batch.remaining) })}
           </p>
           <p className="muted" style={{ marginTop: 'var(--s-2)' }}>
-            This is the moment money moves. Reversing it later means cancelling individual payments, which writes
-            balancing entries rather than erasing anything.
+            {t('pay.markPaidNote')}
           </p>
         </>
       ),
-      confirmLabel: `Pay ${formatMoneyShort(batch.remaining)} RWF`,
+      confirmLabel: t('pay.recordPaid'),
       tone: 'danger',
-      typeToConfirm: batch.remaining > 1_000_000 ? 'PAY' : undefined,
+      typeToConfirm: batch.remaining > 1_000_000 ? 'PAID' : undefined,
     });
     if (!answer.ok) return;
     try {
@@ -774,7 +792,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
           )}
           {can('payment.settle') && (batch.status === 'approved' || batch.status === 'partially_paid') && unpaid.length > 0 && (
             <Button variant="primary" icon="coins" onClick={payout}>
-              Pay out {unpaid.length} farmers
+              {tn('pay.recordPaidN', unpaid.length)}
             </Button>
           )}
         </div>

@@ -1,9 +1,14 @@
 /**
  * Payments and payment batches.
  *
+ * This app does not move money. Cooperatives pay farmers the way they always
+ * have, in cash or by mobile money, and this records what was paid so the
+ * balances stay right. Nothing here talks to a bank.
+ *
  * A payment moves through pending -> approved -> processing -> paid, and only
- * the step that reaches `paid` posts to the ledger. Money is therefore never
- * debited from a farmer account for a payment that has not actually gone out,
+ * the step that reaches `paid` posts to the ledger, because that is the step
+ * where a human confirms the money genuinely changed hands. A farmer account is
+ * therefore never debited for a payment that has not actually been handed over,
  * which is the difference between a balance you can trust and one you cannot.
  */
 
@@ -129,7 +134,8 @@ export async function transition(
 
   if (to === 'paid') {
     after.paidAt = at;
-    /* This is the moment money actually leaves, post the debit now. */
+    /* The user is telling us the money has now genuinely been handed over,
+       so this is the point where the debit belongs in the ledger. */
     const tx = await postSystem(user, {
       farmerId: before.farmerId,
       type: 'payment',
@@ -349,13 +355,13 @@ export async function refreshBatchStatus(batchId: ID): Promise<void> {
   }
 }
 
-/** Pay out an approved batch in one action. */
+/** Record every approved payment in a list as paid, in one action. */
 export async function settleBatch(user: User, batchId: ID): Promise<{ done: number; skipped: { id: ID; reason: string }[] }> {
   assertCan(user, 'payment.settle');
   const batch = await db.batches.get(batchId);
   if (!batch) throw new ValidationError('That batch no longer exists.');
   if (batch.status === 'draft' || batch.status === 'pending_approval') {
-    throw new ValidationError('Approve the batch before paying it out.');
+    throw new ValidationError('Approve the list before recording payments against it.');
   }
 
   const rows = await db.payments.where('batchId').equals(batchId).toArray();
