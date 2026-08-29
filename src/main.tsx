@@ -1,0 +1,29 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { StoreProvider } from './state/store';
+import { PrefsProvider } from './i18n';
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/components.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <PrefsProvider>
+      <StoreProvider>
+        <App />
+      </StoreProvider>
+    </PrefsProvider>
+  </StrictMode>,
+);
+
+/*
+ * Register the service worker so the app keeps loading with no network. Only in
+ * a production build: in dev it would serve stale modules and make every change
+ * look like it did not apply.
+ */
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('Service worker not registered', e));
+  });
+}
