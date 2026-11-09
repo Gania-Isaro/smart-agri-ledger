@@ -2,11 +2,12 @@
 
 import { db } from '../db/db';
 import { nowStamp } from '../lib/date';
-import { grossValue, toNonNegativeMoney, toQuantity } from '../domain/money';
+import { grossValue, toNonNegativeMoney, toQuantity, weightKg } from '../domain/money';
 import { assertCan } from '../domain/rbac';
 import type { Harvest, HarvestStatus, ID, QualityGrade, User } from '../domain/types';
 import * as audit from './audit';
 import { postSystem, voidTransaction } from './ledgerService';
+import { counts } from '../domain/ledger';
 import { refreshFarmerStatus } from './activityService';
 import { ValidationError } from './farmerService';
 
@@ -41,14 +42,15 @@ export async function setStatus(user: User, ids: ID[], status: HarvestStatus): P
     /*
      * Rejecting produce that was already credited has to take the money back
      * too, and the only honest way to do that is a reversing ledger entry.
+     * Every entry tied to the delivery goes: the credit, the intake deduction
+     * and any correction. Voiding only the credit would leave the farmer
+     * owing the deductions on produce that was never accepted.
      */
     if (status === 'rejected' && h.status !== 'rejected') {
       const tx = await db.transactions.where('harvestId').equals(h.id).toArray();
-      const credit = tx.find((t) => t.type === 'harvest' && !t.voided);
-      if (credit) {
-        assertCan(user, 'ledger.void');
-        await voidTransaction(user, credit.id, 'Harvest rejected at verification');
-      }
+      const live = tx.filter(counts);
+      if (live.length) assertCan(user, 'ledger.void');
+      for (const t of live) await voidTransaction(user, t.id, 'Harvest rejected at verification');
     }
     await db.harvests.put({ ...h, status, updatedAt: nowStamp() });
     await refreshFarmerStatus(h.farmerId);
@@ -90,6 +92,10 @@ export async function correct(
   const beforeGross = grossValue(before.quantity, before.pricePerUnit);
   const afterGross = grossValue(after.quantity, after.pricePerUnit);
   const delta = afterGross - beforeGross;
+  if (after.deductions > afterGross) {
+    throw new ValidationError('Deductions cannot exceed the value of the delivery.', 'deductions');
+  }
+  const deductionDelta = after.deductions - before.deductions;
 
   await db.harvests.put(after);
 
@@ -100,6 +106,29 @@ export async function correct(
       direction: delta > 0 ? 'credit' : 'debit',
       amount: Math.abs(delta),
       description: `Harvest correction, ${reason.trim()}`,
+      date: after.date,
+      harvestId: after.id,
+    });
+  }
+
+  /* Deductions posted at intake as their own entry, so a change to them has to
+     reach the ledger too, or the harvest record and the balance disagree. */
+  if (deductionDelta > 0) {
+    await postSystem(user, {
+      farmerId: after.farmerId,
+      type: 'deduction',
+      amount: deductionDelta,
+      description: `Deduction correction, ${reason.trim()}`,
+      date: after.date,
+      harvestId: after.id,
+    });
+  } else if (deductionDelta < 0) {
+    await postSystem(user, {
+      farmerId: after.farmerId,
+      type: 'adjustment',
+      direction: 'credit',
+      amount: -deductionDelta,
+      description: `Deduction correction, ${reason.trim()}`,
       date: after.date,
       harvestId: after.id,
     });
@@ -142,8 +171,7 @@ export async function totalProduce(): Promise<{ quantity: number; value: number;
   for (const h of rows) {
     if (h.status === 'rejected') continue;
     // Bunches and crates are not kilograms; only weight-based units are summed.
-    if (h.unit === 'KG') quantity += h.quantity;
-    else if (h.unit === 'TONNE') quantity += h.quantity * 1000;
+    quantity += weightKg(h.quantity, h.unit);
     value += grossValue(h.quantity, h.pricePerUnit);
     deliveries += 1;
   }

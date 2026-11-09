@@ -115,8 +115,8 @@ async function write(user: User, input: PostInput): Promise<LedgerTransaction> {
 
 /**
  * Void a transaction. The original row stays exactly as it was, flagged, and a
- * reversing entry is appended so the running balance corrects itself from the
- * date of the reversal onward. Deleting was never an option.
+ * reversing entry is appended next to it so the history shows what was
+ * cancelled. Neither row counts toward the balance. Deleting was never an option.
  */
 export async function voidTransaction(
   user: User,

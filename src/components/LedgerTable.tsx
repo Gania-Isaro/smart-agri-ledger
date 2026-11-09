@@ -11,6 +11,7 @@ import { Icon } from './ui/Icon';
 import { Button, EmptyState } from './ui/primitives';
 import { useLookups } from '../state/store';
 import { formatMoney } from '../domain/money';
+import { counts } from '../domain/ledger';
 import { LEDGER_TYPE_LABEL } from '../domain/status';
 import { formatDate, formatDateTime } from '../lib/date';
 import { exportCSV } from '../lib/csv';
@@ -47,10 +48,10 @@ export function LedgerTable({
         { key: 'code', header: 'Transaction', value: (l) => l.code },
         { key: 'type', header: 'Type', value: (l) => LEDGER_TYPE_LABEL[l.type] ?? l.type },
         { key: 'description', header: 'Description', value: (l) => l.description },
-        { key: 'debit', header: 'Debit', value: (l) => (l.direction === 'debit' && !l.voided ? l.amount : '') },
-        { key: 'credit', header: 'Credit', value: (l) => (l.direction === 'credit' && !l.voided ? l.amount : '') },
+        { key: 'debit', header: 'Debit', value: (l) => (l.direction === 'debit' && counts(l) ? l.amount : '') },
+        { key: 'credit', header: 'Credit', value: (l) => (l.direction === 'credit' && counts(l) ? l.amount : '') },
         { key: 'balance', header: 'Balance', value: (l) => l.balanceAfter },
-        { key: 'voided', header: 'Voided', value: (l) => (l.voided ? 'yes' : '') },
+        { key: 'voided', header: 'Voided', value: (l) => (l.voided ? 'yes' : l.reversesId ? 'reversal' : '') },
         { key: 'by', header: 'Created by', value: (l) => lookups.userName(l.createdBy) },
       ],
     );

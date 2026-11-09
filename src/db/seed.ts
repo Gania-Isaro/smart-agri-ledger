@@ -14,7 +14,7 @@ import { uid, padCode } from '../lib/id';
 import { addDays, monthKey, nowStamp, seasonFor, today, toISODate } from '../lib/date';
 import { grossValue } from '../domain/money';
 import { BUILT_IN_ACTIVITY_TYPES } from '../domain/activityCatalog';
-import { directionFor } from '../domain/ledger';
+import { balanceOf, directionFor } from '../domain/ledger';
 import type {
   Activity,
   ActivityStatus,
@@ -489,7 +489,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
   for (const farmer of farmers) {
     const txs = byFarmer.get(farmer.id) ?? [];
-    const balance = txs.reduce((s, t) => s + (t.voided ? 0 : t.direction === 'credit' ? t.amount : -t.amount), 0);
+    const balance = balanceOf(txs);
     const hasHarvest = harvests.some((h) => h.farmerId === farmer.id);
     const hasPaid = payments.some((p) => p.farmerId === farmer.id && p.status === 'paid');
 

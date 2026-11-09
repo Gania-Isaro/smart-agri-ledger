@@ -72,9 +72,19 @@ export function directionFor(type: LedgerTxType, explicit?: Direction): Directio
   return POSTING_RULES[type].direction;
 }
 
-/** Signed contribution of a single entry to a balance. Voided entries are inert. */
-export function signedAmount(tx: Pick<LedgerTransaction, 'direction' | 'amount' | 'voided'>): number {
-  if (tx.voided) return 0;
+/**
+ * Whether an entry counts toward balances and totals. A voided entry and the
+ * reversal written for it cancel each other out, so neither one counts. If only
+ * the voided entry were skipped, the reversal would take the money off a second
+ * time and a voided 100,000 RWF harvest would leave the farmer at -100,000.
+ */
+export function counts(tx: Pick<LedgerTransaction, 'voided' | 'reversesId'>): boolean {
+  return !tx.voided && !tx.reversesId;
+}
+
+/** Signed contribution of a single entry to a balance. Voided entries and reversals are inert. */
+export function signedAmount(tx: Pick<LedgerTransaction, 'direction' | 'amount' | 'voided' | 'reversesId'>): number {
+  if (!counts(tx)) return 0;
   return tx.direction === 'credit' ? tx.amount : -tx.amount;
 }
 
@@ -129,7 +139,7 @@ export function summarise(transactions: LedgerTransaction[]): FarmerFinancials {
 
   for (const tx of transactions) {
     if (!lastActivityDate || tx.date > lastActivityDate) lastActivityDate = tx.date;
-    if (tx.voided) continue;
+    if (!counts(tx)) continue;
     switch (tx.type) {
       case 'harvest':
       case 'bonus':
@@ -169,7 +179,8 @@ export function summarise(transactions: LedgerTransaction[]): FarmerFinancials {
 /**
  * Build the reversing entry that voids `tx`. Voiding never edits or removes the
  * original row: the original is flagged and this mirror image is appended, so
- * the history of the account still reads correctly at every past point in time.
+ * the account shows exactly what was cancelled and when. The pair is excluded
+ * from every balance and total (see `counts`).
  */
 export function reversalOf(
   tx: LedgerTransaction,

@@ -21,6 +21,7 @@ import { Activities } from './screens/Activities';
 import { Production } from './screens/Production';
 import { Payments } from './screens/Payments';
 import { Ledger } from './screens/Ledger';
+import { signedAmount } from './domain/ledger';
 import { Reports } from './screens/Reports';
 import { Settings } from './screens/Settings';
 import { EmptyState, Button, Spinner } from './components/ui/primitives';
@@ -68,8 +69,7 @@ export function App() {
     ]);
     const balance = new Map<string, number>();
     for (const t of transactions) {
-      if (t.voided) continue;
-      balance.set(t.farmerId, (balance.get(t.farmerId) ?? 0) + (t.direction === 'credit' ? t.amount : -t.amount));
+      balance.set(t.farmerId, (balance.get(t.farmerId) ?? 0) + signedAmount(t));
     }
     return {
       awaitingPayment: farmers.filter((f) => !f.archived && (balance.get(f.id) ?? 0) > 0).length,

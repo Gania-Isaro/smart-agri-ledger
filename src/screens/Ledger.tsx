@@ -11,7 +11,7 @@ import { LedgerTable } from '../components/LedgerTable';
 import { ActivityComposer } from '../components/ActivityComposer';
 import { formatMoney, formatMoneyShort, formatNumber } from '../domain/money';
 import { LEDGER_TYPE_LABEL } from '../domain/status';
-import { withRunningBalance } from '../domain/ledger';
+import { counts, withRunningBalance } from '../domain/ledger';
 import { formatDateShort, formatDateTime } from '../lib/date';
 import { db } from '../db/db';
 import * as ledgerService from '../services/ledgerService';
@@ -380,7 +380,7 @@ function Transactions({ search }: { search: string }) {
 
   const totals = rows.reduce(
     (acc, t) => {
-      if (t.voided) return acc;
+      if (!counts(t)) return acc;
       if (t.direction === 'credit') acc.credit += t.amount;
       else acc.debit += t.amount;
       return acc;

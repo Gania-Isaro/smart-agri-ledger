@@ -139,13 +139,15 @@ export function Dashboard() {
           <div className="card__head">
             <h2 className="section-title">{t('screen.overview.moneyPosition')}</h2>
             <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-              {t('dash.settledOf', { paid: formatMoney(o.totalPaid), total: formatMoney(o.totalOwed) })}
+              {t('dash.settledOf', { paid: formatMoney(o.totalPaid), total: formatMoney(o.totalPaid + o.outstanding) })}
             </span>
           </div>
           <div className="card__body">
             <ProgressPair
               paid={o.totalPaid}
-              total={o.totalOwed}
+              /* Paid plus what is still owed after advances and deductions, so
+                 "Still owed" matches the Outstanding figure above it. */
+              total={o.totalPaid + o.outstanding}
               paidLabel={t('dash.paidToFarmers')}
               remainingLabel={t('dash.stillOwed')}
             />

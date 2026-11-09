@@ -46,6 +46,17 @@ export function toQuantity(value: unknown, field = 'quantity'): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * A delivery's weight in kilograms, for totals and charts labelled KG. Units
+ * that are not a weight (bunches, crates, bags, litres, pieces) count as 0
+ * rather than being added to kilograms as if they were the same thing.
+ */
+export function weightKg(quantity: number, unit: string): number {
+  if (unit === 'KG') return quantity;
+  if (unit === 'TONNE') return quantity * 1000;
+  return 0;
+}
+
 /** Gross value of a harvest line. Rounded to whole RWF at the boundary. */
 export function grossValue(quantity: number, pricePerUnit: number): number {
   return toMoney(toQuantity(quantity) * toMoney(pricePerUnit, 'price per unit'), 'gross value');

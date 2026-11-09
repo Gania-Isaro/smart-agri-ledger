@@ -63,10 +63,14 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   if (!draft.reason?.trim()) throw new ValidationError('Say what this payment is for.', 'reason');
 
   const txs = await db.transactions.where('farmerId').equals(farmer.id).toArray();
-  const { balance } = summarise(txs);
+  const owed = summarise(txs).balance;
+  // Money already promised in payments that have not been paid yet is not free to pay again.
+  const committed = (await committedByFarmer()).get(farmer.id) ?? 0;
+  const balance = owed - committed;
   if (amount > balance && !draft.confirmOverdraft) {
+    const pendingNote = committed > 0 ? ` after ${committed.toLocaleString()} RWF already in unpaid payments` : '';
     throw new ConfirmationRequired(
-      `${farmer.firstName} ${farmer.lastName} is owed ${balance.toLocaleString()} RWF. Paying ${amount.toLocaleString()} RWF leaves the account in advance by ${(amount - balance).toLocaleString()} RWF.`,
+      `${farmer.firstName} ${farmer.lastName} is owed ${Math.max(balance, 0).toLocaleString()} RWF${pendingNote}. Paying ${amount.toLocaleString()} RWF leaves the account in advance by ${(amount - balance).toLocaleString()} RWF.`,
       { balance, amount },
     );
   }
@@ -93,6 +97,20 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   await db.payments.put(payment);
   await audit.record(user, 'payment', payment.id, 'create', `Created ${payment.reference} for ${farmer.code}: ${amount} RWF`, { after: payment });
   return payment;
+}
+
+/**
+ * Per farmer, the total of payments that are promised but not yet in the
+ * ledger (pending, approved, processing, or disputed before being paid).
+ */
+async function committedByFarmer(): Promise<Map<ID, number>> {
+  const out = new Map<ID, number>();
+  for (const p of await db.payments.toArray()) {
+    if (p.transactionId) continue;
+    if (p.status === 'paid' || p.status === 'cancelled') continue;
+    out.set(p.farmerId, (out.get(p.farmerId) ?? 0) + p.amount);
+  }
+  return out;
 }
 
 /* --------------------------------------------------------- status moves */
@@ -134,8 +152,13 @@ export async function transition(
 
   if (to === 'paid') {
     after.paidAt = at;
-    /* The user is telling us the money has now genuinely been handed over,
-       so this is the point where the debit belongs in the ledger. */
+  }
+
+  /* The user is telling us the money has now been handed over, so this is the
+     point where the debit belongs in the ledger. A payment that was already
+     paid, then disputed, then confirmed again keeps its one debit: posting a
+     second would charge the farmer twice for a single payout. */
+  if (to === 'paid' && !before.transactionId) {
     const tx = await postSystem(user, {
       farmerId: before.farmerId,
       type: 'payment',
@@ -272,9 +295,12 @@ export async function createBatch(
   assertCan(user, 'batch.create');
   if (!input.name.trim()) throw new ValidationError('Give the batch a name.', 'name');
 
-  const financials = await financialsByFarmer();
+  const [financials, committed] = await Promise.all([financialsByFarmer(), committedByFarmer()]);
+  // Only what is not already sitting in another unpaid payment goes in the list,
+  // so the same balance can never be paid out twice.
   const candidates = [...financials.entries()]
-    .filter(([farmerId, f]) => f.balance > 0 && (!input.farmerIds?.length || input.farmerIds.includes(farmerId)));
+    .map(([farmerId, f]) => [farmerId, f.balance - (committed.get(farmerId) ?? 0)] as const)
+    .filter(([farmerId, due]) => due > 0 && (!input.farmerIds?.length || input.farmerIds.includes(farmerId)));
 
   if (candidates.length === 0) {
     throw new ValidationError('No farmer in that selection is currently owed money.');
@@ -294,10 +320,10 @@ export async function createBatch(
   };
 
   const first = await reserveCounters('payment', candidates.length);
-  const payments: Payment[] = candidates.map(([farmerId, f], i) => ({
+  const payments: Payment[] = candidates.map(([farmerId, due], i) => ({
     id: uid('pay'),
     farmerId,
-    amount: f.balance,
+    amount: due,
     method: 'mobile_money',
     status: 'pending',
     date: today(),

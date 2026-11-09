@@ -21,6 +21,7 @@ import * as analytics from '../services/analyticsService';
 import * as harvestService from '../services/harvestService';
 import * as paymentService from '../services/paymentService';
 import * as ledgerService from '../services/ledgerService';
+import { counts, signedAmount } from '../domain/ledger';
 import { useT } from '../i18n';
 
 type ReportId =
@@ -479,22 +480,22 @@ async function build(
           { key: 'by', header: 'Created by' },
         ],
         rows: scoped.map((t) => {
-          if (!t.voided) running += t.direction === 'credit' ? t.amount : -t.amount;
+          running += signedAmount(t);
           return {
             date: formatDate(t.date),
             code: t.code,
             farmer: `${byId.get(t.farmerId)?.code ?? ''} ${byId.get(t.farmerId)?.lastName ?? ''}`.trim(),
             type: LEDGER_TYPE_LABEL[t.type] ?? t.type,
-            description: t.voided ? `${t.description} (VOIDED)` : t.description,
-            debit: t.direction === 'debit' && !t.voided ? formatMoney(t.amount) : '',
-            credit: t.direction === 'credit' && !t.voided ? formatMoney(t.amount) : '',
+            description: t.voided ? `${t.description} (VOIDED)` : t.reversesId ? `${t.description} (REVERSAL)` : t.description,
+            debit: t.direction === 'debit' && counts(t) ? formatMoney(t.amount) : '',
+            credit: t.direction === 'credit' && counts(t) ? formatMoney(t.amount) : '',
             by: lookups.userName(t.createdBy),
           };
         }),
         totals: {
           date: 'Net position',
-          debit: formatMoney(scoped.filter((t) => !t.voided && t.direction === 'debit').reduce((s, t) => s + t.amount, 0)),
-          credit: formatMoney(scoped.filter((t) => !t.voided && t.direction === 'credit').reduce((s, t) => s + t.amount, 0)),
+          debit: formatMoney(scoped.filter((t) => counts(t) && t.direction === 'debit').reduce((s, t) => s + t.amount, 0)),
+          credit: formatMoney(scoped.filter((t) => counts(t) && t.direction === 'credit').reduce((s, t) => s + t.amount, 0)),
           by: formatMoney(running),
         },
       };

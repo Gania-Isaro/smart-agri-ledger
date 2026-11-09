@@ -1,9 +1,9 @@
 /** Read models behind the dashboard and the reports section. */
 
 import { db } from '../db/db';
-import { grossValue } from '../domain/money';
+import { grossValue, weightKg } from '../domain/money';
 import { monthKey, monthLabel } from '../lib/date';
-import { summarise } from '../domain/ledger';
+import { counts, summarise } from '../domain/ledger';
 import type { Crop, ID } from '../domain/types';
 import { financialsByFarmer } from './ledgerService';
 
@@ -54,8 +54,7 @@ export async function overview(): Promise<Overview> {
   let deliveries = 0;
   for (const h of harvests) {
     if (h.status === 'rejected') continue;
-    if (h.unit === 'KG') produceKg += h.quantity;
-    else if (h.unit === 'TONNE') produceKg += h.quantity * 1000;
+    produceKg += weightKg(h.quantity, h.unit);
     deliveries += 1;
   }
 
@@ -90,7 +89,7 @@ export async function harvestByCrop(): Promise<Series[]> {
   for (const h of harvests) {
     if (h.status === 'rejected') continue;
     const entry = map.get(h.cropId) ?? { qty: 0, value: 0 };
-    entry.qty += h.unit === 'TONNE' ? h.quantity * 1000 : h.quantity;
+    entry.qty += weightKg(h.quantity, h.unit);
     entry.value += grossValue(h.quantity, h.pricePerUnit);
     map.set(h.cropId, entry);
   }
@@ -101,6 +100,7 @@ export async function harvestByCrop(): Promise<Series[]> {
       secondary: v.value,
       colour: byId.get(cropId)?.colour,
     }))
+    .filter((s) => s.value > 0)
     .sort((a, b) => b.value - a.value);
 }
 
@@ -110,7 +110,7 @@ export async function harvestOverTime(months = 6): Promise<Series[]> {
   for (const h of harvests) {
     if (h.status === 'rejected') continue;
     const key = monthKey(h.date);
-    map.set(key, (map.get(key) ?? 0) + (h.unit === 'TONNE' ? h.quantity * 1000 : h.quantity));
+    map.set(key, (map.get(key) ?? 0) + weightKg(h.quantity, h.unit));
   }
   return [...map.entries()]
     .sort(([a], [b]) => (a < b ? -1 : 1))
@@ -123,10 +123,11 @@ export async function moneyOverTime(months = 6): Promise<Series[]> {
   const txs = await db.transactions.toArray();
   const map = new Map<string, { earned: number; paid: number }>();
   for (const tx of txs) {
-    if (tx.voided) continue;
+    if (!counts(tx)) continue;
     const key = monthKey(tx.date);
     const entry = map.get(key) ?? { earned: 0, paid: 0 };
-    if (tx.type === 'harvest' || tx.type === 'bonus') entry.earned += tx.amount;
+    // Same definition of "earned" as the farmer summary, so the chart agrees with the totals.
+    if (tx.type === 'harvest' || tx.type === 'bonus' || tx.type === 'reimbursement' || (tx.type === 'adjustment' && tx.direction === 'credit')) entry.earned += tx.amount;
     if (tx.type === 'payment') entry.paid += tx.amount;
     map.set(key, entry);
   }
@@ -153,7 +154,7 @@ export async function productionByDistrict(): Promise<Series[]> {
   for (const h of harvests) {
     if (h.status === 'rejected') continue;
     const key = district.get(h.farmerId) ?? 'Unknown';
-    map.set(key, (map.get(key) ?? 0) + (h.unit === 'TONNE' ? h.quantity * 1000 : h.quantity));
+    map.set(key, (map.get(key) ?? 0) + weightKg(h.quantity, h.unit));
   }
   return [...map.entries()].map(([label, value]) => ({ label, value: Math.round(value) })).sort((a, b) => b.value - a.value);
 }
@@ -227,7 +228,7 @@ export async function farmerReport() {
         cooperative: coopName.get(f.cooperativeId) ?? '',
         crop: cropName.get(f.primaryCropId) ?? '',
         deliveries: rows.length,
-        quantity: rows.reduce((s, h) => s + (h.unit === 'TONNE' ? h.quantity * 1000 : h.quantity), 0),
+        quantity: rows.reduce((s, h) => s + weightKg(h.quantity, h.unit), 0),
         earned: fin.earned,
         paid: fin.paid,
         advances: fin.advances,
