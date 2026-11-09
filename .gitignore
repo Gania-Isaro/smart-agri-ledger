@@ -8,7 +8,6 @@ dist/
 # editor / tooling
 .vscode/
 .idea/
-.claude/
 *.swp
 
 # os
