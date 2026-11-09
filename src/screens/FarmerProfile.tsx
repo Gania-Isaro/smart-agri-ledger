@@ -26,6 +26,7 @@ import * as audit from '../services/audit';
 import { initials } from '../components/Shell';
 import type { IconName } from '../components/ui/Icon';
 import { usePrefs } from '../i18n';
+import { FarmerFormModal } from './Farmers';
 
 const TABS = ['Overview', 'Activities', 'Harvests', 'Payments', 'Ledger', 'Documents'] as const;
 type Tab = (typeof TABS)[number];
@@ -40,6 +41,7 @@ const TAB_KEY: Record<Tab, string> = {
 };
 
 export function FarmerProfile({ farmerId }: { farmerId: string }) {
+  const [editOpen, setEditOpen] = useState(false);
   const { can, refresh, toast, fail, confirm, user } = useStore();
   const lookups = useLookups();
   const { t: tr } = usePrefs();
@@ -89,9 +91,60 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
   }
 
   const { farmer, financials } = d;
+  const name = `${farmer.firstName} ${farmer.lastName}`;
+
+  /* A farmer with nothing recorded is deleted outright. Anyone with history is
+     archived instead, so their ledger and payments still point at a person. */
+  const deleteFarmer = async () => {
+    try {
+      const history = await farmerService.historyCount(farmer.id);
+      if (history === 0) {
+        const r = await confirm({
+          title: `Delete ${name}?`,
+          message: 'Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.',
+          confirmLabel: 'Delete farmer',
+          tone: 'danger',
+        });
+        if (!r.ok) return;
+        await farmerService.remove(user!, farmer.id);
+        refresh();
+        toast({ tone: 'success', title: `${name} deleted` });
+        navigate('/farmers');
+        return;
+      }
+      const r = await confirm({
+        title: `Archive ${name}?`,
+        message: `${name} has ${history} record${history === 1 ? '' : 's'} in the books (harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.`,
+        confirmLabel: 'Archive farmer',
+        tone: 'danger',
+      });
+      if (!r.ok) return;
+      await farmerService.archive(user!, farmer.id, true);
+      refresh();
+      toast({ tone: 'success', title: `${name} archived` });
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const restore = async () => {
+    try {
+      await farmerService.archive(user!, farmer.id, false);
+      refresh();
+      toast({ tone: 'success', title: `${name} restored` });
+    } catch (e) {
+      fail(e);
+    }
+  };
 
   return (
     <>
+      {editOpen && <FarmerFormModal farmer={farmer} onClose={() => setEditOpen(false)} />}
+      {farmer.archived && (
+        <Callout tone="warn">
+          {name} is archived. They are hidden from lists and cannot get new records until restored.
+        </Callout>
+      )}
       <button className="btn btn--ghost btn--sm no-print" onClick={() => navigate('/farmers')} style={{ marginBottom: 'var(--s-3)' }}>
         <Icon name="arrow-left" size={14} /> {tr('prof.allFarmers')}
       </button>
@@ -121,7 +174,22 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
           </div>
         </div>
 
-        <div className="row gap-2 no-print">
+        <div className="row gap-2 wrap no-print">
+          {can('farmer.edit') && !farmer.archived && (
+            <Button icon="edit" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          )}
+          {can('farmer.archive') &&
+            (farmer.archived ? (
+              <Button icon="undo" onClick={restore}>
+                Restore
+              </Button>
+            ) : (
+              <Button variant="quiet-danger" icon="trash" onClick={deleteFarmer}>
+                Delete
+              </Button>
+            ))}
           <Button icon="printer" onClick={() => window.print()}>
             {tr('action.print')}
           </Button>

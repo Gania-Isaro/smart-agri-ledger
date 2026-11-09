@@ -50,6 +50,9 @@ export function Farmers({ search }: { search: string }) {
 
   const onlyActive = route.segments[1] === 'active';
   const groups = route.segments[1] === 'groups';
+  /* Opened from a group card: show only that group's farmers. */
+  const coopId = route.query.get('coop');
+  const coop = coopId ? cooperatives.find((c) => c.id === coopId) : undefined;
 
   const query = useQuery(async () => {
     const [rows, activities, harvests] = await Promise.all([
@@ -95,6 +98,7 @@ export function Farmers({ search }: { search: string }) {
 
     return list.filter(
       (r) =>
+        (!coopId || r.cooperativeId === coopId) &&
         matchesMulti(filters.status, r.status) &&
         matchesMulti(filters.crop, r.primaryCropId) &&
         matchesMulti(filters.district, r.district) &&
@@ -105,7 +109,7 @@ export function Farmers({ search }: { search: string }) {
         matchesNumber(filters.balance, r.financials.balance) &&
         matchesMulti(filters.grade, r.latestHarvest?.grade),
     );
-  }, [all, filters, onlyActive]);
+  }, [all, filters, onlyActive, coopId]);
 
   /* ---------------------------------------------------------- columns */
 
@@ -516,10 +520,17 @@ export function Farmers({ search }: { search: string }) {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">{onlyActive ? t('nav.farmers.active') : t('screen.farmers.title')}</h1>
-          <p className="page-sub">{t('screen.farmers.sub')}</p>
+          <h1 className="page-title">{coop ? coop.name : onlyActive ? t('nav.farmers.active') : t('screen.farmers.title')}</h1>
+          <p className="page-sub">
+            {coop ? `${t('nav.farmers.groups')} · ${coop.district}` : t('screen.farmers.sub')}
+          </p>
         </div>
         <div className="row gap-2 no-print">
+          {coop && (
+            <Button icon="arrow-left" onClick={() => navigate('/farmers/groups')}>
+              {t('nav.farmers.groups')}
+            </Button>
+          )}
           {can('data.import') && (
             <Button icon="upload" onClick={() => setImportOpen(true)}>
               {t('action.import')}
@@ -583,7 +594,7 @@ export function Farmers({ search }: { search: string }) {
         }
       />
 
-      {addOpen && <AddFarmerModal onClose={() => setAddOpen(false)} />}
+      {addOpen && <FarmerFormModal onClose={() => setAddOpen(false)} defaultCoopId={coopId ?? undefined} />}
       {importOpen && <ImportFarmersModal onClose={() => setImportOpen(false)} />}
       <ActivityComposer
         open={composer.open}
@@ -615,26 +626,55 @@ function uniq(xs: string[]): string[] {
 
 /* ------------------------------------------------------------ add farmer */
 
-function AddFarmerModal({ onClose }: { onClose: () => void }) {
+/** Register a new farmer, or edit one when `farmer` is given. */
+export function FarmerFormModal({
+  onClose,
+  farmer: existing,
+  defaultCoopId,
+}: {
+  onClose: () => void;
+  farmer?: Farmer;
+  defaultCoopId?: string;
+}) {
   const { user, crops, cooperatives, refresh, toast, fail } = useStore();
   const { t } = usePrefs();
-  const [form, setForm] = useState({
-    code: '',
-    idNumber: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    gender: 'F',
-    village: '',
-    cell: '',
-    sector: '',
-    district: '',
-    cooperativeId: cooperatives[0]?.id ?? '',
-    farmSizeHa: '1',
-    plots: '1',
-    primaryCropId: crops[0]?.id ?? '',
-    season: '2026 A',
-  });
+  const [form, setForm] = useState(
+    existing
+      ? {
+          code: existing.code,
+          idNumber: existing.idNumber ?? '',
+          firstName: existing.firstName,
+          lastName: existing.lastName,
+          phone: existing.phone,
+          gender: existing.gender as string,
+          village: existing.village,
+          cell: existing.cell,
+          sector: existing.sector,
+          district: existing.district,
+          cooperativeId: existing.cooperativeId,
+          farmSizeHa: String(existing.farmSizeHa),
+          plots: String(existing.plots),
+          primaryCropId: existing.primaryCropId,
+          season: existing.season,
+        }
+      : {
+          code: '',
+          idNumber: '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+          gender: 'F',
+          village: '',
+          cell: '',
+          sector: '',
+          district: (defaultCoopId && cooperatives.find((c) => c.id === defaultCoopId)?.district) || '',
+          cooperativeId: defaultCoopId || cooperatives[0]?.id || '',
+          farmSizeHa: '1',
+          plots: '1',
+          primaryCropId: crops[0]?.id ?? '',
+          season: '2026 A',
+        },
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -648,6 +688,28 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
     if (!user) return;
     setBusy(true);
     try {
+      if (existing) {
+        const updated = await farmerService.update(user, existing.id, {
+          code: form.code.trim() || existing.code,
+          idNumber: form.idNumber.trim() || undefined,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          phone: form.phone.trim(),
+          gender: form.gender as Farmer['gender'],
+          village: form.village.trim(),
+          cell: form.cell.trim(),
+          sector: form.sector.trim(),
+          district: form.district.trim(),
+          cooperativeId: form.cooperativeId,
+          farmSizeHa: Number(form.farmSizeHa),
+          plots: Number(form.plots),
+          primaryCropId: form.primaryCropId,
+        });
+        refresh();
+        toast({ tone: 'success', title: `${updated.firstName} ${updated.lastName} updated` });
+        onClose();
+        return;
+      }
       const farmer = await farmerService.create(user, {
         code: form.code.trim() || undefined,
         idNumber: form.idNumber.trim() || undefined,
@@ -688,8 +750,8 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title="Register a farmer"
-      subtitle="The farmer ID is generated automatically and cannot be reused."
+      title={existing ? `Edit ${existing.firstName} ${existing.lastName}` : 'Register a farmer'}
+      subtitle={existing ? 'Changes are kept in the audit trail.' : 'The farmer ID is generated automatically and cannot be reused.'}
       footer={
         <>
           <span className="spacer" />
@@ -697,7 +759,7 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
             Cancel
           </Button>
           <Button variant="primary" type="submit" form="add-farmer" loading={busy} icon="check">
-            Register farmer
+            {existing ? 'Save changes' : 'Register farmer'}
           </Button>
         </>
       }
@@ -707,7 +769,7 @@ function AddFarmerModal({ onClose }: { onClose: () => void }) {
           <Input
             value={form.code}
             onChange={(e) => set('code', e.target.value)}
-            placeholder={t('field.farmerIdAuto')}
+            placeholder={existing ? undefined : t('field.farmerIdAuto')}
             invalid={Boolean(errors.code)}
           />
         </Field>
@@ -914,6 +976,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
 
 function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
   const { cooperatives } = useStore();
+  const { t } = usePrefs();
 
   const groups = cooperatives.map((c) => {
     const members = rows.filter((r) => r.cooperativeId === c.id);
@@ -930,8 +993,8 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Farmer groups</h1>
-          <p className="page-sub">Cooperatives and the financial position of their members.</p>
+          <h1 className="page-title">{t('nav.farmers.groups')}</h1>
+          <p className="page-sub">Tap a group to see only its farmers.</p>
         </div>
       </div>
 

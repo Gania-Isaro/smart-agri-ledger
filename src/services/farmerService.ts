@@ -113,8 +113,39 @@ export async function update(user: User, id: ID, patch: Partial<Farmer>): Promis
   return after;
 }
 
+/** How many records hang off a farmer. Any at all means they cannot be deleted. */
+export async function historyCount(id: ID): Promise<number> {
+  const counts = await Promise.all([
+    db.transactions.where('farmerId').equals(id).count(),
+    db.harvests.where('farmerId').equals(id).count(),
+    db.activities.where('farmerId').equals(id).count(),
+    db.payments.where('farmerId').equals(id).count(),
+    db.workdays.where('farmerId').equals(id).count(),
+  ]);
+  return counts.reduce((s, n) => s + n, 0);
+}
+
 /**
- * Farmers are archived, never deleted: their ledger history has to remain
+ * Delete a farmer for good. Only allowed when nothing was ever recorded for
+ * them (a typo or a duplicate). Anyone with history is archived instead, so
+ * their payments and ledger keep pointing at a real person.
+ */
+export async function remove(user: User, id: ID): Promise<void> {
+  assertCan(user, 'farmer.archive');
+  const before = await db.farmers.get(id);
+  if (!before) return;
+  if ((await historyCount(id)) > 0) {
+    throw new ValidationError(`${before.code} has records in the books, so it can only be archived, not deleted.`);
+  }
+  await db.transaction('rw', [db.farmers, db.documents, db.audit], async () => {
+    await db.documents.where('farmerId').equals(id).delete();
+    await db.farmers.delete(id);
+  });
+  await audit.record(user, 'farmer', id, 'delete', `Deleted ${before.code}, ${before.firstName} ${before.lastName}`, { before });
+}
+
+/**
+ * Farmers with history are archived, never deleted: their ledger history has to remain
  * readable, and a deleted farmer would orphan transactions.
  */
 export async function archive(user: User, id: ID, archived: boolean): Promise<Farmer> {
