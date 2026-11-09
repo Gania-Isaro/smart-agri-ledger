@@ -2301,3 +2301,27 @@ button.workthumb:hover { outline: 2px solid var(--primary); outline-offset: 1px;
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
+
+/* -------------------------------------------------------------- role cards */
+
+.rolegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s-3);
+}
+
+.rolecard {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+  background: var(--surface);
+}
+
+.rolelist { list-style: none; margin: var(--s-1) 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--fs-sm); }
+.rolelist li { display: flex; gap: 6px; align-items: flex-start; line-height: 1.4; }
+.rolelist li svg { flex: none; margin-top: 3px; }
+.rolelist--can svg { color: var(--money-positive); }
+.rolelist--cannot svg { color: var(--money-negative); }
+
+/* Section tabs that must all stay visible on a phone wrap instead of scrolling. */
+.tabs--wrap { flex-wrap: wrap; overflow: visible; row-gap: 0; }

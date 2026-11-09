@@ -155,6 +155,8 @@ function Screen({
 
     case 'farmers': {
       const second = route.segments[1];
+      // Daily work is part of the farmers section.
+      if (second === 'work') return <Work />;
       // /farmers/active and /farmers/groups are list views; anything else is an id.
       if (second && second !== 'active' && second !== 'groups') return <FarmerProfile farmerId={second} />;
       return <Farmers search={search} />;
@@ -173,7 +175,8 @@ function Screen({
       return <Ledger search={search} />;
 
     case 'work':
-      return <Work />;
+      // Older links went to #/work; Daily work now sits under Farmers.
+      return <Redirect to={`/farmers/work${route.segments[1] ? `/${route.segments[1]}` : ''}`} />;
 
     case 'reports':
       return <Reports />;
@@ -191,4 +194,9 @@ function Screen({
         />
       );
   }
+}
+
+function Redirect({ to }: { to: string }) {
+  useEffect(() => navigate(to, { replace: true }), [to]);
+  return null;
 }

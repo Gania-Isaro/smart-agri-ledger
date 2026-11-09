@@ -15,7 +15,7 @@ import { ActivityComposer } from '../components/ActivityComposer';
 import { LedgerTable } from '../components/LedgerTable';
 import { formatMoney, formatNumber } from '../domain/money';
 import { ACTIVITY_STATUS, FARMER_STATUS, GRADE_META, HARVEST_STATUS, PAYMENT_STATUS, PAYMENT_METHOD_LABEL } from '../domain/status';
-import { formatDate, formatDateTime, timeAgo } from '../lib/date';
+import { formatDate, formatDateTime, timeAgo, today } from '../lib/date';
 import { db } from '../db/db';
 import * as farmerService from '../services/farmerService';
 import * as ledgerService from '../services/ledgerService';
@@ -26,18 +26,22 @@ import * as audit from '../services/audit';
 import { initials } from '../components/Shell';
 import type { IconName } from '../components/ui/Icon';
 import { usePrefs } from '../i18n';
-import { FarmerFormModal } from './Farmers';
+import { FarmerFormModal, useRemoveFarmer } from './Farmers';
+import * as work from '../services/workforceService';
+import type { WorkDay } from '../domain/types';
+import { Modal } from '../components/ui/Modal';
 
 import { tx as T, txLang } from '../i18n/tx';
 import { FIELD_LABELS_RW } from '../i18n/strings';
 import { txr } from '../i18n/rich';
-const TABS = ['Overview', 'Activities', 'Harvests', 'Payments', 'Ledger', 'Documents'] as const;
+const TABS = ['Overview', 'Activities', 'Harvests', 'Work days', 'Payments', 'Ledger', 'Documents'] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_KEY: Record<Tab, string> = {
   Overview: 'prof.tab.overview',
   Activities: 'prof.tab.activities',
   Harvests: 'prof.tab.harvests',
+  'Work days': 'prof.tab.work',
   Payments: 'prof.tab.payments',
   Ledger: 'prof.tab.ledger',
   Documents: 'prof.tab.documents',
@@ -45,6 +49,7 @@ const TAB_KEY: Record<Tab, string> = {
 
 export function FarmerProfile({ farmerId }: { farmerId: string }) {
   const [editOpen, setEditOpen] = useState(false);
+  const removeFarmer = useRemoveFarmer();
   const { can, refresh, toast, fail, confirm, user } = useStore();
   const lookups = useLookups();
   const { t: tr } = usePrefs();
@@ -54,7 +59,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
   const query = useQuery(async () => {
     const farmer = await farmerService.get(farmerId);
     if (!farmer) return null;
-    const [financials, ledger, activities, harvests, payments, documents, trail] = await Promise.all([
+    const [financials, ledger, activities, harvests, payments, documents, trail, workDays] = await Promise.all([
       ledgerService.financialsFor(farmerId),
       ledgerService.ledgerFor(farmerId),
       activityService.listActivities({ farmerId }),
@@ -62,8 +67,9 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
       paymentService.list({ farmerId }),
       db.documents.where('farmerId').equals(farmerId).toArray(),
       audit.trailFor('farmer', farmerId),
+      work.daysFor(farmerId),
     ]);
-    return { farmer, financials, ledger, activities, harvests, payments, documents, trail };
+    return { farmer, financials, ledger, activities, harvests, payments, documents, trail, workDays };
   }, [farmerId]);
 
   const d = query.data;
@@ -96,38 +102,8 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
   const { farmer, financials } = d;
   const name = `${farmer.firstName} ${farmer.lastName}`;
 
-  /* A farmer with nothing recorded is deleted outright. Anyone with history is
-     archived instead, so their ledger and payments still point at a person. */
   const deleteFarmer = async () => {
-    try {
-      const history = await farmerService.historyCount(farmer.id);
-      if (history === 0) {
-        const r = await confirm({
-          title: T('Delete {name}?', { name }),
-          message: T('Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.'),
-          confirmLabel: T('Delete farmer'),
-          tone: 'danger',
-        });
-        if (!r.ok) return;
-        await farmerService.remove(user!, farmer.id);
-        refresh();
-        toast({ tone: 'success', title: T('{name} deleted', { name }) });
-        navigate('/farmers');
-        return;
-      }
-      const r = await confirm({
-        title: T('Archive {name}?', { name }),
-        message: T('{name} already has records in the books ({count}: harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
-        confirmLabel: T('Archive farmer'),
-        tone: 'danger',
-      });
-      if (!r.ok) return;
-      await farmerService.archive(user!, farmer.id, true);
-      refresh();
-      toast({ tone: 'success', title: T('{name} archived', { name }) });
-    } catch (e) {
-      fail(e);
-    }
+    if ((await removeFarmer(farmer)) === 'deleted') navigate('/farmers');
   };
 
   const restore = async () => {
@@ -482,6 +458,8 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
           />
         )}
 
+        {tab === 'Work days' && <WorkDaysTab days={d.workDays} />}
+
         {tab === 'Documents' && (
           <section className="card">
             <div className="card__body">
@@ -599,4 +577,61 @@ function formatValue(key: string, value: string | number | undefined): string {
     return formatMoney(Number(value));
   }
   return String(value);
+}
+
+/* -------------------------------------------------------------- work days */
+
+/** Every day this person worked, with the photo taken that day and the pay. */
+function WorkDaysTab({ days }: { days: WorkDay[] }) {
+  const [open, setOpen] = useState<WorkDay | null>(null);
+  const thisWeek = work.weekStart(today());
+  const thisMonth = today().slice(0, 7);
+  const sum = (list: WorkDay[]) => list.reduce((s, d) => s + d.amount, 0);
+  const weekTotal = sum(days.filter((d) => work.weekStart(d.date) === thisWeek));
+  const monthTotal = sum(days.filter((d) => d.date.startsWith(thisMonth)));
+
+  if (days.length === 0) {
+    return (
+      <section className="card">
+        <EmptyState icon="camera" title={T('No work days yet')} message={T('Days recorded under Daily work show up here with their photos.')} />
+      </section>
+    );
+  }
+
+  return (
+    <div className="stack gap-4">
+      <div className="metrics">
+        <div className="metric"><span className="metric__label">{T('This week')}</span><span className="metric__value num">{formatMoney(weekTotal)}</span></div>
+        <div className="metric"><span className="metric__label">{T('This month')}</span><span className="metric__value num">{formatMoney(monthTotal)}</span></div>
+        <div className="metric metric--accent">
+          <span className="metric__label">{T('All time')}</span>
+          <span className="metric__value num">{formatMoney(sum(days))}</span>
+          <span className="metric__foot">{T('{count} work days', { count: days.length })}</span>
+        </div>
+      </div>
+      <section className="card">
+        <ul className="worklist">
+          {days.map((d) => (
+            <li key={d.id} className="worklist__row">
+              <button className="workthumb" onClick={() => setOpen(d)} aria-label={T('See photo of {v}', { v: formatDate(d.date) })}>
+                <img src={d.photo} alt="" />
+              </button>
+              <div className="stack" style={{ flex: 1, minWidth: 0 }}>
+                <span className="strong">{formatDate(d.date)}</span>
+                <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
+                  {T('Photo taken')}: {formatDateTime(d.photoTakenAt)}{d.notes ? ` · ${d.notes}` : ''}
+                </span>
+              </div>
+              <span className="num strong">{formatMoney(d.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {open && (
+        <Modal open onClose={() => setOpen(null)} title={formatDate(open.date)} subtitle={formatMoney(open.amount)} dismissOnBackdrop>
+          <img src={open.photo} alt="" style={{ width: '100%', borderRadius: 'var(--r-md)' }} />
+        </Modal>
+      )}
+    </div>
+  );
 }

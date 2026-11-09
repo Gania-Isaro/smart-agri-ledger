@@ -11,12 +11,13 @@ export type ISODateTime = string; // full ISO timestamp
 
 /* ------------------------------------------------------------------ users */
 
-export type Role =
-  | 'super_admin'
-  | 'cooperative_admin'
-  | 'field_officer'
-  | 'accountant'
-  | 'viewer';
+/**
+ * Three roles:
+ *   super_admin  the owner: sees and does everything
+ *   manager      the field manager: farmers, field work, harvests, daily work
+ *   accountant   the money: payments, payment lists and the ledger
+ */
+export type Role = 'super_admin' | 'manager' | 'accountant';
 
 export interface User {
   id: ID;

@@ -21,6 +21,7 @@ import { addDays, formatDate, formatDateShort, formatDateTime, monthLabel, today
 import { exportCSV } from '../lib/csv';
 import { db } from '../db/db';
 import * as work from '../services/workforceService';
+import { FarmerFormModal, FarmersTabs } from './Farmers';
 import type { Farmer, WorkDay } from '../domain/types';
 
 import { translated, tx, txn } from '../i18n/tx';
@@ -36,7 +37,7 @@ const WEEKDAY = translated(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
 
 export function Work() {
   const route = useRoute();
-  const tab = (TABS.find((t) => t.id === route.segments[1])?.id ?? 'record') as Tab;
+  const tab = (TABS.find((t) => t.id === route.segments[2])?.id ?? 'record') as Tab;
   const totals = useQuery(() => work.totals());
   const t = totals.data;
   const todayView = useQuery(() => work.recordedOn(today()));
@@ -45,6 +46,7 @@ export function Work() {
 
   return (
     <>
+      <FarmersTabs />
       <div className="page-head">
         <div>
           <h1 className="page-title">{tx('Daily work')}</h1>
@@ -70,7 +72,7 @@ export function Work() {
             role="tab"
             aria-selected={tab === x.id}
             className={`tab ${tab === x.id ? 'tab--on' : ''}`}
-            onClick={() => navigate(x.id === 'record' ? '/work' : `/work/${x.id}`)}
+            onClick={() => navigate(x.id === 'record' ? '/farmers/work' : `/farmers/work/${x.id}`)}
           >
             {x.label}
           </button>
@@ -91,6 +93,7 @@ function RecordTab() {
   const [date, setDate] = useState(today());
   const [search, setSearch] = useState('');
   const [recording, setRecording] = useState<Farmer | null>(null);
+  const [adding, setAdding] = useState(false);
   const [viewing, setViewing] = useState<{ day: WorkDay; farmer: Farmer } | null>(null);
 
   const data = useQuery(async () => {
@@ -144,6 +147,11 @@ function RecordTab() {
             <Field label={tx('Find a farmer')}>
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('Name, ID or phone')} />
             </Field>
+            {can('farmer.create') && (
+              <Button icon="plus" onClick={() => setAdding(true)}>
+                {tx('Add person')}
+              </Button>
+            )}
             <span className="spacer" />
             <div className="stack">
               <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
@@ -212,6 +220,10 @@ function RecordTab() {
         )}
       </section>
 
+      {adding && (
+        // A new person registered here is a farmer like any other, then their day is recorded straight away.
+        <FarmerFormModal onClose={() => setAdding(false)} onCreated={(f) => setRecording(f)} />
+      )}
       {recording && data.data && (
         <RecordModal
           farmer={recording}
@@ -306,8 +318,16 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
         <Field label={tx('Photo')} required full error={error ?? undefined}>
           <CameraCapture label={work.fullName(farmer)} value={photo} onChange={(p) => { setPhoto(p); setError(null); }} />
         </Field>
-        <Field label={tx('Pay for this day (change it for a half day)')} required suffix="RWF">
+        <Field label={tx('Pay for this day')} required>
           <MoneyInput value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-2)' }}>
+            <Button type="button" size="sm" variant={Number(amount) === rate ? 'primary' : 'secondary'} onClick={() => setAmount(String(rate))}>
+              {tx('Full day ({amount})', { amount: formatMoney(rate) })}
+            </Button>
+            <Button type="button" size="sm" variant={Number(amount) === Math.round(rate / 2) ? 'primary' : 'secondary'} onClick={() => setAmount(String(Math.round(rate / 2)))}>
+              {tx('Half day ({amount})', { amount: formatMoney(Math.round(rate / 2)) })}
+            </Button>
+          </div>
         </Field>
         <Field label={tx('Note')} help={tx('Optional, e.g. the job they did.')}>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
@@ -509,7 +529,7 @@ function TotalsTab({ totals }: { totals: work.WorkTotals | null }) {
       </section>
 
       <div className="chartgrid">
-        <PeriodTable title={tx('By week')} rows={totals.byWeek.slice(0, 12)} label={(k) => tx('Week of {date}', { date: formatDateShort(k) })} onOpen={(k) => navigate(`/work/week?d=${k}`)} />
+        <PeriodTable title={tx('By week')} rows={totals.byWeek.slice(0, 12)} label={(k) => tx('Week of {date}', { date: formatDateShort(k) })} onOpen={(k) => navigate(`/farmers/work/week?d=${k}`)} />
         <PeriodTable title={tx('By month')} rows={totals.byMonth} label={(k) => monthLabel(k)} />
       </div>
     </div>

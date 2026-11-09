@@ -5,13 +5,13 @@ import { useLookups, useQuery, useStore } from '../state/store';
 import { useRoute } from '../state/router';
 import { Icon } from '../components/ui/Icon';
 import { Badge, Button, Callout, EmptyState, Skeleton } from '../components/ui/primitives';
-import { ROLE_LABELS, ROLE_PERMISSIONS } from '../domain/rbac';
+import { ROLE_ACCESS, ROLES } from '../domain/rbac';
 import { formatDateTime, timeAgo } from '../lib/date';
 import { db } from '../db/db';
 import { clearAccountData, resetDatabase } from '../db/seed';
 import * as audit from '../services/audit';
 import { initials } from '../components/Shell';
-import type { ActivityType, Role } from '../domain/types';
+import type { ActivityType } from '../domain/types';
 import { usePrefs } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 import * as activityService from '../services/activityService';
@@ -317,51 +317,48 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-4)' }}>
-              {tx('The owner and the manager share one account, which holds every permission. Both sign in to the same place and see the same figures. The roles below are still enforced inside the app rather than by hiding buttons, so a separate field officer or accountant login can be added later without a rebuild.')}
+              {tx('Three roles. Each person sees every screen, but only does the work of their role. The app checks this on every save, not just by hiding buttons.')}
             </p>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table className="grid" style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th><span className="th">{tx('Role')}</span></th>
-                    <th><span className="th">{tx('What it can do')}</span></th>
-                    <th className="num"><span className="th">{tx('Permissions')}</span></th>
-                    <th><span className="th">{tx('Signed-in user')}</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(Object.keys(ROLE_LABELS) as Role[]).map((role) => {
-                    const holders = users.filter((u) => u.role === role);
-                    return (
-                      <tr key={role}>
-                        <td>
-                          <span className="cell strong">
-                            {t(`role.${role}`)}
-                            {user?.role === role && (
-                              <span className="badge badge--green" style={{ marginLeft: 6 }}>
-                                <span className="badge__glyph">●</span>
-                                {t('misc.you')}
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="cell muted" style={{ whiteSpace: 'normal', lineHeight: 1.4, padding: '8px 12px', height: 'auto' }}>
-                            {t(`role.${role}.desc`)}
-                          </span>
-                        </td>
-                        <td className="num">
-                          <span className="cell num">{ROLE_PERMISSIONS[role].length}</span>
-                        </td>
-                        <td>
-                          <span className="cell muted">{holders.map((h) => h.name).join(', ') || '-'}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="rolegrid">
+              {ROLES.map((role) => {
+                const holders = users.filter((u) => u.role === role);
+                const access = ROLE_ACCESS[role];
+                return (
+                  <div className="rolecard" key={role}>
+                    <div className="row gap-2 wrap">
+                      <span className="strong">{t(`role.${role}`)}</span>
+                      {user?.role === role && (
+                        <span className="badge badge--green">
+                          <span className="badge__glyph">●</span>
+                          {t('misc.you')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="muted" style={{ fontSize: 'var(--fs-sm)', margin: 'var(--s-1) 0 var(--s-3)' }}>{t(`role.${role}.desc`)}</p>
+                    <p className="eyebrow">{tx('Can')}</p>
+                    <ul className="rolelist rolelist--can">
+                      {access.can.map((x) => (
+                        <li key={x}><Icon name="check" size={13} /> {tx(x)}</li>
+                      ))}
+                    </ul>
+                    {access.cannot.length > 0 && (
+                      <>
+                        <p className="eyebrow" style={{ marginTop: 'var(--s-3)' }}>{tx('Cannot')}</p>
+                        <ul className="rolelist rolelist--cannot">
+                          {access.cannot.map((x) => (
+                            <li key={x}><Icon name="x" size={13} /> {tx(x)}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {holders.length > 0 && (
+                      <p className="muted" style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--s-3)' }}>
+                        {tx('People: {names}', { names: holders.map((h) => h.name).join(', ') })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

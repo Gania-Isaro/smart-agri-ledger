@@ -56,69 +56,97 @@ const ALL: Permission[] = [
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  // The owner sees and does everything, including people and settings.
   super_admin: ALL,
 
-  cooperative_admin: [
+  // Runs the field: farmers, field work, harvests and who worked each day.
+  // Sees the money but cannot move it.
+  manager: [
     'farmer.view', 'farmer.create', 'farmer.edit', 'farmer.archive',
     'activity.view', 'activity.create', 'activity.edit', 'activity.verify',
     'harvest.view', 'harvest.create', 'harvest.edit', 'harvest.verify',
-    'payment.view', 'payment.create', 'payment.approve', 'payment.cancel',
-    'batch.view', 'batch.create', 'batch.approve',
-    'ledger.view', 'ledger.post',
-    'report.view', 'report.export', 'data.import',
-    'settings.manage', 'audit.view',
     'worker.view', 'worker.manage',
-  ],
-
-  // Records what happens in the field. Deliberately cannot move money.
-  field_officer: [
-    'farmer.view', 'farmer.create', 'farmer.edit',
-    'activity.view', 'activity.create', 'activity.edit',
-    'harvest.view', 'harvest.create', 'harvest.edit',
     'payment.view', 'batch.view', 'ledger.view',
-    'report.view',
-    'worker.view', 'worker.manage',
+    'report.view', 'report.export', 'data.import',
   ],
 
-  // Owns the money. Cannot register farmers or record field work.
+  // Owns the money: payments, payment lists and the ledger. Sees the farmers
+  // and their work but does not record field activity.
   accountant: [
     'farmer.view',
     'activity.view',
     'harvest.view', 'harvest.verify',
+    'worker.view',
     'payment.view', 'payment.create', 'payment.approve', 'payment.settle', 'payment.cancel',
     'batch.view', 'batch.create', 'batch.approve',
     'ledger.view', 'ledger.post', 'ledger.void',
     'report.view', 'report.export', 'audit.view',
-    'worker.view',
-  ],
-
-  viewer: [
-    'farmer.view', 'activity.view', 'harvest.view',
-    'payment.view', 'batch.view', 'ledger.view', 'report.view',
-    'worker.view',
   ],
 };
 
+export const ROLES: Role[] = ['super_admin', 'manager', 'accountant'];
+
 export const ROLE_LABELS: Record<Role, string> = {
-  super_admin: 'Super Admin',
-  cooperative_admin: 'Cooperative Admin',
-  field_officer: 'Field Officer',
+  super_admin: 'Owner',
+  manager: 'Field manager',
   accountant: 'Accountant',
-  viewer: 'Viewer',
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  super_admin: 'Unrestricted access, including user management and voiding ledger entries.',
-  cooperative_admin: 'Runs the cooperative: farmers, activities, harvests, and payment approval.',
-  field_officer: 'Records field activities and harvests. Cannot create or approve payments.',
-  accountant: 'Owns payments, batches and the ledger. Cannot record field activity.',
-  viewer: 'Read-only access to every screen.',
+  super_admin: 'The owner. Sees and does everything, and manages people and settings.',
+  manager: 'Runs the field: farmers, field work, harvests and daily work. Sees the money but cannot move it.',
+  accountant: 'Runs the money: payments, payment lists and the ledger. Sees the farmers but does not record field work.',
+};
+
+/** What each role can and cannot do, in plain words for the Settings page. */
+export const ROLE_ACCESS: Record<Role, { can: string[]; cannot: string[] }> = {
+  super_admin: {
+    can: [
+      'Everything the field manager and the accountant can do',
+      'Add and remove people, and choose their role',
+      'Change settings and delete the cooperative data',
+      'See the full audit trail of who did what',
+    ],
+    cannot: [],
+  },
+  manager: {
+    can: [
+      'Register, edit, archive and delete farmers',
+      'Record field work, harvests and deliveries',
+      'Record daily work with a photo, and set the pay for the day',
+      'Verify harvests',
+      'See balances, payments, the ledger and reports',
+    ],
+    cannot: [
+      'Create, approve or mark payments as paid',
+      'Post or void ledger entries',
+      'Change settings or manage people',
+    ],
+  },
+  accountant: {
+    can: [
+      'Create, approve and record payments, and build payment lists',
+      'Post and void ledger entries',
+      'Verify harvests',
+      'See farmers, daily work and reports, and export them',
+      'See the audit trail',
+    ],
+    cannot: [
+      'Register or edit farmers',
+      'Record field work, harvests or daily work',
+      'Change settings or manage people',
+    ],
+  },
 };
 
 export class PermissionError extends Error {
   readonly permission: Permission;
-  constructor(permission: Permission, role: Role) {
-    super(tx('{role} is not allowed to {action}.', { role: tx(ROLE_LABELS[role]), action: tx(describe(permission)) }));
+  constructor(permission: Permission, role: Role | null) {
+    super(
+      role
+        ? tx('{role} is not allowed to {action}.', { role: tx(ROLE_LABELS[role]), action: tx(describe(permission)) })
+        : tx('Sign in to {action}.', { action: tx(describe(permission)) }),
+    );
     this.name = 'PermissionError';
     this.permission = permission;
   }
@@ -159,6 +187,6 @@ export function canAny(user: User | null, ...permissions: Permission[]): boolean
 
 /** Throwing gate used by every mutating service call. */
 export function assertCan(user: User | null, permission: Permission): asserts user is User {
-  if (!user) throw new PermissionError(permission, 'viewer');
+  if (!user) throw new PermissionError(permission, null);
   if (!can(user, permission)) throw new PermissionError(permission, user.role);
 }

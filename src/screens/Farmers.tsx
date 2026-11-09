@@ -15,7 +15,7 @@ import { useQuery, useLookups, useStore } from '../state/store';
 import { navigate, useRoute } from '../state/router';
 import { DataGrid, type ColumnDef } from '../components/grid/DataGrid';
 import { FilterBar, matchesDate, matchesMulti, matchesNumber, type FilterValues } from '../components/Filters';
-import { Badge, Button, Callout, Field, Input, Select } from '../components/ui/primitives';
+import { Badge, Button, Callout, Field, IconButton, Input, Select } from '../components/ui/primitives';
 import { Modal } from '../components/ui/Modal';
 import { Icon } from '../components/ui/Icon';
 import { ActivityComposer } from '../components/ActivityComposer';
@@ -48,6 +48,8 @@ export function Farmers({ search }: { search: string }) {
   const [filters, setFilters] = useState<FilterValues>({});
   const [composer, setComposer] = useState<{ open: boolean; farmerId?: string }>({ open: false });
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<Farmer | null>(null);
+  const removeFarmer = useRemoveFarmer();
   const [importOpen, setImportOpen] = useState(false);
 
   const onlyActive = route.segments[1] === 'active';
@@ -435,6 +437,27 @@ export function Farmers({ search }: { search: string }) {
         exportValue: (r) => r.season,
         render: (r) => <span className="muted">{r.season}</span>,
       },
+      ...(can('farmer.edit') || can('farmer.archive')
+        ? [
+            {
+              key: 'actions',
+              header: tx('Actions'),
+              width: 96,
+              mobile: 'cell' as const,
+              render: (r: Row) => (
+                // Buttons stop the click so the row does not also open the profile.
+                <span className="row gap-1" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+                  {can('farmer.edit') && (
+                    <IconButton icon="edit" size={16} label={tx('Edit {name}', { name: `${r.firstName} ${r.lastName}` })} onClick={() => setEditing(r)} />
+                  )}
+                  {can('farmer.archive') && (
+                    <IconButton icon="trash" size={16} label={tx('Delete {name}', { name: `${r.firstName} ${r.lastName}` })} onClick={() => void removeFarmer(r)} />
+                  )}
+                </span>
+              ),
+            },
+          ]
+        : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [can, crops, lookups, refresh, toast, user, t, tActivity, tCrop],
@@ -522,6 +545,7 @@ export function Farmers({ search }: { search: string }) {
 
   return (
     <>
+      <FarmersTabs />
       <div className="page-head">
         <div>
           <h1 className="page-title">{coop ? coop.name : onlyActive ? t('nav.farmers.active') : t('screen.farmers.title')}</h1>
@@ -599,6 +623,7 @@ export function Farmers({ search }: { search: string }) {
       />
 
       {addOpen && <FarmerFormModal onClose={() => setAddOpen(false)} defaultCoopId={coopId ?? undefined} />}
+      {editing && <FarmerFormModal farmer={editing} onClose={() => setEditing(null)} />}
       {importOpen && <ImportFarmersModal onClose={() => setImportOpen(false)} />}
       <ActivityComposer
         open={composer.open}
@@ -628,6 +653,79 @@ function uniq(xs: string[]): string[] {
   return [...new Set(xs)].sort();
 }
 
+/* -------------------------------------------------------- section tabs */
+
+/**
+ * Farmers and their daily work are one section: the register and the
+ * attendance sheet are the same people, so they sit side by side.
+ */
+export function FarmersTabs() {
+  const route = useRoute();
+  const { t } = usePrefs();
+  const tabs = [
+    { path: '/farmers', label: t('nav.farmers.all'), on: route.path === '/farmers' },
+    { path: '/farmers/active', label: t('nav.farmers.active'), on: route.path === '/farmers/active' },
+    { path: '/farmers/groups', label: t('nav.farmers.groups'), on: route.path === '/farmers/groups' },
+    { path: '/farmers/work', label: t('nav.work'), on: route.path.startsWith('/farmers/work') },
+  ];
+  return (
+    <div className="tabs tabs--wrap no-print" role="tablist" style={{ marginBottom: 'var(--s-4)' }}>
+      {tabs.map((x) => (
+        <button key={x.path} role="tab" aria-selected={x.on} className={`tab ${x.on ? 'tab--on' : ''}`} onClick={() => navigate(x.path)}>
+          {x.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- delete farmer */
+
+/**
+ * Delete a farmer, or archive them when they already have records.
+ *
+ * A farmer with nothing recorded (a typo, a duplicate) is removed outright.
+ * Anyone with harvests, payments, work days or ledger entries is archived
+ * instead: hidden from every list, history kept, restorable later. Deleting
+ * them would leave payments and totals pointing at nobody.
+ */
+export function useRemoveFarmer() {
+  const { user, confirm, refresh, toast, fail } = useStore();
+  return async (farmer: Farmer): Promise<'deleted' | 'archived' | null> => {
+    const name = `${farmer.firstName} ${farmer.lastName}`;
+    try {
+      const history = await farmerService.historyCount(farmer.id);
+      if (history === 0) {
+        const r = await confirm({
+          title: tx('Delete {name}?', { name }),
+          message: tx('Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.'),
+          confirmLabel: tx('Delete farmer'),
+          tone: 'danger',
+        });
+        if (!r.ok) return null;
+        await farmerService.remove(user!, farmer.id);
+        refresh();
+        toast({ tone: 'success', title: tx('{name} deleted', { name }) });
+        return 'deleted';
+      }
+      const r = await confirm({
+        title: tx('Archive {name}?', { name }),
+        message: tx('{name} already has records in the books ({count}: harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
+        confirmLabel: tx('Archive farmer'),
+        tone: 'danger',
+      });
+      if (!r.ok) return null;
+      await farmerService.archive(user!, farmer.id, true);
+      refresh();
+      toast({ tone: 'success', title: tx('{name} archived', { name }) });
+      return 'archived';
+    } catch (e) {
+      fail(e);
+      return null;
+    }
+  };
+}
+
 /* ------------------------------------------------------------ add farmer */
 
 /** Register a new farmer, or edit one when `farmer` is given. */
@@ -635,10 +733,13 @@ export function FarmerFormModal({
   onClose,
   farmer: existing,
   defaultCoopId,
+  onCreated,
 }: {
   onClose: () => void;
   farmer?: Farmer;
   defaultCoopId?: string;
+  /** Called with the new farmer once registered, e.g. to record their work straight away. */
+  onCreated?: (farmer: Farmer) => void;
 }) {
   const { user, crops, cooperatives, refresh, toast, fail, confirm } = useStore();
   const { t } = usePrefs();
@@ -766,6 +867,7 @@ export function FarmerFormModal({
         action: { label: tx('Open profile'), run: () => navigate(`/farmers/${farmer.id}`) },
       });
       onClose();
+      onCreated?.(farmer);
     } catch (err) {
       const e2 = err as Error & { field?: string };
       if (e2.field) setErrors({ [e2.field]: e2.message });
@@ -1021,6 +1123,7 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
 
   return (
     <>
+      <FarmersTabs />
       <div className="page-head">
         <div>
           <h1 className="page-title">{t('nav.farmers.groups')}</h1>
