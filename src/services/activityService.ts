@@ -423,15 +423,16 @@ export async function refreshFarmerStatus(farmerId: ID): Promise<void> {
   const farmer = await db.farmers.get(farmerId);
   if (!farmer || farmer.archived || farmer.status === 'disputed') return;
 
-  const [txs, harvests, activities] = await Promise.all([
+  const [txs, harvests, activities, workDays] = await Promise.all([
     db.transactions.where('farmerId').equals(farmerId).toArray(),
     db.harvests.where('farmerId').equals(farmerId).toArray(),
     db.activities.where('farmerId').equals(farmerId).toArray(),
+    db.workdays.where('farmerId').equals(farmerId).count(),
   ]);
   const { balance, paid } = summarise(txs);
 
   let status = farmer.status;
-  if (balance > 0 && harvests.length > 0) status = 'awaiting_payment';
+  if (balance > 0 && (harvests.length > 0 || workDays > 0)) status = 'awaiting_payment';
   else if (paid > 0 && balance <= 0) status = 'paid';
   else if (harvests.length > 0) status = 'harvested';
   else if (activities.some((a) => a.category === 'farming')) status = 'in_progress';

@@ -76,6 +76,7 @@ export const NAV: NavEntry[] = [
       { label: 'nav.ledger.adjustments', path: '/ledger/adjustments' },
     ],
   },
+  { label: 'nav.work', path: '/work', icon: 'camera' },
   { label: 'nav.reports', path: '/reports', icon: 'chart' },
   { label: 'nav.settings', path: '/settings', icon: 'settings' },
 ];
@@ -84,6 +85,7 @@ const TABS: { label: string; path: string; icon: IconName }[] = [
   { label: 'nav.overview', path: '/overview', icon: 'home' },
   { label: 'nav.farmers', path: '/farmers', icon: 'users' },
   { label: 'nav.activity', path: '/activities', icon: 'list' },
+  { label: 'nav.workShort', path: '/work', icon: 'camera' },
   { label: 'nav.payments', path: '/payments/outstanding', icon: 'coins' },
   { label: 'nav.ledger', path: '/ledger', icon: 'book' },
 ];

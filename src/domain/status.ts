@@ -85,6 +85,7 @@ export const GRADE_META: Record<QualityGrade, StatusMeta> = {
 
 export const LEDGER_TYPE_LABEL: Record<string, string> = {
   harvest: 'Harvest',
+  work: "Day's work",
   bonus: 'Bonus',
   payment: 'Payment',
   advance: 'Advance',

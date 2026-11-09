@@ -29,6 +29,11 @@ export const POSTING_RULES: Record<
     label: 'Harvest delivery',
     help: 'Produce received from the farmer increases what the cooperative owes.',
   },
+  work: {
+    direction: 'credit',
+    label: "Day's work",
+    help: 'A day of paid work, recorded with a photo, added to what the farmer is owed.',
+  },
   bonus: {
     direction: 'credit',
     label: 'Bonus',
@@ -113,7 +118,7 @@ export function withRunningBalance(transactions: LedgerTransaction[]): LedgerLin
 }
 
 export interface FarmerFinancials {
-  /** Everything the farmer has earned: harvests, bonuses, reimbursements. */
+  /** Everything the farmer has earned: harvests, days of work, bonuses, reimbursements. */
   earned: number;
   /** Money actually paid out (settled payments only). */
   paid: number;
@@ -142,6 +147,7 @@ export function summarise(transactions: LedgerTransaction[]): FarmerFinancials {
     if (!counts(tx)) continue;
     switch (tx.type) {
       case 'harvest':
+      case 'work':
       case 'bonus':
       case 'reimbursement':
         earned += tx.amount;

@@ -27,6 +27,7 @@ import type {
   PaymentBatch,
   SavedView,
   User,
+  WorkDay,
 } from '../domain/types';
 
 /** Monotonic counters behind human-facing codes (FR-001, TXN-...). */
@@ -57,6 +58,7 @@ export class AgriLedgerDB extends Dexie {
   views!: Table<SavedView, string>;
   counters!: Table<Counter, string>;
   settings!: Table<Setting, string>;
+  workdays!: Table<WorkDay, string>;
 
   constructor(name: string) {
     super(name);
@@ -99,6 +101,14 @@ export class AgriLedgerDB extends Dexie {
           return colour === c.colour ? Promise.resolve() : crops.put({ ...c, colour });
         }),
       );
+    });
+
+    /*
+     * v3, daily work register. One row per farmer per day, enforced by the
+     * unique compound index so the same day can never be paid twice.
+     */
+    this.version(3).stores({
+      workdays: 'id, farmerId, date, &[farmerId+date]',
     });
   }
 }

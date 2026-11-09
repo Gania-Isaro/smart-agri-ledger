@@ -335,7 +335,8 @@ kbd {
 
 .tabbar__inner {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   height: var(--tabbar-h);
 }
 
@@ -2228,4 +2229,75 @@ table.grid {
     border-radius: var(--r-lg);
     margin-bottom: var(--s-2);
   }
+}
+
+/* ------------------------------------------------------- daily work register */
+
+.linkbtn {
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.worklist { list-style: none; margin: 0; padding: 0; }
+
+.worklist__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.worklist__row:last-child { border-bottom: 0; }
+.worklist__row--done { background: var(--surface-alt); }
+
+.workthumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  padding: 0;
+}
+
+.workthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.workthumb--sm { width: 40px; height: 40px; }
+button.workthumb:hover { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.weekgrid { width: 100%; min-width: 760px; }
+.weekgrid td, .weekgrid th { text-align: center; vertical-align: middle; }
+.weekgrid td:first-child, .weekgrid th:first-child { text-align: left; }
+.weekgrid__today { background: var(--surface-hover); }
+
+.camera__frame {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+
+.camera__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera__img--mirror { transform: scaleX(-1); }
+
+.camera__empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
 }

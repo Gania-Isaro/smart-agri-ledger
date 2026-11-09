@@ -17,7 +17,7 @@ export type IconName =
   | 'package' | 'star' | 'flask' | 'seedling' | 'shovel' | 'tractor' | 'spray' | 'scissors'
   | 'graduation' | 'map' | 'receipt' | 'bank' | 'gift' | 'hand-coins' | 'file-signature'
   | 'badge-check' | 'dots' | 'arrows' | 'layers' | 'refresh' | 'lock' | 'grid' | 'card'
-  | 'trending-up' | 'wallet' | 'clipboard' | 'zap' | 'inbox' | 'sun' | 'moon' | 'globe';
+  | 'trending-up' | 'wallet' | 'clipboard' | 'zap' | 'inbox' | 'sun' | 'moon' | 'globe' | 'camera';
 
 const P: Record<IconName, string> = {
   home: 'M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5M9.5 20v-6h5v6',
@@ -103,6 +103,7 @@ const P: Record<IconName, string> = {
   wallet: 'M3.5 7.5A2 2 0 0 1 5.5 5.5h11a2 2 0 0 1 2 2M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-15ZM17 13.5h.01',
   clipboard: 'M9 4.5H7.5a1.8 1.8 0 0 0-1.8 1.8v12.4A1.8 1.8 0 0 0 7.5 20.5h9a1.8 1.8 0 0 0 1.8-1.8V6.3A1.8 1.8 0 0 0 16.5 4.5H15M9 4.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4.5v1.2H9V4.5ZM9 12h6M9 15.5h4',
   zap: 'M13.5 3 4.5 14h6.5l-1 7 9-11h-6.5l1-7Z',
+  camera: 'M3.5 8.5a2 2 0 0 1 2-2h2.3l1.5-2.5h5.4l1.5 2.5h2.3a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V8.5ZM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
   inbox: 'M3.5 13.5h4l1.5 3h6l1.5-3h4M3.5 13.5 6.2 5a1.8 1.8 0 0 1 1.7-1.2h8.2A1.8 1.8 0 0 1 17.8 5l2.7 8.5v5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-5Z',
   sun: 'M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9ZM12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
   moon: 'M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8Z',

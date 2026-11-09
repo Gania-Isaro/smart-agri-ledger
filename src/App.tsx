@@ -21,6 +21,7 @@ import { Activities } from './screens/Activities';
 import { Production } from './screens/Production';
 import { Payments } from './screens/Payments';
 import { Ledger } from './screens/Ledger';
+import { Work } from './screens/Work';
 import { signedAmount } from './domain/ledger';
 import { Reports } from './screens/Reports';
 import { Settings } from './screens/Settings';
@@ -165,6 +166,9 @@ function Screen({
 
     case 'ledger':
       return <Ledger search={search} />;
+
+    case 'work':
+      return <Work />;
 
     case 'reports':
       return <Reports />;

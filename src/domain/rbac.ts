@@ -38,7 +38,9 @@ export type Permission =
   | 'data.import'
   | 'settings.manage'
   | 'user.manage'
-  | 'audit.view';
+  | 'audit.view'
+  | 'worker.view'
+  | 'worker.manage';
 
 const ALL: Permission[] = [
   'farmer.view', 'farmer.create', 'farmer.edit', 'farmer.archive',
@@ -49,6 +51,7 @@ const ALL: Permission[] = [
   'ledger.view', 'ledger.post', 'ledger.void',
   'report.view', 'report.export', 'data.import',
   'settings.manage', 'user.manage', 'audit.view',
+  'worker.view', 'worker.manage',
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -63,6 +66,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ledger.view', 'ledger.post',
     'report.view', 'report.export', 'data.import',
     'settings.manage', 'audit.view',
+    'worker.view', 'worker.manage',
   ],
 
   // Records what happens in the field. Deliberately cannot move money.
@@ -72,6 +76,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'harvest.view', 'harvest.create', 'harvest.edit',
     'payment.view', 'batch.view', 'ledger.view',
     'report.view',
+    'worker.view', 'worker.manage',
   ],
 
   // Owns the money. Cannot register farmers or record field work.
@@ -83,11 +88,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'batch.view', 'batch.create', 'batch.approve',
     'ledger.view', 'ledger.post', 'ledger.void',
     'report.view', 'report.export', 'audit.view',
+    'worker.view',
   ],
 
   viewer: [
     'farmer.view', 'activity.view', 'harvest.view',
     'payment.view', 'batch.view', 'ledger.view', 'report.view',
+    'worker.view',
   ],
 };
 
@@ -129,6 +136,7 @@ const VERBS: Partial<Record<Permission, string>> = {
   'harvest.verify': 'verify harvests',
   'user.manage': 'manage users',
   'data.import': 'import data',
+  'worker.manage': 'record work days',
 };
 
 function describe(permission: Permission): string {

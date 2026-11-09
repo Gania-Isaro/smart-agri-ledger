@@ -250,6 +250,7 @@ export interface PaymentBatch {
 
 export type LedgerTxType =
   | 'harvest'
+  | 'work'
   | 'bonus'
   | 'payment'
   | 'advance'
@@ -352,4 +353,29 @@ export interface SavedView {
   screen: string;
   state: unknown;
   createdAt: ISODateTime;
+}
+
+/* -------------------------------------------------------------- work days */
+
+/**
+ * One farmer present on one day of paid work. The photo is taken on the spot
+ * by the manager's camera, so the owner can see who was actually there. Each
+ * day also posts a "work" credit to the farmer's ledger, so the money owed
+ * shows up in their balance and in payments like any other credit.
+ */
+export interface WorkDay {
+  id: ID;
+  farmerId: ID;
+  date: ISODate;
+  /** Whole RWF owed for this day. */
+  amount: number;
+  /** JPEG data URL, taken live from the camera, with the time stamped on it. */
+  photo: string;
+  /** When the photo was taken, from the device clock. */
+  photoTakenAt: ISODateTime;
+  notes?: string;
+  /** The ledger credit this day posted. */
+  transactionId?: ID;
+  recordedBy: ID;
+  recordedAt: ISODateTime;
 }

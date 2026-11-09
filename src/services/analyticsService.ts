@@ -127,7 +127,7 @@ export async function moneyOverTime(months = 6): Promise<Series[]> {
     const key = monthKey(tx.date);
     const entry = map.get(key) ?? { earned: 0, paid: 0 };
     // Same definition of "earned" as the farmer summary, so the chart agrees with the totals.
-    if (tx.type === 'harvest' || tx.type === 'bonus' || tx.type === 'reimbursement' || (tx.type === 'adjustment' && tx.direction === 'credit')) entry.earned += tx.amount;
+    if (tx.type === 'harvest' || tx.type === 'work' || tx.type === 'bonus' || tx.type === 'reimbursement' || (tx.type === 'adjustment' && tx.direction === 'credit')) entry.earned += tx.amount;
     if (tx.type === 'payment') entry.paid += tx.amount;
     map.set(key, entry);
   }
