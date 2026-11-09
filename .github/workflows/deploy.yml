@@ -32,7 +32,12 @@ jobs:
       # Typecheck before publishing: a red build should never reach the URL.
       - run: npx tsc --noEmit
 
+      # Online accounts. The publishable key is designed to be public: what each
+      # person can read or write is decided by the security rules in Supabase.
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://yrdirrudlptmvkhbdeqt.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_s5pYeMNcWlKoQoFV2M1gdg_GxlnAB-9
 
       - uses: actions/configure-pages@v5
 
