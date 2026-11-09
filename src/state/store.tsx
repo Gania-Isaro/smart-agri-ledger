@@ -32,6 +32,9 @@ import type {
 } from '../domain/types';
 import { can, type Permission } from '../domain/rbac';
 import { catalog } from '../services/activityService';
+import { cloudEnabled } from '../cloud/client';
+import * as cloud from '../cloud/account';
+import { onSyncStatus, startSync, stopSync, syncNow, type SyncStatus } from '../cloud/sync';
 
 import { cropLabel, tx } from '../i18n/tx';
 /* ---------------------------------------------------------------- toasts */
@@ -85,6 +88,18 @@ interface Store {
 
   signIn: (email: string, pin: string) => Promise<void>;
   signUp: (input: auth.SignUpInput) => Promise<auth.SignUpResult>;
+
+  /** Online mode: set up when the app is built with Supabase settings. */
+  cloudEnabled: boolean;
+  /** The online cooperative this phone is signed in to, if any. */
+  membership: cloud.Membership | null;
+  sync: SyncStatus | null;
+  cloudSignIn: (email: string, password: string) => Promise<void>;
+  cloudCreate: (input: { name: string; email: string; password: string; cooperativeName: string }) => Promise<cloud.SignUpResult>;
+  cloudJoin: (input: { name: string; email: string; password: string; code: string }) => Promise<cloud.SignUpResult>;
+  syncNow: () => Promise<void>;
+  /** Updates the cached membership, for example after a new invite code. */
+  setMembership: (m: cloud.Membership) => void;
   resetPin: (email: string, code: string, newPin: string) => Promise<auth.SignUpResult>;
   signOut: () => void;
   refresh: () => void;
@@ -112,6 +127,44 @@ export function useStore(): Store {
 }
 
 const SESSION_KEY = 'agri.session';
+/** Session marker for an online cooperative. */
+const CLOUD_SESSION = 'cloud';
+/** The online cooperative, remembered so the app opens with no signal. */
+const MEMBERSHIP_KEY = 'agri.cloud.membership';
+
+function readMembership(): cloud.Membership | null {
+  try {
+    return JSON.parse(localStorage.getItem(MEMBERSHIP_KEY) ?? 'null') as cloud.Membership | null;
+  } catch {
+    return null;
+  }
+}
+
+function writeMembership(m: cloud.Membership | null): void {
+  try {
+    if (m) localStorage.setItem(MEMBERSHIP_KEY, JSON.stringify(m));
+    else localStorage.removeItem(MEMBERSHIP_KEY);
+  } catch {
+    /* the person signs in again next time */
+  }
+}
+
+/** A local account record standing in for an online cooperative. */
+function cloudAccount(m: cloud.Membership): Account {
+  return {
+    id: `cloud_${m.coopId}`,
+    name: m.userName,
+    email: m.email,
+    cooperativeName: m.coopName,
+    pinHash: '',
+    pinSalt: '',
+    recoveryHash: '',
+    recoverySalt: '',
+    recoveryEmail: m.email,
+    isDemo: false,
+    createdAt: new Date().toISOString(),
+  };
+}
 
 /*
  * The session lives in localStorage, not in a database. It has to be readable
@@ -149,6 +202,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(navigator.onLine);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmState, setConfirmState] = useState<(ConfirmRequest & { resolve: (r: ConfirmResult) => void }) | null>(null);
+  const [membership, setMembershipState] = useState<cloud.Membership | null>(null);
+  const [sync, setSync] = useState<SyncStatus | null>(null);
 
   const timers = useRef(new Map<string, number>());
 
@@ -166,10 +221,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       const sessionId = readSession();
-      const restored = sessionId ? await auth.accountsDb.accounts.get(sessionId) : undefined;
-
-      if (restored) {
-        await activate(restored);
+      if (sessionId === CLOUD_SESSION && cloudEnabled) {
+        // Open straight from the remembered cooperative so the app works with
+        // no signal, then confirm the membership in the background.
+        const cached = readMembership();
+        if (cached) {
+          await activateCloud(cached);
+          void cloud.restore().then((fresh) => {
+            if (fresh) {
+              writeMembership(fresh);
+              setMembershipState(fresh);
+            }
+          });
+        }
+      } else {
+        const restored = sessionId ? await auth.accountsDb.accounts.get(sessionId) : undefined;
+        if (restored) {
+          await activate(restored);
+        }
       }
       if (!cancelled) setReady(true);
     })().catch((e) => {
@@ -187,14 +256,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * prepared, then load the reference data the screens need. Everything after
    * this reads through the `db` binding, which now refers to this account.
    */
-  const activate = useCallback(async (acc: Account) => {
-    openAccountDatabase(acc.id);
+  const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean }) => {
+    openAccountDatabase(acc.id, { cloud: person?.cloud });
     await prepareAccount(acc.id, {
       cooperativeName: acc.cooperativeName,
-      ownerId: acc.id,
+      ownerId: person?.id ?? acc.id,
       ownerName: acc.name,
       ownerEmail: acc.email,
     });
+    if (person) {
+      // Each person on an online cooperative has their own user record, with
+      // the role the cooperative gave them.
+      const existing = await db.users.get(person.id);
+      if (!existing || existing.role !== person.role || existing.name !== acc.name) {
+        await db.users.put({
+          id: person.id,
+          name: acc.name,
+          email: acc.email,
+          pin: '',
+          role: person.role,
+          cooperativeId: 'coop_own',
+          active: true,
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+        });
+      }
+    }
 
     const [u, c, co, types, notifs] = await Promise.all([
       db.users.toArray(),
@@ -210,9 +296,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setActivityTypes(types);
     setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
     setAccount(acc);
-    setUser(u.find((x) => x.id === acc.id) ?? null);
+    setUser((await db.users.get(person?.id ?? acc.id)) ?? u.find((x) => x.id === acc.id) ?? null);
+    setUsers(await db.users.toArray());
     setRevision((r) => r + 1);
   }, []);
+
+  /**
+   * Open an online cooperative: download what the other phones recorded,
+   * then open it like any other account.
+   */
+  const activateCloud = useCallback(
+    async (m: cloud.Membership) => {
+      const acc = cloudAccount(m);
+      openAccountDatabase(acc.id, { cloud: true });
+      setMembershipState(m);
+      await startSync(db, m.coopId, () => {
+        // Records arrived from another phone: reload reference data and screens.
+        void Promise.all([db.users.toArray(), db.crops.toArray(), db.cooperatives.toArray()]).then(([u, c, co]) => {
+          setUsers(u);
+          setCrops(c);
+          setCooperatives(co);
+          setRevision((r) => r + 1);
+        });
+      });
+      const role: User['role'] = m.role === 'owner' ? 'super_admin' : m.role === 'accountant' ? 'accountant' : 'manager';
+      await activate(acc, { id: m.userId, role, cloud: true });
+    },
+    [activate],
+  );
+
+  useEffect(() => (membership ? onSyncStatus(setSync) : undefined), [membership]);
 
   /* ---- reference data follows writes ---- */
   useEffect(() => {
@@ -270,7 +383,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         err?.name === 'PermissionError' ||
         err?.name === 'ConfirmationRequired' ||
         err?.constructor?.name === 'LedgerError' ||
-        err?.constructor?.name === 'MoneyError';
+        err?.constructor?.name === 'MoneyError' ||
+        err instanceof cloud.CloudError;
       if (!known) console.error(e);
       toast({
         tone: 'error',
@@ -316,7 +430,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return auth.resetPin(email, code, newPin);
   }, []);
 
+  const enterCloud = useCallback(
+    async (m: cloud.Membership) => {
+      writeMembership(m);
+      writeSession(CLOUD_SESSION);
+      await activateCloud(m);
+    },
+    [activateCloud],
+  );
+
+  const cloudSignIn = useCallback<Store['cloudSignIn']>(
+    async (email, password) => {
+      await enterCloud(await cloud.signIn(email, password));
+    },
+    [enterCloud],
+  );
+
+  const cloudCreate = useCallback<Store['cloudCreate']>(
+    async (input) => {
+      const r = await cloud.createCooperative(input);
+      if (r.membership) await enterCloud(r.membership);
+      return r;
+    },
+    [enterCloud],
+  );
+
+  const cloudJoin = useCallback<Store['cloudJoin']>(
+    async (input) => {
+      const r = await cloud.joinCooperative(input);
+      if (r.membership) await enterCloud(r.membership);
+      return r;
+    },
+    [enterCloud],
+  );
+
+  const setMembership = useCallback((m: cloud.Membership) => {
+    writeMembership(m);
+    setMembershipState(m);
+  }, []);
+
   const signOut = useCallback(() => {
+    if (membership) {
+      // Upload anything still waiting before leaving, then end the online session.
+      void syncNow().finally(() => {
+        stopSync();
+        void cloud.signOut();
+      });
+      writeMembership(null);
+      setMembershipState(null);
+      setSync(null);
+    }
     writeSession(null);
     setUser(null);
     setAccount(null);
@@ -327,7 +490,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Release the handle so the next account opens a clean connection.
     closeAccountDatabase();
     window.location.hash = '#/overview';
-  }, []);
+  }, [membership]);
 
   const markNotificationsRead = useCallback(async () => {
     const unread = notifications.filter((n) => !n.read);
@@ -351,6 +514,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       revision,
       signIn,
       signUp,
+      cloudEnabled,
+      membership,
+      sync,
+      cloudSignIn,
+      cloudCreate,
+      cloudJoin,
+      syncNow,
+      setMembership,
       resetPin: resetPinFn,
       signOut,
       refresh,
@@ -367,6 +538,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [
       ready, user, account, users, crops, cooperatives, activityTypes, notifications, online, revision,
       signIn, signUp, resetPinFn, signOut, refresh, toasts, toast, dismissToast, fail, confirm,
+      membership, sync, cloudSignIn, cloudCreate, cloudJoin, setMembership,
       confirmState, closeConfirm, markNotificationsRead,
     ],
   );

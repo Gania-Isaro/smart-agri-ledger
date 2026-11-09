@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false || tsc -b"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "dexie": "^4.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

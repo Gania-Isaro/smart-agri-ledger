@@ -12,6 +12,7 @@
 
 import Dexie, { type Table } from 'dexie';
 import { dataDbName } from './accounts';
+import { syncMiddleware } from '../cloud/sync';
 import type {
   Activity,
   ActivityType,
@@ -126,11 +127,13 @@ export class AgriLedgerDB extends Dexie {
 export let db = new AgriLedgerDB('smart_agri_data_none');
 
 /** Point the app at one account's data. Safe to call repeatedly. */
-export function openAccountDatabase(accountId: string): AgriLedgerDB {
+export function openAccountDatabase(accountId: string, opts: { cloud?: boolean } = {}): AgriLedgerDB {
   const name = dataDbName(accountId);
   if (db.name === name) return db;
   db.close();
   db = new AgriLedgerDB(name);
+  // Online cooperatives note every change so it can be uploaded.
+  if (opts.cloud) db.use(syncMiddleware());
   return db;
 }
 

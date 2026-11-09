@@ -14,13 +14,15 @@
  * sent an email is worse than one that admits it cannot.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrandMark, Icon } from '../components/ui/Icon';
 import { Button, Callout, Field, Input } from '../components/ui/primitives';
 import { useStore } from '../state/store';
 import { usePrefs } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 import { DEMO_EMAIL, DEMO_PIN } from '../db/accounts';
+import { CloudLogin } from './CloudLogin';
+import { supabase } from '../cloud/client';
 
 import { tx } from '../i18n/tx';
 type Mode = 'signin' | 'signup' | 'forgot';
@@ -30,6 +32,11 @@ export function Login() {
   const [mode, setMode] = useState<Mode>('signin');
   /** Set once an account is created or a PIN reset; cleared on continue. */
   const [issued, setIssued] = useState<{ code: string; email: string; pin: string } | null>(null);
+  const { cloudEnabled } = useStore();
+  /* Online sign-in comes first when the app is set up for it; the
+     phone-only accounts and the demo stay one tap away. */
+  const [where, setWhere] = useState<'online' | 'device'>(cloudEnabled ? 'online' : 'device');
+  const recovering = useRecoveryLink();
 
   return (
     <div className="login">
@@ -61,7 +68,11 @@ export function Login() {
           </div>
         </div>
 
-        {issued ? (
+        {recovering ? (
+          <NewPasswordForm />
+        ) : where === 'online' ? (
+          <CloudLogin onUseDevice={() => setWhere('device')} />
+        ) : issued ? (
           <RecoveryCodeShown issued={issued} onDone={() => setIssued(null)} />
         ) : (
           <>
@@ -87,10 +98,64 @@ export function Login() {
             {mode === 'signin' && <SignIn onForgot={() => setMode('forgot')} />}
             {mode === 'signup' && <SignUp onIssued={setIssued} />}
             {mode === 'forgot' && <Forgot onBack={() => setMode('signin')} onIssued={setIssued} />}
+            {cloudEnabled && (
+              <Button variant="ghost" block onClick={() => setWhere('online')} style={{ marginTop: 'var(--s-4)' }}>
+                {tx('Use the online account (owner, field manager, accountant)')}
+              </Button>
+            )}
           </>
         )}
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------- password reset link */
+
+/** True after someone opened the "set a new password" link from their email. */
+function useRecoveryLink(): boolean {
+  const { cloudEnabled } = useStore();
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!cloudEnabled) return;
+    const { data } = supabase().auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setOn(true);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [cloudEnabled]);
+  return on;
+}
+
+function NewPasswordForm() {
+  const { cloudSignIn, toast, fail } = useStore();
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const sb = supabase();
+      const { data, error } = await sb.auth.updateUser({ password });
+      if (error) throw new Error(error.message);
+      const email = data.user?.email ?? '';
+      await sb.auth.signOut();
+      await cloudSignIn(email, password);
+      toast({ tone: 'success', title: tx('New password saved') });
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="stack gap-4" onSubmit={submit}>
+      <Field label={tx('New password')} required help={tx('At least 6 characters.')}>
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+      </Field>
+      <Button variant="primary" type="submit" block loading={busy}>
+        {tx('Save the new password')}
+      </Button>
+    </form>
   );
 }
 
