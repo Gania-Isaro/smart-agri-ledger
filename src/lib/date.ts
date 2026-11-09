@@ -1,6 +1,9 @@
+import { translated, tx, txn } from '../i18n/tx';
+
 /** Date helpers. Everything the app stores is an ISO 'YYYY-MM-DD' string. */
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Read through translated() so month names follow the language in use.
+const MONTHS = translated(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
 
 export function today(): string {
   return toISODate(new Date());
@@ -51,16 +54,17 @@ export function timeAgo(isoStamp: string): string {
   const then = new Date(isoStamp).getTime();
   if (Number.isNaN(then)) return '-';
   const secs = Math.floor((Date.now() - then) / 1000);
-  if (secs < 60) return 'just now';
+  if (secs < 60) return tx('just now');
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return tx('{count} min ago', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return txn(hours, '{count} hour ago', '{count} hours ago');
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  if (days < 30) return txn(days, '{count} day ago', '{count} days ago');
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
-  return `${Math.floor(months / 12)} year${months < 24 ? '' : 's'} ago`;
+  if (months < 12) return txn(months, '{count} month ago', '{count} months ago');
+  const years = Math.floor(months / 12);
+  return txn(years, '{count} year ago', '{count} years ago');
 }
 
 export function addDays(iso: string, days: number): string {

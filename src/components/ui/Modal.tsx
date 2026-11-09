@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 
+import { tx } from '../../i18n/tx';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -101,7 +102,7 @@ export function Modal({
             <h2 className="modal__title">{title}</h2>
             {subtitle && <p className="modal__sub">{subtitle}</p>}
           </div>
-          <button className="iconbtn" onClick={onClose} aria-label="Close" data-close>
+          <button className="iconbtn" onClick={onClose} aria-label={tx('Close')} data-close>
             <Icon name="x" size={18} />
           </button>
         </div>

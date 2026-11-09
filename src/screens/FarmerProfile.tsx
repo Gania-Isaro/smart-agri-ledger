@@ -28,6 +28,9 @@ import type { IconName } from '../components/ui/Icon';
 import { usePrefs } from '../i18n';
 import { FarmerFormModal } from './Farmers';
 
+import { tx as T, txLang } from '../i18n/tx';
+import { FIELD_LABELS_RW } from '../i18n/strings';
+import { txr } from '../i18n/rich';
 const TABS = ['Overview', 'Activities', 'Harvests', 'Payments', 'Ledger', 'Documents'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -83,9 +86,9 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
     return (
       <EmptyState
         icon="user"
-        title="Farmer not found"
-        message="This farmer may have been removed from the register."
-        action={<Button onClick={() => navigate('/farmers')}>Back to farmers</Button>}
+        title={T('Farmer not found')}
+        message={T('This farmer may have been removed from the register.')}
+        action={<Button onClick={() => navigate('/farmers')}>{T('Back to farmers')}</Button>}
       />
     );
   }
@@ -100,28 +103,28 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
       const history = await farmerService.historyCount(farmer.id);
       if (history === 0) {
         const r = await confirm({
-          title: `Delete ${name}?`,
-          message: 'Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.',
-          confirmLabel: 'Delete farmer',
+          title: T('Delete {name}?', { name }),
+          message: T('Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.'),
+          confirmLabel: T('Delete farmer'),
           tone: 'danger',
         });
         if (!r.ok) return;
         await farmerService.remove(user!, farmer.id);
         refresh();
-        toast({ tone: 'success', title: `${name} deleted` });
+        toast({ tone: 'success', title: T('{name} deleted', { name }) });
         navigate('/farmers');
         return;
       }
       const r = await confirm({
-        title: `Archive ${name}?`,
-        message: `${name} has ${history} record${history === 1 ? '' : 's'} in the books (harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.`,
-        confirmLabel: 'Archive farmer',
+        title: T('Archive {name}?', { name }),
+        message: T('{name} already has records in the books ({count}: harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
+        confirmLabel: T('Archive farmer'),
         tone: 'danger',
       });
       if (!r.ok) return;
       await farmerService.archive(user!, farmer.id, true);
       refresh();
-      toast({ tone: 'success', title: `${name} archived` });
+      toast({ tone: 'success', title: T('{name} archived', { name }) });
     } catch (e) {
       fail(e);
     }
@@ -131,7 +134,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
     try {
       await farmerService.archive(user!, farmer.id, false);
       refresh();
-      toast({ tone: 'success', title: `${name} restored` });
+      toast({ tone: 'success', title: T('{name} restored', { name }) });
     } catch (e) {
       fail(e);
     }
@@ -142,7 +145,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
       {editOpen && <FarmerFormModal farmer={farmer} onClose={() => setEditOpen(false)} />}
       {farmer.archived && (
         <Callout tone="warn">
-          {name} is archived. They are hidden from lists and cannot get new records until restored.
+          {T('{name} is archived. They are hidden from lists and cannot get new records until restored.', { name })}
         </Callout>
       )}
       <button className="btn btn--ghost btn--sm no-print" onClick={() => navigate('/farmers')} style={{ marginBottom: 'var(--s-3)' }}>
@@ -157,14 +160,14 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               {farmer.firstName} {farmer.lastName}
             </h1>
             <p className="page-sub">
-              <span className="grid__code">{farmer.code}</span> · {farmer.village}, {farmer.district} ·{' '}
-              {lookups.cropName(farmer.primaryCropId)} farmer
+              <span className="grid__code">{farmer.code}</span> · {[farmer.village, farmer.district].filter(Boolean).join(', ')} ·{' '}
+              {T('{crop} farmer', { crop: lookups.cropName(farmer.primaryCropId) })}
             </p>
             <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-2)' }}>
               <Badge meta={FARMER_STATUS[farmer.status]} />
               <span className="chip">
                 <Icon name="phone" size={12} />
-                {farmer.phone || 'No phone'}
+                {farmer.phone || T('No phone')}
               </span>
               <span className="chip">
                 <Icon name="users" size={12} />
@@ -177,17 +180,17 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
         <div className="row gap-2 wrap no-print">
           {can('farmer.edit') && !farmer.archived && (
             <Button icon="edit" onClick={() => setEditOpen(true)}>
-              Edit
+              {T('Edit')}
             </Button>
           )}
           {can('farmer.archive') &&
             (farmer.archived ? (
               <Button icon="undo" onClick={restore}>
-                Restore
+                {T('Restore')}
               </Button>
             ) : (
               <Button variant="quiet-danger" icon="trash" onClick={deleteFarmer}>
-                Delete
+                {T('Delete')}
               </Button>
             ))}
           <Button icon="printer" onClick={() => window.print()}>
@@ -255,37 +258,37 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                     <dd>{farmer.idNumber || '-'}</dd>
                   </div>
                   <div>
-                    <dt>Farm size</dt>
-                    <dd>{farmer.farmSizeHa} hectares</dd>
+                    <dt>{T('Farm size')}</dt>
+                    <dd>{T('{count} ha', { count: farmer.farmSizeHa })}</dd>
                   </div>
                   <div>
-                    <dt>Plots</dt>
+                    <dt>{T('Plots')}</dt>
                     <dd>{farmer.plots}</dd>
                   </div>
                   <div>
-                    <dt>Primary crop</dt>
+                    <dt>{T('Primary crop')}</dt>
                     <dd>{lookups.cropName(farmer.primaryCropId)}</dd>
                   </div>
                   <div>
-                    <dt>All crops</dt>
+                    <dt>{T('All crops')}</dt>
                     <dd>{farmer.crops.map((c) => lookups.cropName(c)).join(', ')}</dd>
                   </div>
                   <div>
-                    <dt>Season</dt>
+                    <dt>{T('Season')}</dt>
                     <dd>{farmer.season}</dd>
                   </div>
                   <div>
-                    <dt>Registered</dt>
+                    <dt>{T('Registered')}</dt>
                     <dd>{formatDate(farmer.registeredAt)}</dd>
                   </div>
                   <div>
-                    <dt>Location</dt>
+                    <dt>{T('Location')}</dt>
                     <dd>
-                      {farmer.village}, {farmer.cell}, {farmer.sector}, {farmer.district}
+                      {[farmer.village, farmer.cell, farmer.sector, farmer.district].filter(Boolean).join(', ')}
                     </dd>
                   </div>
                   <div>
-                    <dt>Deliveries</dt>
+                    <dt>{T('Deliveries')}</dt>
                     <dd>
                       {formatNumber(d.harvests.length)} · {formatNumber(totalQuantity)} {d.harvests[0]?.unit ?? 'KG'}
                     </dd>
@@ -306,7 +309,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               <div className="card__head">
                 <h2 className="section-title">{tr('prof.recentHistory')}</h2>
                 <Button size="sm" variant="ghost" onClick={() => setTab('Activities')} iconRight="chevron-right">
-                  All activity
+                  {T('All activity')}
                 </Button>
               </div>
               <div className="card__body">
@@ -317,9 +320,9 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
             {d.trail.length > 0 && (
               <section className="card">
                 <div className="card__head">
-                  <h2 className="section-title">Record changes</h2>
+                  <h2 className="section-title">{T('Record changes')}</h2>
                   <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-                    Who changed what on this farmer
+                    {T('Who changed what on this farmer')}
                   </span>
                 </div>
                 <div className="card__body">
@@ -350,9 +353,9 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               {d.activities.length === 0 ? (
                 <EmptyState
                   icon="list"
-                  title="No activity recorded yet"
-                  message="Use the + button to record what this farmer has been doing."
-                  action={<Button variant="primary" icon="plus" onClick={() => setComposer(true)}>Record activity</Button>}
+                  title={T('No activity recorded yet')}
+                  message={T('Use the + button to record what this farmer has been doing.')}
+                  action={<Button variant="primary" icon="plus" onClick={() => setComposer(true)}>{T('Record activity')}</Button>}
                 />
               ) : (
                 <Timeline activities={d.activities} lookups={lookups} />
@@ -364,7 +367,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
         {tab === 'Harvests' && (
           <section className="panel">
             {d.harvests.length === 0 ? (
-              <EmptyState icon="basket" title="No deliveries yet" message="This farmer has not delivered any produce this season." />
+              <EmptyState icon="basket" title={T('No deliveries yet')} message={T('This farmer has not delivered any produce this season.')} />
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table className="grid" style={{ width: '100%' }}>
@@ -402,20 +405,21 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
           <div className="stack gap-4">
             {financials.balance > 0 && can('payment.create') && (
               <Callout tone="info" icon="coins">
-                <b>{formatMoney(financials.balance)}</b> is still owed to this farmer. Use{' '}
-                <b>Record activity → Farmer payment</b> to settle it. The amount is checked against this balance before
-                it posts.
+                {txr('{amount} is still owed to this farmer. Use {action} to settle it. The amount is checked against this balance before it posts.', {
+                  amount: <b>{formatMoney(financials.balance)}</b>,
+                  action: <b>{T('Record activity → Farmer payment')}</b>,
+                })}
               </Callout>
             )}
             <section className="panel">
               {d.payments.length === 0 ? (
-                <EmptyState icon="coins" title="No payments yet" message="Nothing has been paid to this farmer." />
+                <EmptyState icon="coins" title={T('No payments yet')} message={T('Nothing has been paid to this farmer.')} />
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table className="grid" style={{ width: '100%' }}>
                     <thead>
                       <tr>
-                        {['Date', 'Reference', 'Amount', 'Method', 'Reason', 'Status', 'Approved by'].map((h) => (
+                        {[T('Date'), T('Reference'), T('Amount'), T('Method'), T('Reason'), T('Status'), T('Approved by')].map((h) => (
                           <th key={h} className={h === 'Amount' ? 'num' : ''}>
                             <span className="th">{h}</span>
                           </th>
@@ -450,24 +454,25 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               can('ledger.void')
                 ? async (tx) => {
                     const answer = await confirm({
-                      title: `Void ${tx.code}?`,
+                      title: T('Void {code}?', { code: tx.code }),
                       message: (
                         <>
                           <p>
-                            This does not delete the entry. It stays on the account marked as voided, and a reversing
-                            entry of <b>{formatMoney(tx.amount)}</b> is appended so the balance corrects itself.
+                            {txr('This does not delete the entry. It stays on the account marked as voided, with a matching reversal of {amount} next to it. Neither counts toward the balance, so it goes back to what it was before this entry.', {
+                              amount: <b>{formatMoney(tx.amount)}</b>,
+                            })}
                           </p>
                         </>
                       ),
-                      confirmLabel: 'Void and reverse',
+                      confirmLabel: T('Void and reverse'),
                       tone: 'danger',
-                      reasonLabel: 'Reason for voiding',
+                      reasonLabel: T('Reason for voiding'),
                     });
                     if (!answer.ok || !user) return;
                     try {
                       await ledgerService.voidTransaction(user, tx.id, answer.reason ?? '');
                       refresh();
-                      toast({ tone: 'success', title: `${tx.code} voided`, message: 'A reversing entry was added to the ledger.' });
+                      toast({ tone: 'success', title: T('{code} voided', { code: tx.code }), message: T('A reversing entry was added to the ledger.') });
                     } catch (e) {
                       fail(e);
                     }
@@ -483,8 +488,8 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
               {d.documents.length === 0 ? (
                 <EmptyState
                   icon="file"
-                  title="No documents yet"
-                  message="Photos and documents attached to activities show up here, and stay available offline."
+                  title={T('No documents yet')}
+                  message={T('Photos and documents attached to activities show up here, and stay available offline.')}
                 />
               ) : (
                 <div className="reportlist">
@@ -550,14 +555,14 @@ function Timeline({
                 </span>
               </div>
               <div className="tl__meta">
-                {formatDate(a.date)} · recorded by {lookups.userName(a.createdBy)}
+                {T('{date} · recorded by {user}', { date: formatDate(a.date), user: lookups.userName(a.createdBy) })}
                 {a.cropId ? ` · ${lookups.cropName(a.cropId)}` : ''}
               </div>
               {entries.length > 0 && (
                 <div className="tl__data">
                   {entries.slice(0, 5).map(([k, v]) => (
                     <span key={k}>
-                      {humanise(k)}: <b>{formatValue(k, v)}</b>
+                      {fieldLabel(k)}: <b>{formatValue(k, v)}</b>
                     </span>
                   ))}
                 </div>
@@ -573,6 +578,11 @@ function Timeline({
       })}
     </div>
   );
+}
+
+/** Label for an activity form field, in the language in use. */
+function fieldLabel(key: string): string {
+  return txLang() === 'rw' ? FIELD_LABELS_RW[key] ?? T(humanise(key)) : humanise(key);
 }
 
 function humanise(key: string): string {

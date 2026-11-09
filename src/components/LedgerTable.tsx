@@ -17,12 +17,13 @@ import { formatDate, formatDateTime } from '../lib/date';
 import { exportCSV } from '../lib/csv';
 import type { LedgerLine } from '../domain/types';
 
+import { tx as T } from '../i18n/tx';
 export function LedgerTable({
   lines,
   showFarmer = true,
   farmerNames,
   onVoid,
-  emptyMessage = 'No transactions on this account yet.',
+  emptyMessage = T('No transactions on this account yet.'),
 }: {
   lines: LedgerLine[];
   showFarmer?: boolean;
@@ -34,7 +35,7 @@ export function LedgerTable({
   const lookups = useLookups();
 
   if (lines.length === 0) {
-    return <EmptyState icon="book" title="Nothing posted yet" message={emptyMessage} />;
+    return <EmptyState icon="book" title={T('Nothing posted yet')} message={emptyMessage} />;
   }
 
   const closing = lines[lines.length - 1]?.balanceAfter ?? 0;
@@ -44,32 +45,32 @@ export function LedgerTable({
       `ledger-${new Date().toISOString().slice(0, 10)}.csv`,
       lines,
       [
-        { key: 'date', header: 'Date', value: (l) => l.date },
-        { key: 'code', header: 'Transaction', value: (l) => l.code },
-        { key: 'type', header: 'Type', value: (l) => LEDGER_TYPE_LABEL[l.type] ?? l.type },
-        { key: 'description', header: 'Description', value: (l) => l.description },
-        { key: 'debit', header: 'Debit', value: (l) => (l.direction === 'debit' && counts(l) ? l.amount : '') },
-        { key: 'credit', header: 'Credit', value: (l) => (l.direction === 'credit' && counts(l) ? l.amount : '') },
-        { key: 'balance', header: 'Balance', value: (l) => l.balanceAfter },
-        { key: 'voided', header: 'Voided', value: (l) => (l.voided ? 'yes' : l.reversesId ? 'reversal' : '') },
-        { key: 'by', header: 'Created by', value: (l) => lookups.userName(l.createdBy) },
+        { key: 'date', header: T('Date'), value: (l) => l.date },
+        { key: 'code', header: T('Transaction'), value: (l) => l.code },
+        { key: 'type', header: T('Type'), value: (l) => LEDGER_TYPE_LABEL[l.type] ?? l.type },
+        { key: 'description', header: T('Description'), value: (l) => l.description },
+        { key: 'debit', header: T('Debit'), value: (l) => (l.direction === 'debit' && counts(l) ? l.amount : '') },
+        { key: 'credit', header: T('Credit'), value: (l) => (l.direction === 'credit' && counts(l) ? l.amount : '') },
+        { key: 'balance', header: T('Balance'), value: (l) => l.balanceAfter },
+        { key: 'voided', header: T('Voided'), value: (l) => (l.voided ? 'yes' : l.reversesId ? 'reversal' : '') },
+        { key: 'by', header: T('Created by'), value: (l) => lookups.userName(l.createdBy) },
       ],
     );
 
   return (
     <div className="panel">
       <div className="gridtools">
-        <span className="eyebrow">Ledger</span>
+        <span className="eyebrow">{T('Ledger')}</span>
         <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-          {lines.length} entries · oldest first
+          {T('{count} entries · oldest first', { count: lines.length })}
         </span>
         <span className="spacer" />
         <span style={{ fontSize: 'var(--fs-sm)' }}>
-          Closing balance{' '}
+          {T('Closing balance')}{' '}
           <b className={`num ${closing > 0 ? 'pos' : closing < 0 ? 'neg' : ''}`}>{formatMoney(closing)}</b>
         </span>
         <Button size="sm" icon="download" onClick={doExport}>
-          Export
+          {T('Export')}
         </Button>
       </div>
 
@@ -77,15 +78,15 @@ export function LedgerTable({
         <table className="grid ledger" style={{ width: '100%' }}>
           <thead>
             <tr>
-              <th><span className="th">Date</span></th>
-              <th><span className="th">Reference</span></th>
-              {showFarmer && <th><span className="th">Farmer</span></th>}
-              <th><span className="th">Description</span></th>
-              <th className="num"><span className="th">Debit</span></th>
-              <th className="num"><span className="th">Credit</span></th>
-              <th className="num"><span className="th">Balance</span></th>
-              <th><span className="th">By</span></th>
-              {onVoid && <th aria-label="Actions"><span className="th" /></th>}
+              <th><span className="th">{T('Date')}</span></th>
+              <th><span className="th">{T('Reference')}</span></th>
+              {showFarmer && <th><span className="th">{T('Farmer')}</span></th>}
+              <th><span className="th">{T('Description')}</span></th>
+              <th className="num"><span className="th">{T('Debit')}</span></th>
+              <th className="num"><span className="th">{T('Credit')}</span></th>
+              <th className="num"><span className="th">{T('Balance')}</span></th>
+              <th><span className="th">{T('By')}</span></th>
+              {onVoid && <th aria-label={T('Actions')}><span className="th" /></th>}
             </tr>
           </thead>
           <tbody>
@@ -97,7 +98,7 @@ export function LedgerTable({
                   </span>
                 </td>
                 <td>
-                  <span className="cell grid__code" title={l.reversesId ? 'Reversal entry' : undefined}>
+                  <span className="cell grid__code" title={l.reversesId ? T('Reversal entry') : undefined}>
                     {l.code}
                     {l.reversesId && <Icon name="undo" size={11} />}
                   </span>
@@ -135,8 +136,8 @@ export function LedgerTable({
                           className="iconbtn"
                           style={{ width: 26, height: 26 }}
                           onClick={() => onVoid(l)}
-                          aria-label={`Void ${l.code}`}
-                          title="Void this transaction"
+                          aria-label={T('Void {code}', { code: l.code })}
+                          title={T('Void this transaction')}
                         >
                           <Icon name="undo" size={14} />
                         </button>
@@ -144,7 +145,7 @@ export function LedgerTable({
                       {l.voided && (
                         <span className="badge badge--slate" title={l.voidReason}>
                           <span className="badge__glyph">✕</span>
-                          Voided
+                          {T('Voided')}
                         </span>
                       )}
                     </span>
@@ -156,7 +157,7 @@ export function LedgerTable({
           <tfoot>
             <tr>
               <td colSpan={showFarmer ? 6 : 5}>
-                <span className="cell strong">Closing balance</span>
+                <span className="cell strong">{T('Closing balance')}</span>
               </td>
               <td className="num">
                 <span className={`cell num strong ${closing < 0 ? 'neg' : 'pos'}`}>{formatMoney(closing)}</span>

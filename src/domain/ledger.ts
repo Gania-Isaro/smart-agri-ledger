@@ -14,6 +14,7 @@
  * unchanged, which is the point: the numbers must not depend on the UI.
  */
 
+import { tx } from '../i18n/tx';
 import type { Direction, LedgerLine, LedgerTransaction, LedgerTxType } from './types';
 
 /**
@@ -189,17 +190,17 @@ export function summarise(transactions: LedgerTransaction[]): FarmerFinancials {
  * from every balance and total (see `counts`).
  */
 export function reversalOf(
-  tx: LedgerTransaction,
+  original: LedgerTransaction,
   opts: { id: string; code: string; userId: string; reason: string; at: string; date: string },
 ): LedgerTransaction {
   return {
-    ...tx,
+    ...original,
     id: opts.id,
     code: opts.code,
-    direction: tx.direction === 'credit' ? 'debit' : 'credit',
-    description: `Reversal of ${tx.code}, ${opts.reason}`,
+    direction: original.direction === 'credit' ? 'debit' : 'credit',
+    description: tx('Reversal of {code}, {reason}', { code: original.code, reason: opts.reason }),
     date: opts.date,
-    reversesId: tx.id,
+    reversesId: original.id,
     voided: false,
     voidedAt: undefined,
     voidedBy: undefined,

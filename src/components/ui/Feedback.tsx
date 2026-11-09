@@ -7,6 +7,7 @@ import { Icon, type IconName } from './Icon';
 import { Modal } from './Modal';
 import { Button, Field, Input, Textarea } from './primitives';
 
+import { tx } from '../../i18n/tx';
 const TOAST_ICON: Record<string, IconName> = {
   success: 'check',
   error: 'alert',
@@ -38,7 +39,7 @@ export function Toaster() {
               {t.action.label}
             </button>
           )}
-          <button className="toast__action" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
+          <button className="toast__action" onClick={() => dismissToast(t.id)} aria-label={tx('Dismiss')}>
             <Icon name="x" size={15} />
           </button>
         </div>
@@ -74,7 +75,7 @@ export function ConfirmDialog() {
       footer={
         <>
           <Button variant="ghost" onClick={() => closeConfirm({ ok: false })}>
-            {confirmState.cancelLabel ?? 'Cancel'}
+            {confirmState.cancelLabel ?? tx('Cancel')}
           </Button>
           <Button
             variant={confirmState.tone === 'danger' ? 'danger' : 'primary'}
@@ -92,17 +93,17 @@ export function ConfirmDialog() {
         </div>
 
         {needsReason && (
-          <Field label={confirmState.reasonLabel!} required help="Recorded in the audit trail against your name.">
+          <Field label={confirmState.reasonLabel!} required help={tx('Recorded in the audit trail against your name.')}>
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Explain briefly why this is being done"
+              placeholder={tx('Explain briefly why this is being done')}
             />
           </Field>
         )}
 
         {needsType && (
-          <Field label={`Type ${confirmState.typeToConfirm} to continue`} required>
+          <Field label={tx('Type {typeToConfirm} to continue', { typeToConfirm: confirmState.typeToConfirm })} required>
             <Input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}

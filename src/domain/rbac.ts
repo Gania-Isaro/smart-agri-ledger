@@ -8,6 +8,7 @@
  */
 
 import type { Role, User } from './types';
+import { tx } from '../i18n/tx';
 
 export type Permission =
   | 'farmer.view'
@@ -117,7 +118,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
 export class PermissionError extends Error {
   readonly permission: Permission;
   constructor(permission: Permission, role: Role) {
-    super(`${ROLE_LABELS[role]} is not allowed to ${describe(permission)}.`);
+    super(tx('{role} is not allowed to {action}.', { role: tx(ROLE_LABELS[role]), action: tx(describe(permission)) }));
     this.name = 'PermissionError';
     this.permission = permission;
   }

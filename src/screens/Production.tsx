@@ -16,6 +16,8 @@ import * as analytics from '../services/analyticsService';
 import type { Farmer, QualityGrade } from '../domain/types';
 import { usePrefs } from '../i18n';
 
+import { cropLabel, tx } from '../i18n/tx';
+import { txr } from '../i18n/rich';
 interface Row extends harvestService.HarvestRow {
   farmer?: Farmer;
 }
@@ -64,7 +66,7 @@ function Harvests({ search }: { search: string }) {
     () => [
       {
         key: 'date',
-        header: 'Date',
+        header: tx('Date'),
         width: 92,
         mobile: 'subtitle',
         sortValue: (r) => r.date,
@@ -74,7 +76,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: 'Farmer',
+        header: tx('Farmer'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => `${r.farmer?.lastName ?? ''}`,
@@ -84,7 +86,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: 'Farmer ID',
+        header: tx('Farmer ID'),
         width: 92,
         optional: true,
         sortValue: (r) => r.farmer?.code ?? '',
@@ -94,7 +96,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'crop',
-        header: 'Crop',
+        header: tx('Crop'),
         width: 124,
         mobile: 'cell',
         sortValue: (r) => tCrop(r.cropId, lookups.cropName(r.cropId)),
@@ -109,7 +111,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'quantity',
-        header: 'Quantity',
+        header: tx('Quantity'),
         width: 112,
         align: 'right',
         mobile: 'cell',
@@ -124,25 +126,27 @@ function Harvests({ search }: { search: string }) {
               commit: async (r, next) => {
                 if (!user) return;
                 const answer = await confirm({
-                  title: 'Correct the recorded quantity?',
+                  title: tx('Correct the recorded quantity?'),
                   message: (
                     <>
                       <p>
-                        Changing {formatNumber(r.quantity)} {r.unit} to <b>{formatNumber(Number(next))} {r.unit}</b> changes
-                        what this farmer is owed.
+                        {txr('Changing {before} to {after} changes what this farmer is owed.', {
+                          before: `${formatNumber(r.quantity)} ${r.unit}`,
+                          after: <b>{formatNumber(Number(next))} {r.unit}</b>,
+                        })}
                       </p>
                       <p className="muted" style={{ marginTop: 'var(--s-2)' }}>
-                        A balancing ledger entry is posted so the farmer can see exactly why their balance moved.
+                        {tx('A balancing ledger entry is posted so the farmer can see exactly why their balance moved.')}
                       </p>
                     </>
                   ),
-                  confirmLabel: 'Post the correction',
-                  reasonLabel: 'Reason for the correction',
+                  confirmLabel: tx('Post the correction'),
+                  reasonLabel: tx('Reason for the correction'),
                 });
                 if (!answer.ok) return;
                 await harvestService.correct(user, r.id, { quantity: Number(next) }, answer.reason ?? '');
                 refresh();
-                toast({ tone: 'success', title: 'Harvest corrected', message: 'A balancing entry was posted to the ledger.' });
+                toast({ tone: 'success', title: tx('Harvest corrected'), message: tx('A balancing entry was posted to the ledger.') });
               },
             }
           : undefined,
@@ -154,7 +158,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'grade',
-        header: 'Grade',
+        header: tx('Grade'),
         width: 110,
         mobile: 'badge',
         sortValue: (r) => r.grade,
@@ -167,7 +171,7 @@ function Harvests({ search }: { search: string }) {
               value: (r) => r.grade,
               commit: async (r, next) => {
                 if (!user) return;
-                await harvestService.correct(user, r.id, { grade: next as QualityGrade }, 'Grade reassessed at intake');
+                await harvestService.correct(user, r.id, { grade: next as QualityGrade }, tx('Grade reassessed at intake'));
                 refresh();
               },
             }
@@ -176,7 +180,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'price',
-        header: 'Price / unit',
+        header: tx('Price / unit'),
         width: 122,
         align: 'right',
         sortValue: (r) => r.pricePerUnit,
@@ -186,7 +190,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'gross',
-        header: 'Gross value',
+        header: tx('Gross value'),
         width: 134,
         align: 'right',
         mobile: 'cell',
@@ -197,7 +201,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'deductions',
-        header: 'Deductions',
+        header: tx('Deductions'),
         width: 122,
         align: 'right',
         optional: true,
@@ -208,7 +212,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'net',
-        header: 'Net to farmer',
+        header: tx('Net to farmer'),
         width: 140,
         align: 'right',
         mobile: 'cell',
@@ -219,7 +223,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'status',
-        header: 'Status',
+        header: tx('Status'),
         width: 126,
         sortValue: (r) => r.status,
         searchValue: (r) => HARVEST_STATUS[r.status].label,
@@ -228,7 +232,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'district',
-        header: 'District',
+        header: tx('District'),
         width: 116,
         optional: true,
         sortValue: (r) => r.farmer?.district ?? '',
@@ -244,36 +248,35 @@ function Harvests({ search }: { search: string }) {
   const bulkActions = can('harvest.verify')
     ? [
         {
-          label: 'Verify',
+          label: tx('Verify'),
           icon: 'badge-check' as const,
           run: async (ids: string[]) => {
             if (!user) return;
             try {
               const n = await harvestService.setStatus(user, ids, 'verified');
               refresh();
-              toast({ tone: 'success', title: `${n} harvest records verified` });
+              toast({ tone: 'success', title: tx('{n} harvest records verified', { n }) });
             } catch (e) {
               fail(e);
             }
           },
         },
         {
-          label: 'Reject',
+          label: tx('Reject'),
           icon: 'x' as const,
           tone: 'danger' as const,
           run: async (ids: string[]) => {
             const answer = await confirm({
-              title: `Reject ${ids.length} harvest records?`,
-              message:
-                'Rejecting produce that was already credited reverses that credit with a ledger entry. The original record stays visible.',
-              confirmLabel: 'Reject and reverse',
+              title: tx('Reject {length} harvest records?', { length: ids.length }),
+              message: tx('Rejecting produce that was already credited reverses that credit with a ledger entry. The original record stays visible.'),
+              confirmLabel: tx('Reject and reverse'),
               tone: 'danger',
             });
             if (!answer.ok || !user) return;
             try {
               const n = await harvestService.setStatus(user, ids, 'rejected');
               refresh();
-              toast({ tone: 'success', title: `${n} records rejected`, message: 'Credits were reversed in the ledger.' });
+              toast({ tone: 'success', title: tx('{n} records rejected', { n }), message: tx('Credits were reversed in the ledger.') });
             } catch (e) {
               fail(e);
             }
@@ -294,8 +297,9 @@ function Harvests({ search }: { search: string }) {
       {unverified > 0 && can('harvest.verify') && (
         <div style={{ marginBottom: 'var(--s-3)' }}>
           <Callout tone="warn" icon="alert">
-            <b>{unverified} harvest records</b> were captured in the field and still need a weight and grade check. Select
-            them and choose Verify.
+            {txr('{records} were captured in the field and still need a weight and grade check. Select them and choose Verify.', {
+              records: <b>{tx('{count} harvest records', { count: unverified })}</b>,
+            })}
           </Callout>
         </div>
       )}
@@ -311,17 +315,17 @@ function Harvests({ search }: { search: string }) {
         onRowClick={(r) => navigate(`/farmers/${r.farmerId}`)}
         onError={fail}
         bulkActions={bulkActions}
-        emptyTitle="No harvests recorded"
-        emptyMessage="Record a harvest with the + button to start tracking production."
+        emptyTitle={tx('No harvests recorded')}
+        emptyMessage={tx('Record a harvest with the + button to start tracking production.')}
         toolbar={
           <FilterBar
             specs={[
-              { key: 'status', label: 'Status', type: 'multi', options: Object.entries(HARVEST_STATUS).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'grade', label: 'Grade', type: 'multi', options: Object.entries(GRADE_META).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'crop', label: 'Crop', type: 'multi', options: crops.map((c) => ({ value: c.id, label: c.name })) },
-              { key: 'district', label: 'District', type: 'multi', options: [...new Set(all.map((r) => r.farmer?.district ?? ''))].filter(Boolean).map((d) => ({ value: d, label: d })) },
-              { key: 'date', label: 'Harvest date', type: 'daterange' },
-              { key: 'quantity', label: 'Quantity', type: 'numrange' },
+              { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(HARVEST_STATUS).map(([value, m]) => ({ value, label: m.label })) },
+              { key: 'grade', label: tx('Grade'), type: 'multi', options: Object.entries(GRADE_META).map(([value, m]) => ({ value, label: m.label })) },
+              { key: 'crop', label: tx('Crop'), type: 'multi', options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })) },
+              { key: 'district', label: tx('District'), type: 'multi', options: [...new Set(all.map((r) => r.farmer?.district ?? ''))].filter(Boolean).map((d) => ({ value: d, label: d })) },
+              { key: 'date', label: tx('Harvest date'), type: 'daterange' },
+              { key: 'quantity', label: tx('Quantity'), type: 'numrange' },
             ]}
             values={filters}
             onChange={setFilters}
@@ -354,10 +358,10 @@ function Crops() {
       </div>
 
       <div className="chartgrid" style={{ marginBottom: 'var(--s-4)' }}>
-        <ChartCard title="Quantity by crop" subtitle="Weight-based crops in KG">
+        <ChartCard title={tx('Quantity by crop')} subtitle={tx('Weight-based crops in KG')}>
           <HBars data={byCrop.data ?? []} unit="KG" />
         </ChartCard>
-        <ChartCard title="Value by crop" subtitle="Gross value of produce received">
+        <ChartCard title={tx('Value by crop')} subtitle={tx('Gross value of produce received')}>
           <HBars
             data={(byCrop.data ?? []).map((d) => ({ label: d.label, value: d.secondary ?? 0, colour: d.colour }))}
             money
@@ -370,13 +374,13 @@ function Crops() {
           <table className="grid" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th><span className="th">Crop</span></th>
-                <th><span className="th">Default unit</span></th>
-                <th className="num"><span className="th">Price / unit</span></th>
-                <th className="num"><span className="th">Deliveries</span></th>
-                <th className="num"><span className="th">Quantity</span></th>
-                <th className="num"><span className="th">Gross value</span></th>
-                <th className="num"><span className="th">Share</span></th>
+                <th><span className="th">{tx('Crop')}</span></th>
+                <th><span className="th">{tx('Default unit')}</span></th>
+                <th className="num"><span className="th">{tx('Price / unit')}</span></th>
+                <th className="num"><span className="th">{tx('Deliveries')}</span></th>
+                <th className="num"><span className="th">{tx('Quantity')}</span></th>
+                <th className="num"><span className="th">{tx('Gross value')}</span></th>
+                <th className="num"><span className="th">{tx('Share')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -405,7 +409,7 @@ function Crops() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={5}><span className="cell strong">Total</span></td>
+                <td colSpan={5}><span className="cell strong">{tx('Total')}</span></td>
                 <td className="num"><span className="cell num strong">{formatMoney(grand)}</span></td>
                 <td />
               </tr>
@@ -414,7 +418,7 @@ function Crops() {
         </div>
       </div>
       <p className="muted" style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--s-2)' }}>
-        Quantities mix units only where they are comparable, bunches and crates are counted separately from kilograms.
+        {tx('Quantities mix units only where they are comparable, bunches and crates are counted separately from kilograms.')}
         {lookups.crop.size > 0 ? '' : ''}
       </p>
     </>
@@ -452,7 +456,7 @@ function Quality() {
       </div>
 
       <div className="chartgrid">
-        <ChartCard title="Deliveries by grade" subtitle="Number of deliveries in each grade">
+        <ChartCard title={tx('Deliveries by grade')} subtitle={tx('Number of deliveries in each grade')}>
           <HBars
             data={byGrade.map((g) => ({
               label: GRADE_META[g.grade].label,
@@ -463,21 +467,21 @@ function Quality() {
           />
         </ChartCard>
 
-        <ChartCard title="Premium share" subtitle="Grade A as a share of all deliveries">
-          <Meter value={premium} total={total} label={`${premium} of ${total} deliveries are Grade A`} caption="Higher grades earn a higher price per unit." />
+        <ChartCard title={tx('Premium share')} subtitle={tx('Grade A as a share of all deliveries')}>
+          <Meter value={premium} total={total} label={tx('{premium} of {total} deliveries are Grade A', { premium, total })} caption={tx('Higher grades earn a higher price per unit.')} />
         </ChartCard>
 
-        <ChartCard title="Verification progress" subtitle="Deliveries checked at intake">
+        <ChartCard title={tx('Verification progress')} subtitle={tx('Deliveries checked at intake')}>
           <Meter
             value={verified}
             total={total}
-            label={`${verified} of ${total} verified`}
-            caption="Unverified rows are field entries awaiting a weight and grade check."
+            label={tx('{verified} of {total} verified', { verified, total })}
+            caption={tx('Unverified rows are field entries awaiting a weight and grade check.')}
             colour="var(--c-teal-600)"
           />
         </ChartCard>
 
-        <ChartCard title="Value by grade" subtitle="Gross value received per grade">
+        <ChartCard title={tx('Value by grade')} subtitle={tx('Gross value received per grade')}>
           <HBars
             data={byGrade.map((g) => ({
               label: GRADE_META[g.grade].label,

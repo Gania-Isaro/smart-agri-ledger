@@ -19,6 +19,7 @@ import { ValidationError } from './farmerService';
 import { postSystem, voidTransaction } from './ledgerService';
 import { refreshFarmerStatus } from './activityService';
 
+import { tx as T } from '../i18n/tx';
 const RATE_KEY = 'work.dailyRate';
 export const DEFAULT_DAILY_RATE = 3000;
 
@@ -65,18 +66,18 @@ export interface WorkDayInput {
 export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDay> {
   assertCan(user, 'worker.manage');
   const farmer = await db.farmers.get(input.farmerId);
-  if (!farmer) throw new ValidationError('Choose who worked.', 'farmerId');
-  if (farmer.archived) throw new ValidationError(`${farmer.code} is archived. Restore the farmer first.`, 'farmerId');
+  if (!farmer) throw new ValidationError(T('Choose who worked.'), 'farmerId');
+  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the farmer first.', { code: farmer.code }), 'farmerId');
 
   const date = input.date || today();
-  if (date > today()) throw new ValidationError('A work day cannot be in the future.', 'date');
+  if (date > today()) throw new ValidationError(T('A work day cannot be in the future.'), 'date');
   if (!input.photo?.startsWith('data:image/')) {
-    throw new ValidationError('Take a photo of the person before saving.', 'photo');
+    throw new ValidationError(T('Take a photo of the person before saving.'), 'photo');
   }
   const amount = toPositiveMoney(input.amount, 'Pay for the day');
 
   const existing = await db.workdays.where('[farmerId+date]').equals([farmer.id, date]).first();
-  if (existing) throw new ValidationError(`${fullName(farmer)} is already recorded for this day.`, 'farmerId');
+  if (existing) throw new ValidationError(T('{v} is already recorded for this day.', { v: fullName(farmer) }), 'farmerId');
 
   const day: WorkDay = {
     id: uid('wdy'),
@@ -97,7 +98,7 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
     farmerId: farmer.id,
     type: 'work',
     amount,
-    description: day.notes ? `Day's work, ${day.notes}` : "Day's work",
+    description: day.notes ? T("Day's work, {note}", { note: day.notes }) : T("Day's work"),
     date,
   });
   day.transactionId = tx.id;
@@ -116,7 +117,7 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
 export async function removeDay(user: User, id: ID, reason: string): Promise<void> {
   assertCan(user, 'worker.manage');
   const why = reason.trim();
-  if (why.length < 5) throw new ValidationError('Give a reason of at least 5 characters.');
+  if (why.length < 5) throw new ValidationError(T('Give a reason of at least 5 characters.'));
   const before = await db.workdays.get(id);
   if (!before) return;
   const farmer = await db.farmers.get(before.farmerId);
@@ -131,11 +132,13 @@ export async function removeDay(user: User, id: ID, reason: string): Promise<voi
 }
 
 export async function daysBetween(from: ISODate, to: ISODate): Promise<WorkDay[]> {
+  await pruneVoidedDays();
   return db.workdays.where('date').between(from, to, true, true).toArray();
 }
 
 /** Who has already been recorded on a date, keyed by farmer. */
 export async function recordedOn(date: ISODate): Promise<Map<ID, WorkDay>> {
+  await pruneVoidedDays();
   const rows = await db.workdays.where('date').equals(date).toArray();
   return new Map(rows.map((d) => [d.farmerId, d]));
 }
@@ -143,6 +146,22 @@ export async function recordedOn(date: ISODate): Promise<Map<ID, WorkDay>> {
 export async function daysFor(farmerId: ID): Promise<WorkDay[]> {
   const rows = await db.workdays.where('farmerId').equals(farmerId).toArray();
   return rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/**
+ * Remove work days whose ledger credit was voided from the Ledger screen.
+ * Newer versions do this at the moment of voiding; this also tidies up days
+ * left behind by older versions, so the totals never count pay that was
+ * cancelled.
+ */
+async function pruneVoidedDays(): Promise<void> {
+  const days = await db.workdays.toArray();
+  const ids = days.map((d) => d.transactionId).filter((id): id is string => Boolean(id));
+  if (ids.length === 0) return;
+  const txs = await db.transactions.bulkGet(ids);
+  const voided = new Set(txs.filter((t) => t?.voided).map((t) => t!.id));
+  const stale = days.filter((d) => d.transactionId && voided.has(d.transactionId)).map((d) => d.id);
+  if (stale.length) await db.workdays.bulkDelete(stale);
 }
 
 /* ------------------------------------------------------------- read side */
@@ -240,6 +259,7 @@ export interface WorkTotals {
 
 /** Money needed this week, this month and in total, plus the breakdowns. */
 export async function totals(asOf: ISODate = today()): Promise<WorkTotals> {
+  await pruneVoidedDays();
   const [days, farmers] = await Promise.all([db.workdays.toArray(), db.farmers.toArray()]);
   const byId = new Map(farmers.map((f) => [f.id, f]));
   const currentWeek = weekStart(asOf);

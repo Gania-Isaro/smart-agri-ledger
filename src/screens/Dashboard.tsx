@@ -20,6 +20,7 @@ import * as paymentService from '../services/paymentService';
 import { ActivityComposer } from '../components/ActivityComposer';
 import { usePrefs } from '../i18n';
 
+import { tx } from '../i18n/tx';
 export function Dashboard() {
   const { user, can } = useStore();
   const { t, tn } = usePrefs();
@@ -162,7 +163,7 @@ export function Dashboard() {
         </ChartCard>
 
         <ChartCard title={t('chart.produceOverTime')} subtitle={t('chart.produceOverTimeSub')}>
-          {overTime.loading ? <Skeleton height={190} /> : <TimeChart data={overTime.data ?? []} unit="KG" seriesLabels={['Produce']} />}
+          {overTime.loading ? <Skeleton height={190} /> : <TimeChart data={overTime.data ?? []} unit="KG" seriesLabels={[tx('Produce')]} />}
         </ChartCard>
 
         <ChartCard
@@ -181,7 +182,7 @@ export function Dashboard() {
         </ChartCard>
 
         <ChartCard title={t('chart.byStatus')} subtitle={t('chart.byStatusSub')}>
-          {statuses.loading ? <Skeleton height={150} /> : <HBars data={statusBars} unit="" emptyLabel="No farmers registered yet" />}
+          {statuses.loading ? <Skeleton height={150} /> : <HBars data={statusBars} unit="" emptyLabel={tx('No farmers registered yet')} />}
         </ChartCard>
 
         <ChartCard title={t('chart.byDistrict')} subtitle={t('chart.byDistrictSub')}>

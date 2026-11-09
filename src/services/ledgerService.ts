@@ -33,6 +33,7 @@ import type {
 } from '../domain/types';
 import * as audit from './audit';
 
+import { tx as T } from '../i18n/tx';
 export class LedgerError extends Error {}
 
 export interface PostInput {
@@ -80,13 +81,13 @@ export async function postSystem(user: User, input: PostInput): Promise<LedgerTr
 
 async function write(user: User, input: PostInput): Promise<LedgerTransaction> {
   const farmer = await db.farmers.get(input.farmerId);
-  if (!farmer) throw new LedgerError('That farmer no longer exists.');
+  if (!farmer) throw new LedgerError(T('That farmer no longer exists.'));
 
   const amount = toPositiveMoney(input.amount, 'Amount');
   const description = input.description.trim();
-  if (!description) throw new LedgerError('A description is required for every transaction.');
+  if (!description) throw new LedgerError(T('A description is required for every transaction.'));
   if (input.type === 'adjustment' && !input.direction) {
-    throw new LedgerError('An adjustment must state whether it is a debit or a credit.');
+    throw new LedgerError(T('An adjustment must state whether it is a debit or a credit.'));
   }
 
   const tx: LedgerTransaction = {
@@ -126,12 +127,12 @@ export async function voidTransaction(
   assertCan(user, 'ledger.void');
 
   const trimmed = reason.trim();
-  if (trimmed.length < 5) throw new LedgerError('Give a reason of at least 5 characters for the audit trail.');
+  if (trimmed.length < 5) throw new LedgerError(T('Give a reason of at least 5 characters for the audit trail.'));
 
   const original = await db.transactions.get(transactionId);
-  if (!original) throw new LedgerError('That transaction does not exist.');
-  if (original.voided) throw new LedgerError(`${original.code} has already been voided.`);
-  if (original.reversesId) throw new LedgerError('A reversal entry cannot itself be voided.');
+  if (!original) throw new LedgerError(T('That transaction does not exist.'));
+  if (original.voided) throw new LedgerError(T('{code} has already been voided.', { code: original.code }));
+  if (original.reversesId) throw new LedgerError(T('A reversal entry cannot itself be voided.'));
 
   const at = nowStamp();
   const voided: LedgerTransaction = { ...original, voided: true, voidedAt: at, voidedBy: user.id, voidReason: trimmed };
@@ -148,6 +149,13 @@ export async function voidTransaction(
     await db.transactions.put(voided);
     await db.transactions.put(reversal);
   });
+
+  /* A day of work only exists to justify its credit. Once the credit is voided,
+     the day must stop counting in the work totals too, or "money needed" would
+     include pay that is no longer owed. */
+  if (original.type === 'work') {
+    await db.workdays.filter((d) => d.transactionId === original.id).delete();
+  }
 
   await audit.record(user, 'transaction', original.id, 'void', `Voided ${original.code} (${original.amount} RWF), ${trimmed}`, { before: original, after: voided });
   return { voided, reversal };

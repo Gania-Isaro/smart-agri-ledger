@@ -22,6 +22,7 @@ import { usePrefs } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 import { DEMO_EMAIL, DEMO_PIN } from '../db/accounts';
 
+import { tx } from '../i18n/tx';
 type Mode = 'signin' | 'signup' | 'forgot';
 
 export function Login() {
@@ -130,7 +131,7 @@ function SignIn({ onForgot }: { onForgot: () => void }) {
             setEmail(e.target.value);
             setError('');
           }}
-          placeholder="you@cooperative.rw"
+          placeholder={tx('you@cooperative.rw')}
           invalid={Boolean(error)}
           autoFocus
         />
@@ -329,7 +330,7 @@ function Forgot({
             setCode(e.target.value);
             setError('');
           }}
-          placeholder="XXXX-XXXX-XXXX"
+          placeholder={tx('XXXX-XXXX-XXXX')}
           autoComplete="one-time-code"
           spellCheck={false}
           style={{ fontFamily: 'var(--font-num)', letterSpacing: '0.06em' }}

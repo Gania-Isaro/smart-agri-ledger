@@ -11,6 +11,7 @@ import { counts } from '../domain/ledger';
 import { refreshFarmerStatus } from './activityService';
 import { ValidationError } from './farmerService';
 
+import { tx as T } from '../i18n/tx';
 export interface HarvestRow extends Harvest {
   gross: number;
   net: number;
@@ -72,11 +73,11 @@ export async function correct(
   reason: string,
 ): Promise<HarvestRow> {
   assertCan(user, 'harvest.edit');
-  if (reason.trim().length < 5) throw new ValidationError('Give a reason for the correction.');
+  if (reason.trim().length < 5) throw new ValidationError(T('Give a reason for the correction.'));
 
   const before = await db.harvests.get(id);
-  if (!before) throw new ValidationError('That harvest record no longer exists.');
-  if (before.status === 'rejected') throw new ValidationError('A rejected harvest cannot be edited. Record a new delivery instead.');
+  if (!before) throw new ValidationError(T('That harvest record no longer exists.'));
+  if (before.status === 'rejected') throw new ValidationError(T('A rejected harvest cannot be edited. Record a new delivery instead.'));
 
   const after: Harvest = {
     ...before,
@@ -87,13 +88,13 @@ export async function correct(
     notes: patch.notes ?? before.notes,
     updatedAt: nowStamp(),
   };
-  if (after.quantity <= 0) throw new ValidationError('Quantity must be greater than zero.', 'quantity');
+  if (after.quantity <= 0) throw new ValidationError(T('Quantity must be greater than zero.'), 'quantity');
 
   const beforeGross = grossValue(before.quantity, before.pricePerUnit);
   const afterGross = grossValue(after.quantity, after.pricePerUnit);
   const delta = afterGross - beforeGross;
   if (after.deductions > afterGross) {
-    throw new ValidationError('Deductions cannot exceed the value of the delivery.', 'deductions');
+    throw new ValidationError(T('Deductions cannot exceed the value of the delivery.'), 'deductions');
   }
   const deductionDelta = after.deductions - before.deductions;
 
@@ -105,7 +106,7 @@ export async function correct(
       type: 'adjustment',
       direction: delta > 0 ? 'credit' : 'debit',
       amount: Math.abs(delta),
-      description: `Harvest correction, ${reason.trim()}`,
+      description: T('Harvest correction, {reason}', { reason: reason.trim() }),
       date: after.date,
       harvestId: after.id,
     });
@@ -118,7 +119,7 @@ export async function correct(
       farmerId: after.farmerId,
       type: 'deduction',
       amount: deductionDelta,
-      description: `Deduction correction, ${reason.trim()}`,
+      description: T('Deduction correction, {reason}', { reason: reason.trim() }),
       date: after.date,
       harvestId: after.id,
     });
@@ -128,7 +129,7 @@ export async function correct(
       type: 'adjustment',
       direction: 'credit',
       amount: -deductionDelta,
-      description: `Deduction correction, ${reason.trim()}`,
+      description: T('Deduction correction, {reason}', { reason: reason.trim() }),
       date: after.date,
       harvestId: after.id,
     });

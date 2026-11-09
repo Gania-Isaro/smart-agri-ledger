@@ -25,6 +25,8 @@ import { ActivityComposer } from '../components/ActivityComposer';
 import type { Farmer, Payment, PaymentStatus } from '../domain/types';
 import { usePrefs, useT } from '../i18n';
 
+import { tx } from '../i18n/tx';
+import { txr } from '../i18n/rich';
 export function Payments({ search }: { search: string }) {
   const route = useRoute();
   const sub = route.segments[1] ?? 'pending';
@@ -116,7 +118,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       if (result.skipped.length > 0) {
         toast({
           tone: 'warn',
-          title: `${result.done} updated, ${result.skipped.length} skipped`,
+          title: tx('{done} updated, {length} skipped', { done: result.done, length: result.skipped.length }),
           message: result.skipped[0]?.reason,
         });
       } else {
@@ -131,7 +133,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
     () => [
       {
         key: 'reference',
-        header: 'Reference',
+        header: tx('Reference'),
         width: 132,
         mobile: 'subtitle',
         sortValue: (r) => r.reference,
@@ -141,7 +143,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'farmer',
-        header: 'Farmer',
+        header: tx('Farmer'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => r.farmer?.lastName ?? '',
@@ -151,7 +153,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'amount',
-        header: 'Amount',
+        header: tx('Amount'),
         width: 138,
         align: 'right',
         mobile: 'cell',
@@ -162,7 +164,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'status',
-        header: 'Status',
+        header: tx('Status'),
         width: 132,
         mobile: 'badge',
         sortValue: (r) => r.status,
@@ -172,7 +174,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'method',
-        header: 'Method',
+        header: tx('Method'),
         width: 128,
         mobile: 'cell',
         sortValue: (r) => r.method,
@@ -182,7 +184,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'date',
-        header: 'Date',
+        header: tx('Date'),
         width: 96,
         mobile: 'cell',
         sortValue: (r) => r.date,
@@ -192,7 +194,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'reason',
-        header: 'Reason',
+        header: tx('Reason'),
         width: 210,
         sortValue: (r) => r.reason,
         searchValue: (r) => r.reason,
@@ -201,7 +203,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'approved',
-        header: 'Approved by',
+        header: tx('Approved by'),
         width: 150,
         optional: true,
         sortValue: (r) => (r.approvedBy ? lookups.userName(r.approvedBy) : ''),
@@ -211,7 +213,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'paidAt',
-        header: 'Paid at',
+        header: tx('Paid at'),
         width: 160,
         optional: true,
         sortValue: (r) => r.paidAt ?? '',
@@ -225,7 +227,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
 
   const bulkActions = [];
   if (mode === 'pending' && can('payment.approve')) {
-    bulkActions.push({ label: 'Approve', icon: 'check' as const, run: (ids: string[]) => void settle(ids, 'approved') });
+    bulkActions.push({ label: tx('Approve'), icon: 'check' as const, run: (ids: string[]) => void settle(ids, 'approved') });
   }
   if (mode === 'pending' && can('payment.settle')) {
     bulkActions.push({
@@ -236,22 +238,22 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
   }
   if (can('payment.cancel')) {
     bulkActions.push({
-      label: 'Cancel',
+      label: tx('Cancel'),
       icon: 'x' as const,
       tone: 'danger' as const,
       run: async (ids: string[]) => {
         const answer = await confirm({
-          title: `Cancel ${ids.length} payments?`,
-          message: 'Cancelled payments stay on record. Any that had already posted to the ledger are reversed with a balancing entry.',
-          confirmLabel: 'Cancel payments',
+          title: tx('Cancel {length} payments?', { length: ids.length }),
+          message: tx('Cancelled payments stay on record. Any that had already posted to the ledger are reversed with a balancing entry.'),
+          confirmLabel: tx('Cancel payments'),
           tone: 'danger',
-          reasonLabel: 'Reason for cancelling',
+          reasonLabel: tx('Reason for cancelling'),
         });
         if (!answer.ok || !user) return;
         try {
           const result = await paymentService.transitionMany(user, ids, 'cancelled', { reason: answer.reason });
           refresh();
-          toast({ tone: 'success', title: `${result.done} payments cancelled` });
+          toast({ tone: 'success', title: tx('{done} payments cancelled', { done: result.done }) });
         } catch (e) {
           fail(e);
         }
@@ -279,20 +281,20 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
         onRowClick={(r) => navigate(`/farmers/${r.farmerId}`)}
         onError={fail}
         bulkActions={bulkActions}
-        emptyTitle={mode === 'completed' ? 'No completed payments yet' : 'Nothing pending'}
+        emptyTitle={mode === 'completed' ? tx('No completed payments yet') : tx('Nothing pending')}
         emptyMessage={
           mode === 'completed'
-            ? 'Payments appear here once they are marked as paid.'
-            : 'Every payment has been settled. Build a new batch from the outstanding list when produce comes in.'
+            ? tx('Payments appear here once they are marked as paid.')
+            : tx('Every payment has been settled. Build a new batch from the outstanding list when produce comes in.')
         }
-        emptyAction={<Button onClick={() => navigate('/payments/outstanding')}>See outstanding balances</Button>}
+        emptyAction={<Button onClick={() => navigate('/payments/outstanding')}>{tx('See outstanding balances')}</Button>}
         toolbar={
           <FilterBar
             specs={[
-              { key: 'status', label: 'Status', type: 'multi', options: Object.entries(PAYMENT_STATUS).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'method', label: 'Method', type: 'multi', options: Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => ({ value, label })) },
-              { key: 'date', label: 'Date', type: 'daterange' },
-              { key: 'amount', label: 'Amount', type: 'numrange' },
+              { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(PAYMENT_STATUS).map(([value, m]) => ({ value, label: m.label })) },
+              { key: 'method', label: tx('Method'), type: 'multi', options: Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => ({ value, label })) },
+              { key: 'date', label: tx('Date'), type: 'daterange' },
+              { key: 'amount', label: tx('Amount'), type: 'numrange' },
             ]}
             values={filters}
             onChange={setFilters}
@@ -435,37 +437,39 @@ function Outstanding({ search }: { search: string }) {
   const bulkActions = can('batch.create')
     ? [
         {
-          label: 'Create payment batch',
+          label: tx('Create payment batch'),
           icon: 'layers' as const,
           run: async (ids: string[]) => {
             const subset = owed.filter((f) => ids.includes(f.id));
             if (subset.length === 0) {
-              toast({ tone: 'warn', title: 'Nobody selected is owed money' });
+              toast({ tone: 'warn', title: tx('Nobody selected is owed money') });
               return;
             }
             const total = subset.reduce((s, f) => s + f.financials.balance, 0);
             const answer = await confirm({
-              title: 'Create a payment batch',
+              title: tx('Create a payment batch'),
               message: (
                 <p>
-                  <b>{subset.length} farmers</b>, <b>{formatMoney(total)}</b> in total. Amounts come straight from each
-                  ledger balance. Nothing is paid until the batch is approved and settled.
+                  {txr('{farmers}, {amount} in total. Amounts come straight from each ledger balance. Nothing is paid until the batch is approved and settled.', {
+                    farmers: <b>{tx('{count} farmers', { count: subset.length })}</b>,
+                    amount: <b>{formatMoney(total)}</b>,
+                  })}
                 </p>
               ),
-              confirmLabel: 'Create batch',
+              confirmLabel: tx('Create batch'),
             });
             if (!answer.ok || !user) return;
             try {
               const { batch } = await paymentService.createBatch(user, {
-                name: `Harvest payment batch, ${today()}`,
+                name: tx('Harvest payment batch, {date}', { date: today() }),
                 farmerIds: subset.map((f) => f.id),
               });
               refresh();
               toast({
                 tone: 'success',
-                title: 'Batch created',
-                message: `${batch.code} · ${subset.length} farmers`,
-                action: { label: 'Open batch', run: () => navigate(`/payments/batches/${batch.id}`) },
+                title: tx('Batch created'),
+                message: tx('{code} · {length} farmers', { code: batch.code, length: subset.length }),
+                action: { label: tx('Open batch'), run: () => navigate(`/payments/batches/${batch.id}`) },
               });
             } catch (e) {
               fail(e);
@@ -545,7 +549,7 @@ function Batches() {
   const t = useT();
   const query = useQuery(() => paymentService.listBatches());
   const [newOpen, setNewOpen] = useState(false);
-  const [name, setName] = useState(`Harvest payment batch, ${today()}`);
+  const [name, setName] = useState(tx('Harvest payment batch, {date}', { date: today() }));
   const [busy, setBusy] = useState(false);
 
   const batches = query.data ?? [];
@@ -557,7 +561,7 @@ function Batches() {
       const { batch, payments } = await paymentService.createBatch(user, { name });
       refresh();
       setNewOpen(false);
-      toast({ tone: 'success', title: `${batch.code} created`, message: `${payments.length} farmers included` });
+      toast({ tone: 'success', title: tx('{code} created', { code: batch.code }), message: tx('{length} farmers included', { length: payments.length }) });
       navigate(`/payments/batches/${batch.id}`);
     } catch (e) {
       fail(e);
@@ -591,9 +595,9 @@ function Batches() {
       ) : batches.length === 0 ? (
         <EmptyState
           icon="layers"
-          title="No payment batches yet"
-          message="A batch collects everyone who is owed money into a single approval and payout."
-          action={can('batch.create') ? <Button variant="primary" icon="plus" onClick={() => setNewOpen(true)}>Create the first batch</Button> : undefined}
+          title={tx('No payment batches yet')}
+          message={tx('A batch collects everyone who is owed money into a single approval and payout.')}
+          action={can('batch.create') ? <Button variant="primary" icon="plus" onClick={() => setNewOpen(true)}>{tx('Create the first batch')}</Button> : undefined}
         />
       ) : (
         <div className="stack gap-3">
@@ -614,28 +618,28 @@ function Batches() {
               <div className="card__body">
                 <div className="rowcard__grid" style={{ borderTop: 'none', paddingTop: 0 }}>
                   <div className="rowcard__cell">
-                    <span>Farmers</span>
+                    <span>{tx('Farmers')}</span>
                     <b>{formatNumber(b.farmers)}</b>
                   </div>
                   <div className="rowcard__cell">
-                    <span>Total produce</span>
+                    <span>{tx('Total produce')}</span>
                     <b>{formatNumber(Math.round(b.produceQuantity))} KG</b>
                   </div>
                   <div className="rowcard__cell">
-                    <span>Total amount</span>
+                    <span>{tx('Total amount')}</span>
                     <b>{formatMoney(b.total)}</b>
                   </div>
                   <div className="rowcard__cell">
-                    <span>Paid</span>
+                    <span>{tx('Paid')}</span>
                     <b className="pos">{formatMoney(b.paidAmount)}</b>
                   </div>
                   <div className="rowcard__cell">
-                    <span>Remaining</span>
+                    <span>{tx('Remaining')}</span>
                     <b className={b.remaining > 0 ? 'neg' : ''}>{formatMoney(b.remaining)}</b>
                   </div>
                 </div>
                 <div style={{ marginTop: 'var(--s-3)' }}>
-                  <ProgressPair paid={b.paidAmount} total={b.total} paidLabel="Paid" remainingLabel="Remaining" />
+                  <ProgressPair paid={b.paidAmount} total={b.total} paidLabel={tx('Paid')} remainingLabel={tx('Remaining')} />
                 </div>
               </div>
             </button>
@@ -646,28 +650,27 @@ function Batches() {
       <Modal
         open={newOpen}
         onClose={() => setNewOpen(false)}
-        title="New payment batch"
-        subtitle="Every farmer currently owed money is included automatically."
+        title={tx('New payment batch')}
+        subtitle={tx('Every farmer currently owed money is included automatically.')}
         size="narrow"
         footer={
           <>
             <span className="spacer" />
             <Button variant="ghost" onClick={() => setNewOpen(false)}>
-              Cancel
+              {tx('Cancel')}
             </Button>
             <Button variant="primary" onClick={create} loading={busy} icon="check">
-              Create batch
+              {tx('Create batch')}
             </Button>
           </>
         }
       >
         <div className="stack gap-4">
-          <Field label="Batch name" required help="Shown on payment records and exports.">
+          <Field label={tx('Batch name')} required help={tx('Shown on payment records and exports.')}>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Callout tone="info">
-            Amounts are taken from each farmer’s ledger balance at the moment the batch is created. Creating a batch does
-            not pay anyone. It creates pending payments for review.
+            {tx('Amounts are taken from each farmer’s ledger balance at the moment the batch is created. Creating a batch does not pay anyone. It creates pending payments for review.')}
           </Callout>
         </div>
       </Modal>
@@ -697,8 +700,8 @@ function BatchDetail({ batchId }: { batchId: string }) {
     return (
       <EmptyState
         icon="layers"
-        title="Batch not found"
-        action={<Button onClick={() => navigate('/payments/batches')}>Back to batches</Button>}
+        title={tx('Batch not found')}
+        action={<Button onClick={() => navigate('/payments/batches')}>{tx('Back to batches')}</Button>}
       />
     );
   }
@@ -709,20 +712,22 @@ function BatchDetail({ batchId }: { batchId: string }) {
   const approve = async () => {
     if (!user) return;
     const answer = await confirm({
-      title: `Approve ${batch.code}?`,
+      title: tx('Approve {code}?', { code: batch.code }),
       message: (
         <p>
-          Approving clears <b>{formatMoney(batch.total)}</b> across {batch.farmers} farmers for payout. Every pending
-          payment in the batch becomes approved. Nothing posts to the ledger yet.
+          {txr('Approving clears {amount} across {count} farmers for payout. Every pending payment in the batch becomes approved. Nothing posts to the ledger yet.', {
+            amount: <b>{formatMoney(batch.total)}</b>,
+            count: batch.farmers,
+          })}
         </p>
       ),
-      confirmLabel: 'Approve batch',
+      confirmLabel: tx('Approve batch'),
     });
     if (!answer.ok) return;
     try {
       await paymentService.setBatchStatus(user, batchId, 'approved');
       refresh();
-      toast({ tone: 'success', title: `${batch.code} approved` });
+      toast({ tone: 'success', title: tx('{code} approved', { code: batch.code }) });
     } catch (e) {
       fail(e);
     }
@@ -752,8 +757,8 @@ function BatchDetail({ batchId }: { batchId: string }) {
       refresh();
       toast({
         tone: result.skipped.length ? 'warn' : 'success',
-        title: `${result.done} payments settled`,
-        message: result.skipped.length ? `${result.skipped.length} could not be paid: ${result.skipped[0]?.reason}` : undefined,
+        title: tx('{done} payments settled', { done: result.done }),
+        message: result.skipped.length ? tx('{count} could not be paid: {reason}', { count: result.skipped.length, reason: result.skipped[0]?.reason }) : undefined,
       });
     } catch (e) {
       fail(e);
@@ -763,7 +768,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
   return (
     <>
       <button className="btn btn--ghost btn--sm no-print" onClick={() => navigate('/payments/batches')} style={{ marginBottom: 'var(--s-3)' }}>
-        <Icon name="arrow-left" size={14} /> All batches
+        <Icon name="arrow-left" size={14} /> {tx('All batches')}
       </button>
 
       <div className="page-head">
@@ -776,18 +781,18 @@ function BatchDetail({ batchId }: { batchId: string }) {
             {batch.name}
           </h1>
           <p className="page-sub">
-            Created {formatDate(batch.createdAt.slice(0, 10))}
+            {tx('Created {date}', { date: formatDate(batch.createdAt.slice(0, 10)) })}
             {batch.approvedAt ? ` · approved ${formatDate(batch.approvedAt.slice(0, 10))}` : ''}
             {batch.notes ? ` · ${batch.notes}` : ''}
           </p>
         </div>
         <div className="row gap-2 no-print">
           <Button icon="printer" onClick={() => window.print()}>
-            Print
+            {tx('Print')}
           </Button>
           {can('batch.approve') && (batch.status === 'draft' || batch.status === 'pending_approval') && (
             <Button variant="primary" icon="check" onClick={approve}>
-              Approve batch
+              {tx('Approve batch')}
             </Button>
           )}
           {can('payment.settle') && (batch.status === 'approved' || batch.status === 'partially_paid') && unpaid.length > 0 && (
@@ -800,28 +805,28 @@ function BatchDetail({ batchId }: { batchId: string }) {
 
       <div className="metrics" style={{ marginBottom: 'var(--s-4)' }}>
         <div className="metric">
-          <span className="metric__label">Farmers</span>
+          <span className="metric__label">{tx('Farmers')}</span>
           <span className="metric__value num">{formatNumber(batch.farmers)}</span>
         </div>
         <div className="metric">
-          <span className="metric__label">Total produce</span>
+          <span className="metric__label">{tx('Total produce')}</span>
           <span className="metric__value num">{formatNumber(Math.round(batch.produceQuantity))}</span>
-          <span className="metric__foot">KG in this period</span>
+          <span className="metric__foot">{tx('KG in this period')}</span>
         </div>
         <div className="metric metric--accent">
-          <span className="metric__label">Total amount</span>
+          <span className="metric__label">{tx('Total amount')}</span>
           <span className="metric__value num">{formatMoneyShort(batch.total)}</span>
-          <span className="metric__foot">RWF</span>
+          <span className="metric__foot">{tx('RWF')}</span>
         </div>
         <div className="metric">
-          <span className="metric__label">Paid</span>
+          <span className="metric__label">{tx('Paid')}</span>
           <span className="metric__value num">{formatMoneyShort(batch.paidAmount)}</span>
-          <span className="metric__foot">RWF settled</span>
+          <span className="metric__foot">{tx('RWF settled')}</span>
         </div>
         <div className="metric metric--warn">
-          <span className="metric__label">Remaining</span>
+          <span className="metric__label">{tx('Remaining')}</span>
           <span className="metric__value num">{formatMoneyShort(batch.remaining)}</span>
-          <span className="metric__foot">RWF still to pay</span>
+          <span className="metric__foot">{tx('RWF still to pay')}</span>
         </div>
       </div>
 
@@ -833,22 +838,22 @@ function BatchDetail({ batchId }: { batchId: string }) {
 
       <div className="panel">
         <div className="gridtools">
-          <span className="eyebrow">Farmers in this batch</span>
+          <span className="eyebrow">{tx('Farmers in this batch')}</span>
           <span className="spacer" />
           <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-            Review every amount before approving
+            {tx('Review every amount before approving')}
           </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="grid" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th><span className="th">Farmer</span></th>
-                <th><span className="th">Farmer ID</span></th>
-                <th><span className="th">Reference</span></th>
-                <th className="num"><span className="th">Amount</span></th>
-                <th><span className="th">Method</span></th>
-                <th><span className="th">Status</span></th>
+                <th><span className="th">{tx('Farmer')}</span></th>
+                <th><span className="th">{tx('Farmer ID')}</span></th>
+                <th><span className="th">{tx('Reference')}</span></th>
+                <th className="num"><span className="th">{tx('Amount')}</span></th>
+                <th><span className="th">{tx('Method')}</span></th>
+                <th><span className="th">{tx('Status')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -871,7 +876,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}><span className="cell strong">Batch total</span></td>
+                <td colSpan={3}><span className="cell strong">{tx('Batch total')}</span></td>
                 <td className="num"><span className="cell num strong">{formatMoney(batch.total)}</span></td>
                 <td colSpan={2} />
               </tr>

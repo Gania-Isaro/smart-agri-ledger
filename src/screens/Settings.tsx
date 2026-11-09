@@ -16,6 +16,34 @@ import { usePrefs } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 import * as activityService from '../services/activityService';
 
+import { tx } from '../i18n/tx';
+import { txr } from '../i18n/rich';
+/* Plain words for the codes stored in the audit trail. */
+const AUDIT_ACTION: Record<string, string> = {
+  create: 'Created',
+  update: 'Changed',
+  void: 'Voided',
+  approve: 'Approved',
+  cancel: 'Cancelled',
+  pay: 'Paid',
+  import: 'Imported',
+  login: 'Signed in',
+  delete: 'Deleted',
+};
+const AUDIT_ENTITY: Record<string, string> = {
+  farmer: 'Farmer',
+  activity: 'Activity',
+  harvest: 'Harvest',
+  payment: 'Payment',
+  batch: 'Payment batch',
+  transaction: 'Ledger entry',
+  workday: 'Work day',
+  setting: 'Setting',
+  activityType: 'Activity type',
+  user: 'User',
+  account: 'Account',
+};
+
 export function Settings() {
   const route = useRoute();
   return route.segments[1] === 'audit' ? <AuditTrail /> : <SettingsHome />;
@@ -30,10 +58,9 @@ function SettingsHome() {
 
   const removeType = async (type: ActivityType) => {
     const answer = await confirm({
-      title: `Remove “${type.label}”?`,
-      message:
-        'It disappears from the + menu. Activities already recorded against it keep their name and stay in every report.',
-      confirmLabel: 'Remove activity type',
+      title: tx('Remove “{label}”?', { label: type.label }),
+      message: tx('It disappears from the + menu. Activities already recorded against it keep their name and stay in every report.'),
+      confirmLabel: tx('Remove activity type'),
       tone: 'danger',
     });
     if (!answer.ok || !user) return;
@@ -67,19 +94,20 @@ function SettingsHome() {
 
   const reset = async () => {
     const answer = await confirm({
-      title: isDemo ? 'Rebuild the demo cooperative?' : 'Delete all your data?',
+      title: isDemo ? tx('Rebuild the demo cooperative?') : tx('Delete all your data?'),
       message: (
         <>
           <p>
-            This deletes every farmer, activity, harvest, payment and ledger transaction in this account
-            {isDemo ? ', then regenerates the demo cooperative.' : '. Your account and sign-in stay as they are.'}
+            {isDemo
+              ? tx('This deletes every farmer, activity, harvest, payment and ledger transaction in this account, then regenerates the demo cooperative.')
+              : tx('This deletes every farmer, activity, harvest, payment and ledger transaction in this account. Your account and sign-in stay as they are.')}
           </p>
           <p style={{ marginTop: 'var(--s-2)' }} className="muted">
-            There is no undo, and nothing is backed up anywhere else.
+            {tx('There is no undo, and nothing is backed up anywhere else.')}
           </p>
         </>
       ),
-      confirmLabel: isDemo ? 'Rebuild the demo' : 'Delete everything',
+      confirmLabel: isDemo ? tx('Rebuild the demo') : tx('Delete everything'),
       tone: 'danger',
       typeToConfirm: 'RESET',
     });
@@ -93,8 +121,8 @@ function SettingsHome() {
         refresh();
         toast({
           tone: 'success',
-          title: 'Demo rebuilt',
-          message: `${result.farmers} farmers, ${result.transactions} transactions regenerated.`,
+          title: tx('Demo rebuilt'),
+          message: tx('{farmers} farmers, {transactions} transactions regenerated.', { farmers: result.farmers, transactions: result.transactions }),
         });
       } else {
         await clearAccountData({
@@ -104,7 +132,7 @@ function SettingsHome() {
           ownerEmail: account.email,
         });
         refresh();
-        toast({ tone: 'success', title: 'All data deleted', message: 'Your account is empty and ready to start again.' });
+        toast({ tone: 'success', title: tx('All data deleted'), message: tx('Your account is empty and ready to start again.') });
       }
     } catch (e) {
       fail(e);
@@ -120,7 +148,7 @@ function SettingsHome() {
       <div className="page-head">
         <div>
           <h1 className="page-title">{t('screen.settings.title')}</h1>
-          <p className="page-sub">Language, appearance, roles, storage and the data on this device.</p>
+          <p className="page-sub">{tx('Language, appearance, roles, storage and the data on this device.')}</p>
         </div>
       </div>
 
@@ -188,17 +216,19 @@ function SettingsHome() {
             <div className="card__head">
               <div className="row gap-2">
                 <Icon name="list" size={17} />
-                <h2 className="section-title">Activity types</h2>
+                <h2 className="section-title">{tx('Activity types')}</h2>
               </div>
               <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-                Add your own from the + menu
+                {tx('Add your own from the + menu')}
               </span>
             </div>
             <div className="card__body">
               {(customTypes.data ?? []).length === 0 ? (
                 <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-                  Your cooperative has not added any activity types yet. Open the <b>+</b> button and choose{' '}
-                  <b>{t('action.newActivityType')}</b> to add one that fits how you actually work.
+                  {txr('Your cooperative has not added any activity types yet. Open the {plus} button and choose {action} to add one that fits how you actually work.', {
+                    plus: <b>+</b>,
+                    action: <b>{t('action.newActivityType')}</b>,
+                  })}
                 </p>
               ) : (
                 <div className="row gap-2 wrap">
@@ -209,7 +239,7 @@ function SettingsHome() {
                       <span className="muted" style={{ fontWeight: 500 }}>
                         · {t(`cat.${type.category}`)}
                       </span>
-                      <button onClick={() => void removeType(type)} aria-label={`Remove ${type.label}`}>
+                      <button onClick={() => void removeType(type)} aria-label={tx('Remove {label}', { label: type.label })}>
                         <Icon name="x" size={12} />
                       </button>
                     </span>
@@ -234,34 +264,33 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <Callout tone="info" icon="shield">
-              Every record lives in this device’s database first. The app is fully usable with no signal, recording a
-              harvest in a field with no bars behaves exactly as it does in the office.
+              {tx('Every record lives in this device’s database first. The app is fully usable with no signal, recording a harvest in a field with no bars behaves exactly as it does in the office.')}
             </Callout>
 
             {c && (
               <div className="metrics" style={{ marginTop: 'var(--s-4)' }}>
                 <div className="metric">
-                  <span className="metric__label">Farmers</span>
+                  <span className="metric__label">{tx('Farmers')}</span>
                   <span className="metric__value metric__value--sm num">{c.farmers}</span>
                 </div>
                 <div className="metric">
-                  <span className="metric__label">Activities</span>
+                  <span className="metric__label">{tx('Activities')}</span>
                   <span className="metric__value metric__value--sm num">{c.activities}</span>
                 </div>
                 <div className="metric">
-                  <span className="metric__label">Harvests</span>
+                  <span className="metric__label">{tx('Harvests')}</span>
                   <span className="metric__value metric__value--sm num">{c.harvests}</span>
                 </div>
                 <div className="metric">
-                  <span className="metric__label">Payments</span>
+                  <span className="metric__label">{tx('Payments')}</span>
                   <span className="metric__value metric__value--sm num">{c.payments}</span>
                 </div>
                 <div className="metric">
-                  <span className="metric__label">Ledger entries</span>
+                  <span className="metric__label">{tx('Ledger entries')}</span>
                   <span className="metric__value metric__value--sm num">{c.transactions}</span>
                 </div>
                 <div className="metric">
-                  <span className="metric__label">Audit records</span>
+                  <span className="metric__label">{tx('Audit records')}</span>
                   <span className="metric__value metric__value--sm num">{c.audits}</span>
                 </div>
               </div>
@@ -269,8 +298,10 @@ function SettingsHome() {
 
             {storage.data && storage.data.quota > 0 && (
               <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-3)' }}>
-                Using {(storage.data.usage / 1024 / 1024).toFixed(1)} MB of roughly{' '}
-                {(storage.data.quota / 1024 / 1024).toFixed(0)} MB available to this app on this device.
+                {tx('Using {used} MB of roughly {quota} MB available to this app on this device.', {
+                  used: (storage.data.usage / 1024 / 1024).toFixed(1),
+                  quota: (storage.data.quota / 1024 / 1024).toFixed(0),
+                })}
               </p>
             )}
           </div>
@@ -286,20 +317,17 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-4)' }}>
-              The owner and the manager share one account, which holds every permission. Both sign in to the same place
-              and see the same figures. The roles below are still enforced in the service layer rather than by hiding
-              buttons, so if this cooperative ever wants a separate field officer or accountant login, it is a new
-              account rather than a rebuild.
+              {tx('The owner and the manager share one account, which holds every permission. Both sign in to the same place and see the same figures. The roles below are still enforced inside the app rather than by hiding buttons, so a separate field officer or accountant login can be added later without a rebuild.')}
             </p>
 
             <div style={{ overflowX: 'auto' }}>
               <table className="grid" style={{ width: '100%' }}>
                 <thead>
                   <tr>
-                    <th><span className="th">Role</span></th>
-                    <th><span className="th">What it can do</span></th>
-                    <th className="num"><span className="th">Permissions</span></th>
-                    <th><span className="th">Signed-in user</span></th>
+                    <th><span className="th">{tx('Role')}</span></th>
+                    <th><span className="th">{tx('What it can do')}</span></th>
+                    <th className="num"><span className="th">{tx('Permissions')}</span></th>
+                    <th><span className="th">{tx('Signed-in user')}</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -343,12 +371,12 @@ function SettingsHome() {
           <div className="card__head">
             <div className="row gap-2">
               <Icon name="sprout" size={17} />
-              <h2 className="section-title">Crops and cooperatives</h2>
+              <h2 className="section-title">{tx('Crops and cooperatives')}</h2>
             </div>
           </div>
           <div className="card__body">
             <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              Crop price list
+              {tx('Crop price list')}
             </p>
             <div className="row gap-2 wrap" style={{ marginBottom: 'var(--s-4)' }}>
               {crops.map((c) => (
@@ -360,7 +388,7 @@ function SettingsHome() {
             </div>
 
             <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              Cooperatives
+              {tx('Cooperatives')}
             </p>
             <div className="row gap-2 wrap">
               {cooperatives.map((c) => (
@@ -384,8 +412,8 @@ function SettingsHome() {
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
               {isDemo
-                ? 'Regenerates the demo cooperative from scratch. Useful when a demonstration has left it in a strange state.'
-                : 'Deletes every record in your account and leaves you with an empty book. Your sign-in is unaffected. This cannot be undone.'}
+                ? tx('Regenerates the demo cooperative from scratch. Useful when a demonstration has left it in a strange state.')
+                : tx('Deletes every record in your account and leaves you with an empty book. Your sign-in is unaffected. This cannot be undone.')}
             </p>
             <Button variant="quiet-danger" icon="refresh" onClick={reset} loading={busy}>
               {t('settings.resetData')}
@@ -408,10 +436,9 @@ function AuditTrail() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Audit trail</h1>
+          <h1 className="page-title">{tx('Audit trail')}</h1>
           <p className="page-sub">
-            Every create, edit, approval, payment and void, with the user who did it. This is what makes a disputed
-            balance answerable.
+            {tx('Every create, edit, approval, payment and void, with the user who did it. This is what makes a disputed balance answerable.')}
           </p>
         </div>
       </div>
@@ -419,18 +446,18 @@ function AuditTrail() {
       {query.loading ? (
         <Skeleton height={280} />
       ) : rows.length === 0 ? (
-        <EmptyState icon="shield" title="Nothing recorded yet" message="Actions appear here as soon as they happen." />
+        <EmptyState icon="shield" title={tx('Nothing recorded yet')} message={tx('Actions appear here as soon as they happen.')} />
       ) : (
         <div className="panel">
           <div style={{ overflowX: 'auto' }}>
             <table className="grid" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th><span className="th">When</span></th>
-                  <th><span className="th">User</span></th>
-                  <th><span className="th">Action</span></th>
-                  <th><span className="th">Entity</span></th>
-                  <th><span className="th">Summary</span></th>
+                  <th><span className="th">{tx('When')}</span></th>
+                  <th><span className="th">{tx('User')}</span></th>
+                  <th><span className="th">{tx('Action')}</span></th>
+                  <th><span className="th">{tx('Entity')}</span></th>
+                  <th><span className="th">{tx('Summary')}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -453,7 +480,7 @@ function AuditTrail() {
                       <span className="cell">
                         <Badge
                           meta={{
-                            label: e.action,
+                            label: tx(AUDIT_ACTION[e.action] ?? e.action),
                             glyph: e.action === 'void' ? '↺' : e.action === 'pay' ? '₣' : e.action === 'approve' ? '✓' : '•',
                             tone: e.action === 'void' ? 'red' : e.action === 'pay' ? 'purple' : e.action === 'approve' ? 'green' : 'slate',
                           }}
@@ -461,7 +488,7 @@ function AuditTrail() {
                       </span>
                     </td>
                     <td>
-                      <span className="cell muted">{e.entity}</span>
+                      <span className="cell muted">{tx(AUDIT_ENTITY[e.entity] ?? e.entity)}</span>
                     </td>
                     <td>
                       <span className="cell truncate" title={e.summary}>

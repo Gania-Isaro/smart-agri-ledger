@@ -33,6 +33,8 @@ import type { ActivityCategory, ActivityType, Farmer, FieldSpec } from '../domai
 import { usePrefs } from '../i18n';
 import { Checkbox } from './ui/primitives';
 
+import { tx } from '../i18n/tx';
+import { txr } from '../i18n/rich';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -310,7 +312,7 @@ function ActivityForm({
     if (!user) return;
 
     if (!selectedFarmer) {
-      setErrors({ farmerId: 'Choose the farmer this belongs to.' });
+      setErrors({ farmerId: tx('Choose the farmer this belongs to.') });
       return;
     }
 
@@ -348,17 +350,18 @@ function ActivityForm({
         if ((err as Error).name === 'ConfirmationRequired') {
           const detail = (err as ConfirmationRequired).detail;
           const answer = await confirm({
-            title: 'Pay more than the balance?',
+            title: tx('Pay more than the balance?'),
             message: (
               <>
                 <p>{(err as Error).message}</p>
                 <p style={{ marginTop: 'var(--s-3)' }}>
-                  The extra <b>{formatMoney(detail.amount - detail.balance)}</b> will sit on the account as an advance
-                  and be recovered from the next delivery.
+                  {txr('The extra {amount} will sit on the account as an advance and be recovered from the next delivery.', {
+                    amount: <b>{formatMoney(detail.amount - detail.balance)}</b>,
+                  })}
                 </p>
               </>
             ),
-            confirmLabel: 'Yes, pay this amount',
+            confirmLabel: tx('Yes, pay this amount'),
             tone: 'danger',
           });
           if (!answer.ok) {
@@ -373,7 +376,7 @@ function ActivityForm({
 
       toast({
         tone: 'success',
-        title: `${type.label} recorded`,
+        title: tx('{label} recorded', { label: tActivity(type.id, type.label) }),
         message: farmer ? `${farmer.firstName} ${farmer.lastName} · ${farmer.code}` : undefined,
       });
       onSaved();
@@ -407,7 +410,7 @@ function ActivityForm({
       open
       onClose={onClose}
       title={tActivity(type.id, type.label)}
-      subtitle={type.description ?? t(`cat.${type.category}.blurb`)}
+      subtitle={type.description ? tx(type.description) : t(`cat.${type.category}.blurb`)}
       footer={
         <>
           {onBack && (
@@ -495,12 +498,12 @@ function ActivityForm({
             </div>
             {deductions > 0 && (
               <div className="calc__row">
-                <span>Deductions at intake</span>
+                <span>{tx('Deductions at intake')}</span>
                 <b className="num neg">− {formatMoney(deductions)}</b>
               </div>
             )}
             <div className="calc__row calc__total">
-              <span>Credited to farmer</span>
+              <span>{tx('Credited to farmer')}</span>
               <b className="num pos">{formatMoney(gross - (deductions || 0))}</b>
             </div>
           </div>
@@ -509,15 +512,15 @@ function ActivityForm({
         {isMoney && balance !== null && (
           <div className="calc">
             <div className="calc__row">
-              <span>Balance now</span>
+              <span>{tx('Balance now')}</span>
               <b className={`num ${balance >= 0 ? 'pos' : 'neg'}`}>{formatMoney(balance)}</b>
             </div>
             <div className="calc__row">
-              <span>This {type.label.toLowerCase()}</span>
+              <span>{tx('This entry')}</span>
               <b className="num">{amount ? formatMoney(amount) : '-'}</b>
             </div>
             <div className="calc__row calc__total">
-              <span>Balance after</span>
+              <span>{tx('Balance after')}</span>
               <b className={`num ${(projected ?? 0) >= 0 ? 'pos' : 'neg'}`}>{formatMoney(projected ?? 0)}</b>
             </div>
           </div>
@@ -525,8 +528,9 @@ function ActivityForm({
 
         {isMoney && projected !== null && projected < 0 && (
           <Callout tone="warn" icon="alert">
-            This leaves <b>{formatMoney(Math.abs(projected))}</b> owing from the farmer. It will be recovered from their
-            next delivery.
+            {txr('This leaves {amount} owing from the farmer. It will be recovered from their next delivery.', {
+              amount: <b>{formatMoney(Math.abs(projected))}</b>,
+            })}
           </Callout>
         )}
 
@@ -536,8 +540,8 @@ function ActivityForm({
 
         {type.postsLedger && (
           <p className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-            <Icon name="shield" size={12} style={{ display: 'inline', verticalAlign: -2 }} /> This creates a ledger
-            transaction against {lookups.userName(user?.id)}. It can be voided later, never deleted.
+            <Icon name="shield" size={12} style={{ display: 'inline', verticalAlign: -2 }} />{' '}
+            {tx('This creates a ledger transaction recorded by {user}. It can be voided later, never deleted.', { user: lookups.userName(user?.id) })}
           </p>
         )}
       </form>
@@ -569,7 +573,7 @@ function DynamicField({
   const { tField } = usePrefs();
   const common = {
     label: tField(spec.key, spec.label),
-    help: spec.help,
+    help: spec.help ? tx(spec.help) : undefined,
     error,
     required: spec.required,
     full: !spec.half,
@@ -595,8 +599,8 @@ function DynamicField({
       return (
         <Field {...common}>
           <Select
-            options={spec.options ?? []}
-            placeholder="Choose…"
+            options={(spec.options ?? []).map((o) => ({ ...o, label: tx(o.label) }))}
+            placeholder={tx('Choose…')}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             invalid={Boolean(error)}
@@ -607,7 +611,7 @@ function DynamicField({
     case 'crop':
       return (
         <Field {...common}>
-          <Select options={cropOptions} placeholder="Choose a crop…" value={value} onChange={(e) => onChange(e.target.value)} />
+          <Select options={cropOptions} placeholder={tx('Choose a crop…')} value={value} onChange={(e) => onChange(e.target.value)} />
         </Field>
       );
 
@@ -658,7 +662,7 @@ function DynamicField({
             style={{ justifyContent: 'flex-start', cursor: 'pointer', width: 'fit-content' }}
           >
             <Icon name="upload" size={15} />
-            {attachmentName ? 'Replace file' : 'Choose photo or document'}
+            {attachmentName ? tx('Replace file') : tx('Choose photo or document')}
             <input
               type="file"
               accept="image/*,application/pdf"
@@ -746,7 +750,7 @@ function NewActivityTypeModal({
               setLabel(e.target.value);
               setError('');
             }}
-            placeholder="e.g. Mulching, Cooperative audit"
+            placeholder={tx('e.g. Mulching, Cooperative audit')}
             autoFocus
             maxLength={48}
           />

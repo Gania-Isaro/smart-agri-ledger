@@ -29,22 +29,25 @@ import { EmptyState, Button, Spinner } from './components/ui/primitives';
 import { navigate } from './state/router';
 import { db } from './db/db';
 import { useQuery } from './state/store';
-import { useT } from './i18n';
+import { usePrefs } from './i18n';
+import { tx } from './i18n/tx';
 
+/* Page titles in the top bar, by first path segment. */
 const TITLES: Record<string, string> = {
-  overview: 'Overview',
-  farmers: 'Farmers',
-  activities: 'Activities',
-  production: 'Production',
-  payments: 'Payments',
-  ledger: 'Ledger',
-  reports: 'Reports',
-  settings: 'Settings',
+  overview: 'nav.overview',
+  farmers: 'nav.farmers',
+  activities: 'nav.activities',
+  production: 'nav.production',
+  payments: 'nav.payments',
+  ledger: 'nav.ledger',
+  work: 'nav.work',
+  reports: 'nav.reports',
+  settings: 'nav.settings',
 };
 
 export function App() {
   const { ready, user, isDemo, can } = useStore();
-  const t = useT();
+  const { t, lang } = usePrefs();
   const route = useRoute();
   const [search, setSearch] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
@@ -93,12 +96,12 @@ export function App() {
   if (!user) return <Login />;
 
   const section = route.segments[0] ?? 'overview';
-  const title = TITLES[section] ?? 'Smart Agri-Ledger';
+  const title = TITLES[section] ? t(TITLES[section]!) : 'Smart Agri-Ledger';
 
   return (
     <div className="app">
       <a className="skip-link" href="#main">
-        Skip to content
+        {tx('Skip to content')}
       </a>
 
       <Sidebar counts={counts.data ?? { awaitingPayment: 0, pendingPayments: 0, unverified: 0 }} />
@@ -114,7 +117,9 @@ export function App() {
               <div>{t('auth.demoBanner')}</div>
             </div>
           )}
-          <Screen section={section} route={route} search={search} />
+          {/* Remount on language change so every screen, including memoised
+              table columns, redraws in the new language. */}
+          <Screen key={lang} section={section} route={route} search={search} />
         </main>
       </div>
 

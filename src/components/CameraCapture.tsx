@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './ui/primitives';
 import { Icon } from './ui/Icon';
 
+import { tx } from '../i18n/tx';
 const MAX_SIDE = 640;
 const QUALITY = 0.72;
 
@@ -104,7 +105,7 @@ export function CameraCapture({
           }
         });
       } catch {
-        setError('The camera could not be opened. Allow camera access, or use the phone camera button below.');
+        setError(tx('The camera could not be opened. Allow camera access, or use the phone camera button below.'));
       }
     },
     [facing, stop],
@@ -130,7 +131,7 @@ export function CameraCapture({
       URL.revokeObjectURL(url);
     };
     img.onerror = () => {
-      setError('That picture could not be read. Try again.');
+      setError(tx('That picture could not be read. Try again.'));
       URL.revokeObjectURL(url);
     };
     img.src = url;
@@ -146,13 +147,13 @@ export function CameraCapture({
     <div className="camera">
       <div className="camera__frame">
         {value && !live ? (
-          <img src={value.dataUrl} alt={`Photo of ${label}`} className="camera__img" />
+          <img src={value.dataUrl} alt={tx('Photo of {label}', { label })} className="camera__img" />
         ) : live ? (
           <video ref={videoRef} className={`camera__img ${facing === 'user' ? 'camera__img--mirror' : ''}`} playsInline muted />
         ) : (
           <div className="camera__empty">
             <Icon name="camera" size={32} />
-            <span>No photo yet</span>
+            <span>{tx('No photo yet')}</span>
           </div>
         )}
       </div>
@@ -161,22 +162,22 @@ export function CameraCapture({
         {live ? (
           <>
             <Button variant="primary" icon="camera" onClick={snap} type="button">
-              Take photo
+              {tx('Take photo')}
             </Button>
             <Button variant="ghost" icon="refresh" onClick={flip} type="button">
-              Switch camera
+              {tx('Switch camera')}
             </Button>
             <Button variant="ghost" onClick={stop} type="button">
-              Cancel
+              {tx('Cancel')}
             </Button>
           </>
         ) : (
           <>
             <Button variant={value ? 'secondary' : 'primary'} icon="camera" onClick={() => void start()} type="button">
-              {value ? 'Retake photo' : 'Open camera'}
+              {value ? tx('Retake photo') : tx('Open camera')}
             </Button>
             <Button variant="ghost" onClick={() => fileRef.current?.click()} type="button">
-              Use phone camera
+              {tx('Use phone camera')}
             </Button>
           </>
         )}

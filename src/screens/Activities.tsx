@@ -16,11 +16,12 @@ import * as activityService from '../services/activityService';
 import type { Activity, ActivityCategory, Farmer } from '../domain/types';
 import { usePrefs } from '../i18n';
 
+import { cropLabel, translated, tx } from '../i18n/tx';
 interface Row extends Activity {
   farmer?: Farmer;
 }
 
-const SECTION: Record<string, { title: string; blurb: string; categories: ActivityCategory[] }> = {
+const SECTION: Record<string, { title: string; blurb: string; categories: ActivityCategory[] }> = translated({
   farming: {
     title: 'Farming activities',
     blurb: 'Land preparation through to crop monitoring. Everything before the harvest.',
@@ -36,7 +37,7 @@ const SECTION: Record<string, { title: string; blurb: string; categories: Activi
     blurb: 'Operations, logistics, financial records, training and visits.',
     categories: ['operations', 'logistics', 'financial', 'other'],
   },
-};
+});
 
 export function Activities({ search }: { search: string }) {
   const route = useRoute();
@@ -72,7 +73,7 @@ export function Activities({ search }: { search: string }) {
     () => [
       {
         key: 'date',
-        header: 'Date',
+        header: tx('Date'),
         width: 92,
         mobile: 'subtitle',
         sortValue: (r) => r.date,
@@ -82,7 +83,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: 'Farmer',
+        header: tx('Farmer'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => `${r.farmer?.lastName ?? ''} ${r.farmer?.firstName ?? ''}`,
@@ -96,7 +97,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: 'Farmer ID',
+        header: tx('Farmer ID'),
         width: 92,
         optional: true,
         sortValue: (r) => r.farmer?.code ?? '',
@@ -106,7 +107,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'type',
-        header: 'Activity',
+        header: tx('Activity'),
         width: 172,
         mobile: 'cell',
         sortValue: (r) => tActivity(r.typeId, lookups.typeLabel(r.typeId)),
@@ -116,7 +117,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'category',
-        header: 'Category',
+        header: tx('Category'),
         width: 130,
         sortValue: (r) => r.category,
         searchValue: (r) => CATEGORY_META[r.category].label,
@@ -125,7 +126,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'crop',
-        header: 'Crop',
+        header: tx('Crop'),
         width: 116,
         mobile: 'cell',
         sortValue: (r) => tCrop(r.cropId, lookups.cropName(r.cropId)),
@@ -140,7 +141,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'quantity',
-        header: 'Quantity',
+        header: tx('Quantity'),
         width: 106,
         align: 'right',
         mobile: 'cell',
@@ -158,7 +159,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'value',
-        header: 'Value',
+        header: tx('Value'),
         width: 130,
         align: 'right',
         mobile: 'cell',
@@ -172,7 +173,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'status',
-        header: 'Status',
+        header: tx('Status'),
         width: 132,
         mobile: 'badge',
         sortValue: (r) => r.status,
@@ -182,16 +183,16 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'posted',
-        header: 'Ledger',
+        header: tx('Ledger'),
         width: 100,
         sortValue: (r) => (r.transactionId ? 1 : 0),
         searchValue: (r) => (r.transactionId ? 'posted' : ''),
         exportValue: (r) => (r.transactionId ? 'posted' : ''),
         render: (r) =>
           r.transactionId ? (
-            <span className="badge badge--purple" title="This activity posted a ledger transaction">
+            <span className="badge badge--purple" title={tx('This activity posted a ledger transaction')}>
               <span className="badge__glyph">₣</span>
-              Posted
+              {tx('Posted')}
             </span>
           ) : (
             <span className="muted">-</span>
@@ -199,7 +200,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'by',
-        header: 'Recorded by',
+        header: tx('Recorded by'),
         width: 150,
         optional: true,
         sortValue: (r) => lookups.userName(r.createdBy),
@@ -209,7 +210,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'notes',
-        header: 'Notes',
+        header: tx('Notes'),
         width: 220,
         optional: true,
         searchValue: (r) => r.notes ?? '',
@@ -225,14 +226,14 @@ export function Activities({ search }: { search: string }) {
   const bulkActions = can('activity.verify')
     ? [
         {
-          label: 'Mark verified',
+          label: tx('Mark verified'),
           icon: 'badge-check' as const,
           run: async (ids: string[]) => {
             if (!user) return;
             try {
               const n = await activityService.setActivityStatus(user, ids, 'verified');
               refresh();
-              toast({ tone: 'success', title: `${n} activities verified` });
+              toast({ tone: 'success', title: tx('{n} activities verified', { n }) });
             } catch (e) {
               fail(e);
             }
@@ -245,13 +246,13 @@ export function Activities({ search }: { search: string }) {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">{section?.title ?? 'All activities'}</h1>
+          <h1 className="page-title">{section?.title ?? tx('All activities')}</h1>
           <p className="page-sub">
-            {section?.blurb ?? 'Everything recorded against a farmer, newest first. Click a row to open the farmer.'}
+            {section?.blurb ?? tx('Everything recorded against a farmer, newest first. Click a row to open the farmer.')}
           </p>
         </div>
         <Button variant="primary" icon="plus" onClick={() => setComposer(true)}>
-          Record activity
+          {tx('Record activity')}
         </Button>
       </div>
 
@@ -266,9 +267,9 @@ export function Activities({ search }: { search: string }) {
         onRowClick={(r) => navigate(`/farmers/${r.farmerId}`)}
         onError={fail}
         bulkActions={bulkActions}
-        emptyTitle="No activities recorded"
-        emptyMessage="Use the + button to record farming, harvest, logistics or financial activity."
-        emptyAction={<Button variant="primary" icon="plus" onClick={() => setComposer(true)}>Record activity</Button>}
+        emptyTitle={tx('No activities recorded')}
+        emptyMessage={tx('Use the + button to record farming, harvest, logistics or financial activity.')}
+        emptyAction={<Button variant="primary" icon="plus" onClick={() => setComposer(true)}>{tx('Record activity')}</Button>}
         toolbar={
           <FilterBar
             specs={[
@@ -276,13 +277,13 @@ export function Activities({ search }: { search: string }) {
                 ? []
                 : ([{
                     key: 'category',
-                    label: 'Category',
+                    label: tx('Category'),
                     type: 'multi' as const,
                     options: Object.entries(CATEGORY_META).map(([value, m]) => ({ value, label: m.label })),
                   }])),
-              { key: 'status', label: 'Status', type: 'multi', options: Object.entries(ACTIVITY_STATUS).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'crop', label: 'Crop', type: 'multi', options: crops.map((c) => ({ value: c.id, label: c.name })) },
-              { key: 'date', label: 'Date', type: 'daterange' },
+              { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(ACTIVITY_STATUS).map(([value, m]) => ({ value, label: m.label })) },
+              { key: 'crop', label: tx('Crop'), type: 'multi', options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })) },
+              { key: 'date', label: tx('Date'), type: 'daterange' },
             ]}
             values={filters}
             onChange={setFilters}

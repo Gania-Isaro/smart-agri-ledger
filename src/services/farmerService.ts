@@ -9,6 +9,7 @@ import type { Farmer, FarmerStatus, ID, User } from '../domain/types';
 import * as audit from './audit';
 import { financialsByFarmer } from './ledgerService';
 
+import { tx } from '../i18n/tx';
 export class ValidationError extends Error {
   readonly field?: string;
   constructor(message: string, field?: string) {
@@ -28,22 +29,22 @@ export type FarmerDraft = Omit<Farmer, 'id' | 'code' | 'status' | 'archived'> & 
 const CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{1,23}$/;
 
 function validate(draft: Partial<FarmerDraft>) {
-  if (!draft.firstName?.trim()) throw new ValidationError('First name is required.', 'firstName');
-  if (!draft.lastName?.trim()) throw new ValidationError('Last name is required.', 'lastName');
-  if (!draft.district?.trim()) throw new ValidationError('District is required.', 'district');
-  if (!draft.cooperativeId) throw new ValidationError('Select a cooperative.', 'cooperativeId');
-  if (!draft.primaryCropId) throw new ValidationError('Select a primary crop.', 'primaryCropId');
+  if (!draft.firstName?.trim()) throw new ValidationError(tx('First name is required.'), 'firstName');
+  if (!draft.lastName?.trim()) throw new ValidationError(tx('Last name is required.'), 'lastName');
+  if (!draft.district?.trim()) throw new ValidationError(tx('District is required.'), 'district');
+  if (!draft.cooperativeId) throw new ValidationError(tx('Select a cooperative.'), 'cooperativeId');
+  if (!draft.primaryCropId) throw new ValidationError(tx('Select a primary crop.'), 'primaryCropId');
   if (draft.phone && !/^[+0-9 ()-]{7,20}$/.test(draft.phone.trim())) {
-    throw new ValidationError('That phone number does not look right.', 'phone');
+    throw new ValidationError(tx('That phone number does not look right.'), 'phone');
   }
   if (draft.farmSizeHa !== undefined && (draft.farmSizeHa < 0 || draft.farmSizeHa > 500)) {
-    throw new ValidationError('Farm size must be between 0 and 500 hectares.', 'farmSizeHa');
+    throw new ValidationError(tx('Farm size must be between 0 and 500 hectares.'), 'farmSizeHa');
   }
   if (draft.plots !== undefined && (draft.plots < 0 || !Number.isInteger(draft.plots))) {
-    throw new ValidationError('Number of plots must be a whole number.', 'plots');
+    throw new ValidationError(tx('Number of plots must be a whole number.'), 'plots');
   }
   if (draft.code && !CODE_PATTERN.test(draft.code.trim())) {
-    throw new ValidationError('A farmer ID must be 2 to 24 letters, digits, spaces or . _ - /', 'code');
+    throw new ValidationError(tx('A farmer ID must be 2 to 24 letters, digits, spaces or . _ - /'), 'code');
   }
 }
 
@@ -54,7 +55,7 @@ function validate(draft: Partial<FarmerDraft>) {
 async function assertCodeFree(code: string, exceptId?: ID) {
   const clash = await db.farmers.where('code').equals(code).first();
   if (clash && clash.id !== exceptId) {
-    throw new ValidationError(`Farmer ID ${code} is already used by ${clash.firstName} ${clash.lastName}.`, 'code');
+    throw new ValidationError(tx('Farmer ID {code} is already used by {firstName} {lastName}.', { code, firstName: clash.firstName, lastName: clash.lastName }), 'code');
   }
 }
 
@@ -95,7 +96,7 @@ export async function create(user: User, draft: FarmerDraft): Promise<Farmer> {
 export async function update(user: User, id: ID, patch: Partial<Farmer>): Promise<Farmer> {
   assertCan(user, 'farmer.edit');
   const before = await db.farmers.get(id);
-  if (!before) throw new ValidationError('That farmer no longer exists.');
+  if (!before) throw new ValidationError(tx('That farmer no longer exists.'));
 
   const after: Farmer = { ...before, ...patch, id: before.id };
   after.code = (patch.code?.trim() || before.code).trim();
@@ -135,7 +136,7 @@ export async function remove(user: User, id: ID): Promise<void> {
   const before = await db.farmers.get(id);
   if (!before) return;
   if ((await historyCount(id)) > 0) {
-    throw new ValidationError(`${before.code} has records in the books, so it can only be archived, not deleted.`);
+    throw new ValidationError(tx('{code} has records in the books, so it can only be archived, not deleted.', { code: before.code }));
   }
   await db.transaction('rw', [db.farmers, db.documents, db.audit], async () => {
     await db.documents.where('farmerId').equals(id).delete();
@@ -151,12 +152,12 @@ export async function remove(user: User, id: ID): Promise<void> {
 export async function archive(user: User, id: ID, archived: boolean): Promise<Farmer> {
   assertCan(user, 'farmer.archive');
   const before = await db.farmers.get(id);
-  if (!before) throw new ValidationError('That farmer no longer exists.');
+  if (!before) throw new ValidationError(tx('That farmer no longer exists.'));
 
   const financials = (await financialsByFarmer()).get(id);
   if (archived && financials && financials.balance !== 0) {
     throw new ValidationError(
-      `${before.code} still has a balance of ${financials.balance.toLocaleString()} RWF. Settle the account before archiving.`,
+      tx('{code} still has a balance of {v} RWF. Settle the account before archiving.', { code: before.code, v: financials.balance.toLocaleString() }),
     );
   }
 
@@ -207,7 +208,7 @@ export async function importFarmers(user: User, drafts: FarmerDraft[]): Promise<
     try {
       validate(d);
     } catch (e) {
-      throw new ValidationError(`Row ${i + 2}: ${(e as Error).message}`);
+      throw new ValidationError(tx('Row {row}: {problem}', { row: i + 2, problem: (e as Error).message }));
     }
   });
 

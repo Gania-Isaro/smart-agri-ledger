@@ -31,6 +31,8 @@ import * as audit from './audit';
 import { postSystem } from './ledgerService';
 import { ValidationError } from './farmerService';
 
+import { tx as T, txLang } from '../i18n/tx';
+import { ACTIVITY_LABELS_RW, FIELD_LABELS_RW } from '../i18n/strings';
 /** A financial activity that would overdraw an account raises this instead of
  *  silently posting, so the UI can ask for an explicit confirmation. */
 export class ConfirmationRequired extends Error {
@@ -126,12 +128,12 @@ export async function createActivityType(
   assertCan(user, 'settings.manage');
 
   const label = input.label.trim();
-  if (label.length < 2) throw new ValidationError('Give the activity a name.', 'label');
-  if (label.length > 48) throw new ValidationError('Keep the name under 48 characters.', 'label');
+  if (label.length < 2) throw new ValidationError(T('Give the activity a name.'), 'label');
+  if (label.length > 48) throw new ValidationError(T('Keep the name under 48 characters.'), 'label');
 
   const existing = await catalog();
   if (existing.some((t) => t.label.toLowerCase() === label.toLowerCase())) {
-    throw new ValidationError(`An activity called "${label}" already exists.`, 'label');
+    throw new ValidationError(T('An activity called "{label}" already exists.', { label }), 'label');
   }
 
   const base = slugify(label) || 'custom';
@@ -162,8 +164,8 @@ export async function createActivityType(
 export async function deleteActivityType(user: User, id: string): Promise<void> {
   assertCan(user, 'settings.manage');
   const type = await db.activityTypes.get(id);
-  if (!type) throw new ValidationError('That activity type no longer exists.');
-  if (!type.custom) throw new ValidationError('Built-in activities cannot be removed.');
+  if (!type) throw new ValidationError(T('That activity type no longer exists.'));
+  if (!type.custom) throw new ValidationError(T('Built-in activities cannot be removed.'));
 
   const used = await db.activities.where('typeId').equals(id).count();
   await db.activityTypes.delete(id);
@@ -179,6 +181,11 @@ export async function deleteActivityType(user: User, id: string): Promise<void> 
 
 /* ------------------------------------------------------------ validation */
 
+/** A form field's name in the language in use, for error messages. */
+function fieldName(field: FieldSpec): string {
+  return txLang() === 'rw' ? FIELD_LABELS_RW[field.key] ?? T(field.label) : field.label;
+}
+
 function validateFields(type: ActivityType, data: Record<string, string | number | undefined>) {
   for (const field of type.fields) {
     if (field.computed) continue;
@@ -186,23 +193,23 @@ function validateFields(type: ActivityType, data: Record<string, string | number
     const empty = raw === undefined || raw === '' || raw === null;
 
     if (field.required && empty) {
-      throw new ValidationError(`${field.label} is required.`, field.key);
+      throw new ValidationError(T('{label} is required.', { label: fieldName(field) }), field.key);
     }
     if (empty) continue;
 
     if (field.type === 'number' || field.type === 'currency') {
       const n = Number(raw);
-      if (!Number.isFinite(n)) throw new ValidationError(`${field.label} must be a number.`, field.key);
-      if (n < 0) throw new ValidationError(`${field.label} cannot be negative.`, field.key);
+      if (!Number.isFinite(n)) throw new ValidationError(T('{label} must be a number.', { label: fieldName(field) }), field.key);
+      if (n < 0) throw new ValidationError(T('{label} cannot be negative.', { label: fieldName(field) }), field.key);
       if (field.min !== undefined && n < field.min) {
-        throw new ValidationError(`${field.label} must be at least ${field.min}.`, field.key);
+        throw new ValidationError(T('{label} must be at least {min}.', { label: fieldName(field), min: field.min }), field.key);
       }
       if (field.max !== undefined && n > field.max) {
-        throw new ValidationError(`${field.label} cannot be more than ${field.max}.`, field.key);
+        throw new ValidationError(T('{label} cannot be more than {max}.', { label: fieldName(field), max: field.max }), field.key);
       }
     }
     if (field.type === 'select' && field.options && !field.options.some((o) => o.value === String(raw))) {
-      throw new ValidationError(`Choose a valid option for ${field.label}.`, field.key);
+      throw new ValidationError(T('Choose a valid option for {label}.', { label: fieldName(field) }), field.key);
     }
   }
 }
@@ -223,18 +230,18 @@ function applyComputed(type: ActivityType, data: Record<string, string | number 
 export async function createActivity(user: User, input: ActivityInput): Promise<Activity> {
   const types = await catalog();
   const type = types.find((t) => t.id === input.typeId);
-  if (!type) throw new ValidationError('That activity type does not exist.');
+  if (!type) throw new ValidationError(T('That activity type does not exist.'));
 
   assertCan(user, permissionFor(type));
 
   const farmer = await db.farmers.get(input.farmerId);
-  if (!farmer) throw new ValidationError('Select a farmer.', 'farmerId');
-  if (farmer.archived) throw new ValidationError(`${farmer.code} is archived. Restore the farmer before recording activity.`);
+  if (!farmer) throw new ValidationError(T('Select a farmer.'), 'farmerId');
+  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the farmer before recording activity.', { code: farmer.code }));
 
   validateFields(type, input.data);
   const data = applyComputed(type, input.data);
   const date = input.date || today();
-  if (date > today()) throw new ValidationError('An activity cannot be dated in the future.', 'date');
+  if (date > today()) throw new ValidationError(T('An activity cannot be dated in the future.'), 'date');
 
   const at = nowStamp();
   const activityId = uid('act');
@@ -244,12 +251,12 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
   let harvest: Harvest | undefined;
   if (type.createsHarvest) {
     const quantity = toQuantity(data.quantity, 'Quantity');
-    if (quantity <= 0) throw new ValidationError('Quantity must be greater than zero.', 'quantity');
+    if (quantity <= 0) throw new ValidationError(T('Quantity must be greater than zero.'), 'quantity');
     const pricePerUnit = toNonNegativeMoney(data.pricePerUnit ?? 0, 'Price per unit');
     const deductions = toNonNegativeMoney(data.deductions ?? 0, 'Deductions');
     const gross = grossValue(quantity, pricePerUnit);
     if (deductions > gross) {
-      throw new ValidationError('Deductions cannot exceed the value of the delivery.', 'deductions');
+      throw new ValidationError(T('Deductions cannot exceed the value of the delivery.'), 'deductions');
     }
 
     harvest = {
@@ -288,7 +295,7 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
       const { balance } = summarise(txs);
       if (ledgerAmount > balance) {
         throw new ConfirmationRequired(
-          `${farmer.firstName} ${farmer.lastName} is owed ${balance.toLocaleString()} RWF, but this payment is ${ledgerAmount.toLocaleString()} RWF. Paying more than the balance puts the account into advance.`,
+          T('{firstName} {lastName} is owed {v} RWF, but this payment is {v2} RWF. Paying more than the balance puts the account into advance.', { firstName: farmer.firstName, lastName: farmer.lastName, v: balance.toLocaleString(), v2: ledgerAmount.toLocaleString() }),
           { balance, amount: ledgerAmount },
         );
       }
@@ -341,7 +348,7 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
       farmerId: farmer.id,
       type: 'deduction',
       amount: harvest.deductions,
-      description: 'Deductions at intake',
+      description: T('Deductions at intake'),
       date,
       harvestId: harvest.id,
       activityId: activity.id,
@@ -353,16 +360,21 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
   return activity;
 }
 
+/** Activity name in the language in use when the record is written. */
+function activityName(type: ActivityType): string {
+  return txLang() === 'rw' ? ACTIVITY_LABELS_RW[type.id] ?? type.label : type.label;
+}
+
 function describeTransaction(
   type: ActivityType,
   data: Record<string, string | number | undefined>,
   unit?: string,
 ): string {
   if (type.createsHarvest) {
-    return `${type.label}, ${data.quantity} ${unit ?? data.unit ?? ''} @ ${data.pricePerUnit} RWF`.trim();
+    return T('{activity}, {quantity} {unit} @ {price} RWF', { activity: activityName(type), quantity: data.quantity, unit: unit ?? data.unit ?? '', price: data.pricePerUnit });
   }
   const reason = (data.reason as string | undefined)?.trim();
-  return reason ? `${type.label}, ${reason}` : type.label;
+  return reason ? `${activityName(type)}, ${reason}` : activityName(type);
 }
 
 /* ---------------------------------------------------------------- update */
@@ -370,11 +382,11 @@ function describeTransaction(
 export async function updateActivity(user: User, id: ID, patch: Partial<ActivityInput>): Promise<Activity> {
   assertCan(user, 'activity.edit');
   const before = await db.activities.get(id);
-  if (!before) throw new ValidationError('That activity no longer exists.');
+  if (!before) throw new ValidationError(T('That activity no longer exists.'));
 
   if (before.transactionId) {
     throw new ValidationError(
-      'This activity has already posted to the ledger. Void the transaction and record a corrected activity instead of editing it.',
+      T('This activity has already posted to the ledger. Void the transaction and record a corrected activity instead of editing it.'),
     );
   }
 

@@ -12,6 +12,7 @@ import { timeAgo } from '../lib/date';
 import { usePrefs, useT } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 
+import { tx } from '../i18n/tx';
 interface NavEntry {
   /** Translation key; falls back to itself if a language lacks the string. */
   label: string;
@@ -87,7 +88,7 @@ const TABS: { label: string; path: string; icon: IconName }[] = [
   { label: 'nav.activity', path: '/activities', icon: 'list' },
   { label: 'nav.workShort', path: '/work', icon: 'camera' },
   { label: 'nav.payments', path: '/payments/outstanding', icon: 'coins' },
-  { label: 'nav.ledger', path: '/ledger', icon: 'book' },
+  { label: 'nav.ledgerShort', path: '/ledger', icon: 'book' },
 ];
 
 function isOn(routePath: string, target: string): boolean {
@@ -124,7 +125,7 @@ export function Sidebar({ counts }: { counts: Record<CountKey, number> }) {
         </span>
       </div>
 
-      <nav className="sidebar__nav" aria-label="Main">
+      <nav className="sidebar__nav" aria-label={tx('Main')}>
         {NAV.map((entry) => {
           const open = sectionOn(route.path, entry);
           return (
@@ -196,7 +197,7 @@ export function TabBar() {
   const route = useRoute();
   const t = useT();
   return (
-    <nav className="tabbar" aria-label="Sections">
+    <nav className="tabbar" aria-label={tx('Sections')}>
       <div className="tabbar__inner">
         {TABS.map((tab) => {
           const on =
@@ -271,7 +272,7 @@ export function TopBar({
         />
         {!search && (
           <span className="searchbox__kbd">
-            <kbd>Ctrl</kbd> <kbd>K</kbd>
+            <kbd>{tx('Ctrl')}</kbd> <kbd>K</kbd>
           </span>
         )}
       </div>
@@ -282,8 +283,8 @@ export function TopBar({
         className={`offline-pill ${online ? '' : 'offline-pill--off'}`}
         title={
           online
-            ? 'Connected. Records are saved on this device first, so nothing is lost if you lose signal.'
-            : 'No connection. Everything still works, records are saved on this device.'
+            ? tx('Connected. Records are saved on this device first, so nothing is lost if you lose signal.')
+            : tx('No connection. Everything still works, records are saved on this device.')
         }
       >
         <i />
@@ -342,7 +343,7 @@ export function TopBar({
         {unread > 0 && <span className="iconbtn__dot">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
-      <button className="iconbtn" ref={avatarBtn} onClick={() => setMenu((v) => !v)} aria-label="Account">
+      <button className="iconbtn" ref={avatarBtn} onClick={() => setMenu((v) => !v)} aria-label={tx('Account')}>
         <span className="avatar" style={{ width: 26, height: 26, fontSize: 10 }}>
           {initials(user?.name ?? '')}
         </span>
@@ -382,13 +383,13 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal--narrow" role="dialog" aria-label="Notifications" style={{ alignSelf: 'flex-start', marginTop: 'var(--s-8)' }}>
+      <div className="modal modal--narrow" role="dialog" aria-label={tx('Notifications')} style={{ alignSelf: 'flex-start', marginTop: 'var(--s-8)' }}>
         <div className="modal__head">
           <div className="grow">
             <h2 className="modal__title">{t('misc.notifications')}</h2>
-            <p className="modal__sub">Money matters are listed first and marked in purple.</p>
+            <p className="modal__sub">{tx('Money matters are listed first and marked in purple.')}</p>
           </div>
-          <button className="iconbtn" onClick={onClose} aria-label="Close">
+          <button className="iconbtn" onClick={onClose} aria-label={tx('Close')}>
             <Icon name="x" size={18} />
           </button>
         </div>
@@ -396,7 +397,7 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {notifications.length === 0 && (
             <p className="muted" style={{ padding: 'var(--s-6)', textAlign: 'center' }}>
-              Nothing needs your attention.
+              {tx('Nothing needs your attention.')}
             </p>
           )}
           {[...grouped.financial, ...grouped.rest].map((n) => (

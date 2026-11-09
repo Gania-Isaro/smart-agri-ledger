@@ -33,6 +33,7 @@ import type {
 import { can, type Permission } from '../domain/rbac';
 import { catalog } from '../services/activityService';
 
+import { cropLabel, tx } from '../i18n/tx';
 /* ---------------------------------------------------------------- toasts */
 
 export type ToastTone = 'success' | 'error' | 'warn' | 'info';
@@ -262,7 +263,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * gets a generic line plus a console trace for whoever is debugging.
    */
   const fail = useCallback<Store['fail']>(
-    (e, fallback = 'Something went wrong.') => {
+    (e, fallback) => {
       const err = e as Error;
       const known =
         err?.name === 'ValidationError' ||
@@ -273,8 +274,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!known) console.error(e);
       toast({
         tone: 'error',
-        title: err?.name === 'PermissionError' ? 'Not allowed' : 'Could not save',
-        message: known && err?.message ? err.message : fallback,
+        title: err?.name === 'PermissionError' ? tx('Not allowed') : tx('Could not save'),
+        message: known && err?.message ? err.message : fallback ?? tx('Something went wrong.'),
       });
     },
     [toast],
@@ -383,7 +384,7 @@ export function useLookups() {
       coop: new Map(cooperatives.map((c) => [c.id, c])),
       user: new Map(users.map((u) => [u.id, u])),
       type: new Map(activityTypes.map((t) => [t.id, t])),
-      cropName: (id?: string) => (id ? crops.find((c) => c.id === id)?.name ?? '-' : '-'),
+      cropName: (id?: string) => (id ? cropLabel(crops.find((c) => c.id === id)) : '-'),
       coopName: (id?: string) => (id ? cooperatives.find((c) => c.id === id)?.name ?? '-' : '-'),
       userName: (id?: string) => (id ? users.find((u) => u.id === id)?.name ?? 'System' : 'System'),
       typeLabel: (id?: string) => (id ? activityTypes.find((t) => t.id === id)?.label ?? id : '-'),

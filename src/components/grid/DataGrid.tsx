@@ -24,6 +24,7 @@ import { Button, Checkbox, EmptyState, Popover, TableSkeleton } from '../ui/prim
 import { exportCSV, type Cell, type Column as CSVColumn } from '../../lib/csv';
 import { useT } from '../../i18n';
 
+import { tx } from '../../i18n/tx';
 export type EditorType = 'text' | 'number' | 'currency' | 'date' | 'select';
 
 export interface EditSpec<T> {
@@ -94,7 +95,7 @@ export function DataGrid<T>({
   search = '',
   onRowClick,
   bulkActions = [],
-  emptyTitle = 'Nothing here yet',
+  emptyTitle = tx('Nothing here yet'),
   emptyMessage,
   emptyAction,
   toolbar,
@@ -396,11 +397,11 @@ export function DataGrid<T>({
             </Button>
           ))}
           <Button size="sm" variant="secondary" icon="download" onClick={() => doExport('selected')}>
-            Export selected
+            {tx('Export selected')}
           </Button>
           <span className="spacer" />
           <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} style={{ color: '#fff' }}>
-            Clear
+            {tx('Clear')}
           </Button>
         </div>
       )}
@@ -437,7 +438,7 @@ export function DataGrid<T>({
                           checked={allOnPage}
                           indeterminate={!allOnPage && someOnPage}
                           onChange={toggleAll}
-                          label="Select all rows on this page"
+                          label={tx('Select all rows on this page')}
                         />
                       </div>
                     </th>
@@ -470,7 +471,7 @@ export function DataGrid<T>({
                                   : { key: c.key, dir: 'asc' },
                               )
                             }
-                            title={`Sort by ${c.header}`}
+                            title={tx('Sort by {header}', { header: c.header })}
                           >
                             {c.header}
                             <Icon
@@ -484,7 +485,7 @@ export function DataGrid<T>({
                         )}
                         <span
                           role="separator"
-                          aria-label={`Resize ${c.header}`}
+                          aria-label={tx('Resize {header}', { header: c.header })}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             const th = (e.target as HTMLElement).closest('th')!;
@@ -515,7 +516,7 @@ export function DataGrid<T>({
                       {selectable && (
                         <td className="sticky-0">
                           <div className="cell" style={{ justifyContent: 'center', padding: 0 }}>
-                            <Checkbox checked={isSelected} onChange={() => toggleOne(id)} label={`Select row ${r + 1}`} />
+                            <Checkbox checked={isSelected} onChange={() => toggleOne(id)} label={tx('Select row {v}', { v: r + 1 })} />
                           </div>
                         </td>
                       )}
@@ -592,7 +593,7 @@ export function DataGrid<T>({
                       <div className="row gap-2">
                         {badge && badge.render(row)}
                         {selectable && (
-                          <Checkbox checked={selected.has(id)} onChange={() => toggleOne(id)} label="Select" />
+                          <Checkbox checked={selected.has(id)} onChange={() => toggleOne(id)} label={tx('Select')} />
                         )}
                       </div>
                     </div>
@@ -615,17 +616,20 @@ export function DataGrid<T>({
           <div className="gridfoot">
             <div className="row gap-3 wrap">
               <span>
-                Showing {safePage * pageSize + 1}-{Math.min((safePage + 1) * pageSize, sorted.length)} of{' '}
-                {sorted.length.toLocaleString()}
+                {tx('Showing {from}-{to} of {total}', {
+                  from: safePage * pageSize + 1,
+                  to: Math.min((safePage + 1) * pageSize, sorted.length),
+                  total: sorted.length.toLocaleString(),
+                })}
               </span>
               <label className="row gap-2">
-                <span className="sr-only">Rows per page</span>
+                <span className="sr-only">{tx('Rows per page')}</span>
                 <select
                   className="select"
                   style={{ height: 26, minHeight: 26, padding: '0 24px 0 8px', fontSize: 'var(--fs-xs)' }}
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  aria-label="Rows per page"
+                  aria-label={tx('Rows per page')}
                 >
                   {[25, 50, 100, 250].map((n) => (
                     <option key={n} value={n}>
@@ -638,7 +642,7 @@ export function DataGrid<T>({
 
             {pageCount > 1 && (
               <div className="pager">
-                <button onClick={() => setPage(0)} disabled={safePage === 0} aria-label="First page">
+                <button onClick={() => setPage(0)} disabled={safePage === 0} aria-label={tx('First page')}>
                   <Icon name="chevron-left" size={13} />
                 </button>
                 <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} aria-label={t('misc.prev')}>

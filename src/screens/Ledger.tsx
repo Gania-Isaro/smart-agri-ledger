@@ -20,6 +20,7 @@ import * as audit from '../services/audit';
 import type { Farmer, LedgerTransaction } from '../domain/types';
 import { useT } from '../i18n';
 
+import { tx as T } from '../i18n/tx';
 export function Ledger({ search }: { search: string }) {
   const route = useRoute();
   const sub = route.segments[1];
@@ -46,7 +47,7 @@ function FarmerLedgers({ search }: { search: string }) {
     () => [
       {
         key: 'farmer',
-        header: 'Farmer',
+        header: T('Farmer'),
         width: 210,
         mobile: 'title',
         sortValue: (r) => r.lastName,
@@ -60,7 +61,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: 'Farmer ID',
+        header: T('Farmer ID'),
         width: 96,
         mobile: 'subtitle',
         sortValue: (r) => r.code,
@@ -70,7 +71,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'entries',
-        header: 'Entries',
+        header: T('Entries'),
         width: 88,
         align: 'right',
         mobile: 'cell',
@@ -81,7 +82,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'credits',
-        header: 'Total credits',
+        header: T('Total credits'),
         width: 138,
         align: 'right',
         mobile: 'cell',
@@ -92,7 +93,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'debits',
-        header: 'Total debits',
+        header: T('Total debits'),
         width: 138,
         align: 'right',
         mobile: 'cell',
@@ -105,7 +106,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'balance',
-        header: 'Balance',
+        header: T('Balance'),
         width: 148,
         align: 'right',
         mobile: 'cell',
@@ -119,7 +120,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'last',
-        header: 'Last movement',
+        header: T('Last movement'),
         width: 128,
         sortValue: (r) => r.financials.lastActivityDate ?? '',
         searchValue: (r) => r.financials.lastActivityDate ?? '',
@@ -128,7 +129,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'coop',
-        header: 'Cooperative',
+        header: T('Cooperative'),
         width: 200,
         optional: true,
         sortValue: (r) => lookups.coopName(r.cooperativeId),
@@ -160,21 +161,21 @@ function FarmerLedgers({ search }: { search: string }) {
         selectable={false}
         onRowClick={(r) => setOpenId(r.id)}
         onError={fail}
-        emptyTitle="No accounts yet"
-        emptyMessage="Ledger accounts appear as soon as the first transaction is posted."
+        emptyTitle={T('No accounts yet')}
+        emptyMessage={T('Ledger accounts appear as soon as the first transaction is posted.')}
       />
 
       {openId && (
         <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && setOpenId(null)}>
-          <div className="modal modal--wide" role="dialog" aria-label="Farmer ledger">
+          <div className="modal modal--wide" role="dialog" aria-label={T('Farmer ledger')}>
             <div className="modal__head">
               <div className="grow">
                 <h2 className="modal__title">
                   {rows.find((r) => r.id === openId)?.firstName} {rows.find((r) => r.id === openId)?.lastName}
                 </h2>
-                <p className="modal__sub">Full account, oldest entry first.</p>
+                <p className="modal__sub">{T('Full account, oldest entry first.')}</p>
               </div>
-              <button className="iconbtn" onClick={() => setOpenId(null)} aria-label="Close">
+              <button className="iconbtn" onClick={() => setOpenId(null)} aria-label={T('Close')}>
                 <Icon name="x" size={18} />
               </button>
             </div>
@@ -184,7 +185,7 @@ function FarmerLedgers({ search }: { search: string }) {
             <div className="modal__foot">
               <span className="spacer" />
               <Button onClick={() => navigate(`/farmers/${openId}`)} iconRight="chevron-right">
-                Open farmer profile
+                {T('Open farmer profile')}
               </Button>
             </div>
           </div>
@@ -227,27 +228,26 @@ function Transactions({ search }: { search: string }) {
 
   const doVoid = async (tx: TxRow) => {
     const answer = await confirm({
-      title: `Void ${tx.code}?`,
+      title: T('Void {code}?', { code: tx.code }),
       message: (
         <>
           <p>
-            {tx.description}, <b>{formatMoney(tx.amount)}</b> ({tx.direction}).
+            {tx.description}, <b>{formatMoney(tx.amount)}</b> ({tx.direction === 'credit' ? T('credit') : T('debit')}).
           </p>
           <p style={{ marginTop: 'var(--s-2)' }}>
-            The entry is not deleted. It stays on the account marked voided, and a reversing entry is appended so the
-            balance corrects itself from today.
+            {T('The entry is not deleted. It stays on the account marked voided, with a matching reversal next to it. Neither counts toward the balance, so it goes back to what it was before this entry.')}
           </p>
         </>
       ),
-      confirmLabel: 'Void and reverse',
+      confirmLabel: T('Void and reverse'),
       tone: 'danger',
-      reasonLabel: 'Reason for voiding',
+      reasonLabel: T('Reason for voiding'),
     });
     if (!answer.ok || !user) return;
     try {
       await ledgerService.voidTransaction(user, tx.id, answer.reason ?? '');
       refresh();
-      toast({ tone: 'success', title: `${tx.code} voided`, message: 'A reversing entry was appended.' });
+      toast({ tone: 'success', title: T('{code} voided', { code: tx.code }), message: T('A reversing entry was appended.') });
     } catch (e) {
       fail(e);
     }
@@ -257,7 +257,7 @@ function Transactions({ search }: { search: string }) {
     () => [
       {
         key: 'code',
-        header: 'Transaction',
+        header: T('Transaction'),
         width: 152,
         mobile: 'subtitle',
         sortValue: (r) => r.code,
@@ -272,7 +272,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'date',
-        header: 'Date',
+        header: T('Date'),
         width: 92,
         mobile: 'cell',
         sortValue: (r) => r.date,
@@ -282,7 +282,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: 'Farmer',
+        header: T('Farmer'),
         width: 186,
         mobile: 'title',
         sortValue: (r) => r.farmer?.lastName ?? '',
@@ -292,7 +292,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'type',
-        header: 'Type',
+        header: T('Type'),
         width: 130,
         mobile: 'cell',
         sortValue: (r) => r.type,
@@ -302,7 +302,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'description',
-        header: 'Description',
+        header: T('Description'),
         width: 250,
         sortValue: (r) => r.description,
         searchValue: (r) => r.description,
@@ -311,7 +311,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'debit',
-        header: 'Debit',
+        header: T('Debit'),
         width: 128,
         align: 'right',
         mobile: 'cell',
@@ -322,7 +322,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'credit',
-        header: 'Credit',
+        header: T('Credit'),
         width: 128,
         align: 'right',
         mobile: 'cell',
@@ -333,7 +333,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'status',
-        header: 'State',
+        header: T('State'),
         width: 110,
         mobile: 'badge',
         sortValue: (r) => (r.voided ? 1 : 0),
@@ -341,16 +341,16 @@ function Transactions({ search }: { search: string }) {
         exportValue: (r) => (r.voided ? 'voided' : 'active'),
         render: (r) =>
           r.voided ? (
-            <Badge meta={{ label: 'Voided', glyph: '✕', tone: 'slate', help: r.voidReason }} />
+            <Badge meta={{ label: T('Voided'), glyph: '✕', tone: 'slate', help: r.voidReason }} />
           ) : r.reversesId ? (
-            <Badge meta={{ label: 'Reversal', glyph: '↺', tone: 'blue', help: 'Cancels an earlier entry.' }} />
+            <Badge meta={{ label: T('Reversal'), glyph: '↺', tone: 'blue', help: T('Cancels an earlier entry.') }} />
           ) : (
-            <Badge meta={{ label: 'Posted', glyph: '✓', tone: 'green' }} />
+            <Badge meta={{ label: T('Posted'), glyph: '✓', tone: 'green' }} />
           ),
       },
       {
         key: 'by',
-        header: 'Created by',
+        header: T('Created by'),
         width: 156,
         sortValue: (r) => lookups.userName(r.createdBy),
         searchValue: (r) => lookups.userName(r.createdBy),
@@ -367,7 +367,7 @@ function Transactions({ search }: { search: string }) {
         width: 54,
         render: (r) =>
           can('ledger.void') && !r.voided && !r.reversesId ? (
-            <button className="iconbtn" style={{ width: 26, height: 26 }} onClick={(e) => { e.stopPropagation(); void doVoid(r); }} aria-label={`Void ${r.code}`} title="Void this transaction">
+            <button className="iconbtn" style={{ width: 26, height: 26 }} onClick={(e) => { e.stopPropagation(); void doVoid(r); }} aria-label={T('Void {code}', { code: r.code })} title={T('Void this transaction')}>
               <Icon name="undo" size={14} />
             </button>
           ) : null,
@@ -405,17 +405,17 @@ function Transactions({ search }: { search: string }) {
         <div className="metric">
           <span className="metric__label">{t('led.totalCredits')}</span>
           <span className="metric__value num pos">{formatMoneyShort(totals.credit)}</span>
-          <span className="metric__foot">RWF owed to farmers</span>
+          <span className="metric__foot">{T('RWF owed to farmers')}</span>
         </div>
         <div className="metric">
           <span className="metric__label">{t('led.totalDebits')}</span>
           <span className="metric__value num neg">{formatMoneyShort(totals.debit)}</span>
-          <span className="metric__foot">RWF paid or withheld</span>
+          <span className="metric__foot">{T('RWF paid or withheld')}</span>
         </div>
         <div className="metric metric--accent">
           <span className="metric__label">{t('led.netPosition')}</span>
           <span className="metric__value num">{formatMoneyShort(totals.credit - totals.debit)}</span>
-          <span className="metric__foot">RWF still owed overall</span>
+          <span className="metric__foot">{T('RWF still owed overall')}</span>
         </div>
       </div>
 
@@ -430,15 +430,15 @@ function Transactions({ search }: { search: string }) {
         selectable={false}
         onRowClick={(r) => navigate(`/farmers/${r.farmerId}`)}
         onError={fail}
-        emptyTitle="No transactions yet"
-        emptyMessage="Recording a harvest or a payment posts the first entry."
+        emptyTitle={T('No transactions yet')}
+        emptyMessage={T('Recording a harvest or a payment posts the first entry.')}
         toolbar={
           <FilterBar
             specs={[
-              { key: 'type', label: 'Type', type: 'multi', options: Object.entries(LEDGER_TYPE_LABEL).map(([value, label]) => ({ value, label })) },
-              { key: 'direction', label: 'Direction', type: 'select', options: [{ value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }] },
-              { key: 'date', label: 'Date', type: 'daterange' },
-              { key: 'amount', label: 'Amount', type: 'numrange' },
+              { key: 'type', label: T('Type'), type: 'multi', options: Object.entries(LEDGER_TYPE_LABEL).map(([value, label]) => ({ value, label })) },
+              { key: 'direction', label: T('Direction'), type: 'select', options: [{ value: 'credit', label: T('Credit') }, { value: 'debit', label: T('Debit') }] },
+              { key: 'date', label: T('Date'), type: 'daterange' },
+              { key: 'amount', label: T('Amount'), type: 'numrange' },
             ]}
             values={filters}
             onChange={setFilters}
@@ -485,30 +485,29 @@ function Adjustments() {
         </div>
         {can('ledger.post') && (
           <Button variant="primary" icon="plus" onClick={() => setComposer(true)}>
-            Post an adjustment
+            {T('Post an adjustment')}
           </Button>
         )}
       </div>
 
       <Callout tone="info" icon="shield">
-        A balance can never be typed over. Every correction on this page is a transaction of its own, which is why the
-        history still adds up after it.
+        {T('A balance can never be typed over. Every correction on this page is a transaction of its own, which is why the history still adds up after it.')}
       </Callout>
 
       <div style={{ marginTop: 'var(--s-4)' }}>
         {!d || d.lines.length === 0 ? (
-          <EmptyState icon="shield" title="No adjustments have been made" message="Nothing has been corrected or voided on any account." />
+          <EmptyState icon="shield" title={T('No adjustments have been made')} message={T('Nothing has been corrected or voided on any account.')} />
         ) : (
-          <LedgerTable lines={d.lines} showFarmer farmerNames={d.names} emptyMessage="No adjustments recorded." />
+          <LedgerTable lines={d.lines} showFarmer farmerNames={d.names} emptyMessage={T('No adjustments recorded.')} />
         )}
       </div>
 
       {d && d.trail.length > 0 && (
         <section className="card" style={{ marginTop: 'var(--s-4)' }}>
           <div className="card__head">
-            <h2 className="section-title">Audit trail</h2>
+            <h2 className="section-title">{T('Audit trail')}</h2>
             <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-              Who did what, in order
+              {T('Who did what, in order')}
             </span>
           </div>
           <div className="card__body">

@@ -15,6 +15,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { formatMoney, formatMoneyShort, formatNumber } from '../domain/money';
 
+import { tx } from '../i18n/tx';
 /**
  * The ramp is referenced as CSS variables, not literals, so the chart follows
  * the theme: the dark steps are separately chosen and separately validated
@@ -96,7 +97,7 @@ export function HBars({
   unit,
   money,
   max: forcedMax,
-  emptyLabel = 'No data yet',
+  emptyLabel = tx('No data yet'),
 }: {
   data: Point[];
   unit?: string;
@@ -159,7 +160,7 @@ export function TimeChart({
   const hasSecond = data.some((d) => d.secondary !== undefined);
 
   if (data.length === 0) {
-    return <p className="muted" style={{ fontSize: 'var(--fs-sm)', padding: 'var(--s-4) 0' }}>Not enough history yet.</p>;
+    return <p className="muted" style={{ fontSize: 'var(--fs-sm)', padding: 'var(--s-4) 0' }}>{tx('Not enough history yet.')}</p>;
   }
 
   const W = 560;
@@ -192,7 +193,7 @@ export function TimeChart({
         width="100%"
         height={H}
         role="img"
-        aria-label={`${seriesLabels.join(' and ')} by month`}
+        aria-label={tx('{series} by month', { series: seriesLabels.join(', ') })}
         onMouseLeave={() => setHover(null)}
       >
         <defs>
@@ -319,7 +320,7 @@ export function Meter({
 
   return (
     <div className="row gap-4" style={{ alignItems: 'center' }}>
-      <svg width={size} height={size} role="img" aria-label={`${label}: ${Math.round(pct * 100)} percent`}>
+      <svg width={size} height={size} role="img" aria-label={tx('{label}: {v} percent', { label, v: Math.round(pct * 100) })}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-cream-400)" strokeWidth="9" />
         <circle
           cx={size / 2}
@@ -362,8 +363,8 @@ export function Meter({
 export function ProgressPair({
   paid,
   total,
-  paidLabel = 'Paid',
-  remainingLabel = 'Outstanding',
+  paidLabel = tx('Paid'),
+  remainingLabel = tx('Still to pay'),
 }: {
   paid: number;
   total: number;

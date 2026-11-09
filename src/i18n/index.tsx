@@ -6,6 +6,7 @@
  * still each get the app the way they set it on their own phone.
  */
 
+import { setTxLang } from './tx';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ACTIVITY_LABELS_RW, CROP_NAMES_RW, DICTS, EN, FIELD_LABELS_RW, type Lang } from './strings';
 
@@ -48,7 +49,11 @@ function read<T extends string>(key: string, fallback: T, allowed: readonly T[])
 }
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => read(LANG_KEY, 'en', ['en', 'rw'] as const));
+  const [lang, setLangState] = useState<Lang>(() => {
+    const l = read(LANG_KEY, 'en', ['en', 'rw'] as const);
+    setTxLang(l);
+    return l;
+  });
   const [theme, setThemeState] = useState<Theme>(() => read(THEME_KEY, 'system', ['light', 'dark', 'system'] as const));
   const [systemDark, setSystemDark] = useState(
     () => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches,
@@ -75,6 +80,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   }, [theme, isDark, lang]);
 
   const setLang = useCallback((l: Lang) => {
+    setTxLang(l);
     setLangState(l);
     try {
       localStorage.setItem(LANG_KEY, l);

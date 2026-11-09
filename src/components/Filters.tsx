@@ -13,6 +13,7 @@ import { Icon } from './ui/Icon';
 import { Button, Chip, Field, Input, Popover, Select } from './ui/primitives';
 import { useT } from '../i18n';
 
+import { tx } from '../i18n/tx';
 export interface FilterOption {
   value: string;
   label: string;
@@ -96,7 +97,7 @@ export function FilterBar({
         <Popover anchorRef={btn} onClose={() => setOpen(false)} width={420}>
           <div className="filterpop">
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="eyebrow">Filter this view</span>
+              <span className="eyebrow">{tx('Filter this view')}</span>
               <button className="btn btn--ghost btn--sm" onClick={() => onChange({})}>
                 {t('action.reset')}
               </button>
@@ -134,13 +135,13 @@ function FilterControl({
     const v = (value ?? {}) as { from?: string; to?: string };
     return (
       <div className="filterrow">
-        <Field label={`${spec.label} from`}>
+        <Field label={tx('{label} from', { label: spec.label })}>
           <Input type="date" value={v.from ?? ''} onChange={(e) => onChange({ ...v, from: e.target.value || undefined })} />
         </Field>
-        <Field label="to">
+        <Field label={tx('to')}>
           <Input type="date" value={v.to ?? ''} onChange={(e) => onChange({ ...v, to: e.target.value || undefined })} />
         </Field>
-        <Button variant="ghost" size="sm" onClick={() => onChange(undefined)} aria-label={`Clear ${spec.label}`}>
+        <Button variant="ghost" size="sm" onClick={() => onChange(undefined)} aria-label={tx('Clear {label}', { label: spec.label })}>
           <Icon name="x" size={14} />
         </Button>
       </div>
@@ -151,13 +152,13 @@ function FilterControl({
     const v = (value ?? {}) as { min?: string; max?: string };
     return (
       <div className="filterrow">
-        <Field label={`${spec.label} at least`}>
+        <Field label={tx('{label} at least', { label: spec.label })}>
           <Input type="number" inputMode="decimal" value={v.min ?? ''} placeholder="0" onChange={(e) => onChange({ ...v, min: e.target.value || undefined })} />
         </Field>
-        <Field label="at most">
-          <Input type="number" inputMode="decimal" value={v.max ?? ''} placeholder="Any" onChange={(e) => onChange({ ...v, max: e.target.value || undefined })} />
+        <Field label={tx('at most')}>
+          <Input type="number" inputMode="decimal" value={v.max ?? ''} placeholder={tx('Any')} onChange={(e) => onChange({ ...v, max: e.target.value || undefined })} />
         </Field>
-        <Button variant="ghost" size="sm" onClick={() => onChange(undefined)} aria-label={`Clear ${spec.label}`}>
+        <Button variant="ghost" size="sm" onClick={() => onChange(undefined)} aria-label={tx('Clear {label}', { label: spec.label })}>
           <Icon name="x" size={14} />
         </Button>
       </div>
@@ -194,7 +195,7 @@ function FilterControl({
     <Field label={spec.label}>
       <Select
         options={spec.options ?? []}
-        placeholder="Any"
+        placeholder={tx('Any')}
         value={(value as string) ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
       />

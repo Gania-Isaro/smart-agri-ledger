@@ -34,6 +34,7 @@ import { refreshFarmerStatus } from './activityService';
 import { ValidationError } from './farmerService';
 import { ConfirmationRequired } from './activityService';
 
+import { tx as T } from '../i18n/tx';
 /* --------------------------------------------------------------- create */
 
 export interface PaymentDraft {
@@ -58,9 +59,9 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   assertCan(user, 'payment.create');
 
   const farmer = await db.farmers.get(draft.farmerId);
-  if (!farmer) throw new ValidationError('Select a farmer.', 'farmerId');
+  if (!farmer) throw new ValidationError(T('Select a farmer.'), 'farmerId');
   const amount = toPositiveMoney(draft.amount, 'Amount');
-  if (!draft.reason?.trim()) throw new ValidationError('Say what this payment is for.', 'reason');
+  if (!draft.reason?.trim()) throw new ValidationError(T('Say what this payment is for.'), 'reason');
 
   const txs = await db.transactions.where('farmerId').equals(farmer.id).toArray();
   const owed = summarise(txs).balance;
@@ -68,9 +69,17 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   const committed = (await committedByFarmer()).get(farmer.id) ?? 0;
   const balance = owed - committed;
   if (amount > balance && !draft.confirmOverdraft) {
-    const pendingNote = committed > 0 ? ` after ${committed.toLocaleString()} RWF already in unpaid payments` : '';
+    const vars = {
+      name: `${farmer.firstName} ${farmer.lastName}`,
+      owed: Math.max(balance, 0).toLocaleString(),
+      pending: committed.toLocaleString(),
+      amount: amount.toLocaleString(),
+      extra: (amount - balance).toLocaleString(),
+    };
     throw new ConfirmationRequired(
-      `${farmer.firstName} ${farmer.lastName} is owed ${Math.max(balance, 0).toLocaleString()} RWF${pendingNote}. Paying ${amount.toLocaleString()} RWF leaves the account in advance by ${(amount - balance).toLocaleString()} RWF.`,
+      committed > 0
+        ? T('{name} is owed {owed} RWF after {pending} RWF already in unpaid payments. Paying {amount} RWF leaves the account in advance by {extra} RWF.', vars)
+        : T('{name} is owed {owed} RWF. Paying {amount} RWF leaves the account in advance by {extra} RWF.', vars),
       { balance, amount },
     );
   }
@@ -92,7 +101,7 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   };
 
   const clash = await db.payments.where('reference').equals(payment.reference).first();
-  if (clash) throw new ValidationError(`Reference ${payment.reference} is already used by another payment.`, 'reference');
+  if (clash) throw new ValidationError(T('Reference {reference} is already used by another payment.', { reference: payment.reference }), 'reference');
 
   await db.payments.put(payment);
   await audit.record(user, 'payment', payment.id, 'create', `Created ${payment.reference} for ${farmer.code}: ${amount} RWF`, { after: payment });
@@ -133,13 +142,13 @@ export async function transition(
   else assertCan(user, 'payment.create');
 
   const before = await db.payments.get(id);
-  if (!before) throw new ValidationError('That payment no longer exists.');
+  if (!before) throw new ValidationError(T('That payment no longer exists.'));
   if (before.status === to) return before;
   if (!canTransitionPayment(before.status, to)) {
-    throw new ValidationError(`A ${before.status} payment cannot be moved to ${to}.`);
+    throw new ValidationError(T('A {status} payment cannot be moved to {to}.', { status: before.status, to }));
   }
   if (to === 'cancelled' && !opts.reason?.trim()) {
-    throw new ValidationError('Give a reason for cancelling this payment.');
+    throw new ValidationError(T('Give a reason for cancelling this payment.'));
   }
 
   const at = nowStamp();
@@ -163,7 +172,7 @@ export async function transition(
       farmerId: before.farmerId,
       type: 'payment',
       amount: before.amount,
-      description: `Payment ${before.reference}, ${before.reason}`,
+      description: T('Payment {reference}, {reason}', { reference: before.reference, reason: before.reason }),
       date: today(),
       reference: before.reference,
       paymentId: before.id,
@@ -293,7 +302,7 @@ export async function createBatch(
   input: { name: string; farmerIds?: ID[]; period?: string; notes?: string },
 ): Promise<{ batch: PaymentBatch; payments: Payment[] }> {
   assertCan(user, 'batch.create');
-  if (!input.name.trim()) throw new ValidationError('Give the batch a name.', 'name');
+  if (!input.name.trim()) throw new ValidationError(T('Give the batch a name.'), 'name');
 
   const [financials, committed] = await Promise.all([financialsByFarmer(), committedByFarmer()]);
   // Only what is not already sitting in another unpaid payment goes in the list,
@@ -303,7 +312,7 @@ export async function createBatch(
     .filter(([farmerId, due]) => due > 0 && (!input.farmerIds?.length || input.farmerIds.includes(farmerId)));
 
   if (candidates.length === 0) {
-    throw new ValidationError('No farmer in that selection is currently owed money.');
+    throw new ValidationError(T('No farmer in that selection is currently owed money.'));
   }
 
   const n = await nextCounter('batch');
@@ -328,7 +337,7 @@ export async function createBatch(
     status: 'pending',
     date: today(),
     reference: padCode(`PAY-${String(new Date().getFullYear()).slice(2)}-`, first + i, 5),
-    reason: `${batch.name} settlement`,
+    reason: T('{name}, settlement', { name: batch.name }),
     batchId: batch.id,
     harvestIds: [],
     createdBy: user.id,
@@ -347,7 +356,7 @@ export async function createBatch(
 export async function setBatchStatus(user: User, id: ID, status: BatchStatus): Promise<PaymentBatch> {
   assertCan(user, status === 'approved' ? 'batch.approve' : 'batch.create');
   const before = await db.batches.get(id);
-  if (!before) throw new ValidationError('That batch no longer exists.');
+  if (!before) throw new ValidationError(T('That batch no longer exists.'));
 
   const after: PaymentBatch = { ...before, status };
   if (status === 'approved') {
@@ -385,9 +394,9 @@ export async function refreshBatchStatus(batchId: ID): Promise<void> {
 export async function settleBatch(user: User, batchId: ID): Promise<{ done: number; skipped: { id: ID; reason: string }[] }> {
   assertCan(user, 'payment.settle');
   const batch = await db.batches.get(batchId);
-  if (!batch) throw new ValidationError('That batch no longer exists.');
+  if (!batch) throw new ValidationError(T('That batch no longer exists.'));
   if (batch.status === 'draft' || batch.status === 'pending_approval') {
-    throw new ValidationError('Approve the list before recording payments against it.');
+    throw new ValidationError(T('Approve the list before recording payments against it.'));
   }
 
   const rows = await db.payments.where('batchId').equals(batchId).toArray();

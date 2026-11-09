@@ -29,6 +29,8 @@ import { parseCSV, readFileText } from '../lib/csv';
 import type { Activity, Farmer, FarmerStatus, Harvest } from '../domain/types';
 import { usePrefs } from '../i18n';
 
+import { cropLabel, tx } from '../i18n/tx';
+import { txr } from '../i18n/rich';
 interface Row extends farmerService.FarmerRow {
   latestActivity?: Activity;
   latestHarvest?: Harvest;
@@ -156,7 +158,7 @@ export function Farmers({ search }: { search: string }) {
                 // payment reaches the wrong person.
                 await farmerService.update(user, r.id, { code: next });
                 refresh();
-                toast({ tone: 'success', title: `Farmer ID changed to ${next.trim()}` });
+                toast({ tone: 'success', title: tx('Farmer ID changed to {v}', { v: next.trim() }) });
               },
             }
           : undefined,
@@ -207,13 +209,13 @@ export function Farmers({ search }: { search: string }) {
         edit: can('farmer.edit')
           ? {
               type: 'select',
-              options: crops.map((c) => ({ value: c.id, label: c.name })),
+              options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })),
               value: (r) => r.primaryCropId,
               commit: async (r, next) => {
                 if (!user) return;
                 await farmerService.update(user, r.id, { primaryCropId: next });
                 refresh();
-                toast({ tone: 'success', title: 'Primary crop updated', message: `${r.code} → ${lookups.cropName(next)}` });
+                toast({ tone: 'success', title: tx('Primary crop updated'), message: `${r.code} → ${lookups.cropName(next)}` });
               },
             }
           : undefined,
@@ -246,7 +248,7 @@ export function Farmers({ search }: { search: string }) {
       },
       {
         key: 'unit',
-        header: 'Unit',
+        header: tx('Unit'),
         width: 68,
         optional: true,
         sortValue: (r) => r.unit,
@@ -302,7 +304,7 @@ export function Farmers({ search }: { search: string }) {
       },
       {
         key: 'paid',
-        header: 'Paid',
+        header: tx('Paid'),
         width: 126,
         align: 'right',
         optional: true,
@@ -313,7 +315,7 @@ export function Farmers({ search }: { search: string }) {
       },
       {
         key: 'advances',
-        header: 'Advances',
+        header: tx('Advances'),
         width: 118,
         align: 'right',
         optional: true,
@@ -333,7 +335,7 @@ export function Farmers({ search }: { search: string }) {
         exportValue: (r) => r.financials.balance,
         render: (r) => {
           const b = r.financials.balance;
-          if (b === 0) return <span className="muted">Settled</span>;
+          if (b === 0) return <span className="muted">{tx('Settled')}</span>;
           return <span className={`num ${b > 0 ? 'pos' : 'neg'}`}>{formatMoney(b)}</span>;
         },
       },
@@ -402,7 +404,7 @@ export function Farmers({ search }: { search: string }) {
       },
       {
         key: 'farmSize',
-        header: 'Farm size',
+        header: tx('Farm size'),
         width: 100,
         align: 'right',
         optional: true,
@@ -425,7 +427,7 @@ export function Farmers({ search }: { search: string }) {
       },
       {
         key: 'season',
-        header: 'Season',
+        header: tx('Season'),
         width: 92,
         optional: true,
         sortValue: (r) => r.season,
@@ -445,42 +447,44 @@ export function Farmers({ search }: { search: string }) {
 
     if (can('batch.create')) {
       actions.push({
-        label: 'Create payment batch',
+        label: tx('Create payment batch'),
         icon: 'layers' as const,
         run: async (ids: string[]) => {
           const owed = all.filter((r) => ids.includes(r.id) && r.financials.balance > 0);
           if (owed.length === 0) {
-            toast({ tone: 'warn', title: 'Nobody in that selection is owed money', message: 'A batch only includes farmers with a positive balance.' });
+            toast({ tone: 'warn', title: tx('Nobody in that selection is owed money'), message: tx('A batch only includes farmers with a positive balance.') });
             return;
           }
           const total = owed.reduce((s, r) => s + r.financials.balance, 0);
           const answer = await confirm({
-            title: 'Create a payment batch',
+            title: tx('Create a payment batch'),
             message: (
               <>
                 <p>
-                  This creates pending payments for <b>{owed.length} farmers</b> totalling <b>{formatMoney(total)}</b>.
+                  {txr('This creates pending payments for {farmers} totalling {amount}.', {
+                    farmers: <b>{tx('{count} farmers', { count: owed.length })}</b>,
+                    amount: <b>{formatMoney(total)}</b>,
+                  })}
                 </p>
                 <p style={{ marginTop: 'var(--s-2)' }} className="muted">
-                  Each amount comes from that farmer’s ledger balance. Nothing is paid until the batch is approved and
-                  settled.
+                  {tx('Each amount comes from that farmer’s ledger balance. Nothing is paid until the batch is approved and settled.')}
                 </p>
               </>
             ),
-            confirmLabel: `Create batch for ${owed.length} farmers`,
+            confirmLabel: tx('Create batch for {length} farmers', { length: owed.length }),
           });
           if (!answer.ok || !user) return;
           try {
             const { batch } = await paymentService.createBatch(user, {
-              name: `Payment batch, ${today()}`,
+              name: tx('Payment batch, {date}', { date: today() }),
               farmerIds: owed.map((r) => r.id),
             });
             refresh();
             toast({
               tone: 'success',
-              title: 'Payment batch created',
-              message: `${batch.code} · ${owed.length} farmers`,
-              action: { label: 'Open', run: () => navigate(`/payments/batches/${batch.id}`) },
+              title: tx('Payment batch created'),
+              message: tx('{code} · {length} farmers', { code: batch.code, length: owed.length }),
+              action: { label: tx('Open'), run: () => navigate(`/payments/batches/${batch.id}`) },
             });
           } catch (e) {
             fail(e);
@@ -491,19 +495,19 @@ export function Farmers({ search }: { search: string }) {
 
     if (can('farmer.edit')) {
       actions.push({
-        label: 'Set status',
+        label: tx('Set status'),
         icon: 'tag' as const,
         run: async (ids: string[]) => {
           const answer = await confirm({
-            title: `Mark ${ids.length} farmers as active`,
-            message: 'Status normally follows the records automatically. Setting it by hand is useful for correcting a stale row.',
-            confirmLabel: 'Mark as active',
+            title: tx('Mark {length} farmers as active', { length: ids.length }),
+            message: tx('Status normally follows the records automatically. Setting it by hand is useful for correcting a stale row.'),
+            confirmLabel: tx('Mark as active'),
           });
           if (!answer.ok || !user) return;
           try {
             await farmerService.setStatus(user, ids, 'active');
             refresh();
-            toast({ tone: 'success', title: `${ids.length} farmers updated` });
+            toast({ tone: 'success', title: tx('{length} farmers updated', { length: ids.length }) });
           } catch (e) {
             fail(e);
           }
@@ -555,38 +559,38 @@ export function Farmers({ search }: { search: string }) {
         onRowClick={(r) => navigate(`/farmers/${r.id}`)}
         onError={fail}
         bulkActions={bulkActions}
-        emptyTitle="No farmers registered yet"
-        emptyMessage="Add your first farmer, or import a list from a spreadsheet."
+        emptyTitle={tx('No farmers registered yet')}
+        emptyMessage={tx('Add your first farmer, or import a list from a spreadsheet.')}
         emptyAction={
           can('farmer.create') ? (
             <Button variant="primary" icon="plus" onClick={() => setAddOpen(true)}>
-              Add farmer
+              {tx('Add farmer')}
             </Button>
           ) : undefined
         }
         toolbar={
           <FilterBar
             specs={[
-              { key: 'status', label: 'Status', type: 'multi', options: Object.entries(FARMER_STATUS).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'crop', label: 'Crop', type: 'multi', options: crops.map((c) => ({ value: c.id, label: c.name })) },
-              { key: 'district', label: 'District', type: 'multi', options: uniq(all.map((r) => r.district)).map((d) => ({ value: d, label: d })) },
-              { key: 'cooperative', label: 'Cooperative', type: 'select', options: cooperatives.map((c) => ({ value: c.id, label: c.name })) },
-              { key: 'activity', label: 'Activity type', type: 'multi', options: [
-                { value: 'farming', label: 'Farming' },
-                { value: 'harvest', label: 'Harvest' },
-                { value: 'financial', label: 'Financial' },
-                { value: 'logistics', label: 'Logistics' },
-                { value: 'operations', label: 'Operations' },
-                { value: 'other', label: 'Other' },
+              { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(FARMER_STATUS).map(([value, m]) => ({ value, label: m.label })) },
+              { key: 'crop', label: tx('Crop'), type: 'multi', options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })) },
+              { key: 'district', label: tx('District'), type: 'multi', options: uniq(all.map((r) => r.district)).map((d) => ({ value: d, label: d })) },
+              { key: 'cooperative', label: tx('Cooperative'), type: 'select', options: cooperatives.map((c) => ({ value: c.id, label: c.name })) },
+              { key: 'activity', label: tx('Activity type'), type: 'multi', options: [
+                { value: 'farming', label: tx('Farming') },
+                { value: 'harvest', label: tx('Harvest') },
+                { value: 'financial', label: tx('Financial') },
+                { value: 'logistics', label: tx('Logistics') },
+                { value: 'operations', label: tx('Operations') },
+                { value: 'other', label: tx('Other') },
               ] },
-              { key: 'grade', label: 'Quality grade', type: 'multi', options: [
-                { value: 'A', label: 'Grade A' },
-                { value: 'B', label: 'Grade B' },
-                { value: 'C', label: 'Grade C' },
+              { key: 'grade', label: tx('Quality grade'), type: 'multi', options: [
+                { value: 'A', label: tx('Grade A') },
+                { value: 'B', label: tx('Grade B') },
+                { value: 'C', label: tx('Grade C') },
               ] },
-              { key: 'date', label: 'Last activity', type: 'daterange' },
-              { key: 'quantity', label: 'Quantity delivered', type: 'numrange' },
-              { key: 'balance', label: 'Balance owed', type: 'numrange' },
+              { key: 'date', label: tx('Last activity'), type: 'daterange' },
+              { key: 'quantity', label: tx('Quantity delivered'), type: 'numrange' },
+              { key: 'balance', label: tx('Balance owed'), type: 'numrange' },
             ]}
             values={filters}
             onChange={setFilters}
@@ -636,7 +640,7 @@ export function FarmerFormModal({
   farmer?: Farmer;
   defaultCoopId?: string;
 }) {
-  const { user, crops, cooperatives, refresh, toast, fail } = useStore();
+  const { user, crops, cooperatives, refresh, toast, fail, confirm } = useStore();
   const { t } = usePrefs();
   const [form, setForm] = useState(
     existing
@@ -706,9 +710,34 @@ export function FarmerFormModal({
           primaryCropId: form.primaryCropId,
         });
         refresh();
-        toast({ tone: 'success', title: `${updated.firstName} ${updated.lastName} updated` });
+        toast({ tone: 'success', title: tx('{firstName} {lastName} updated', { firstName: updated.firstName, lastName: updated.lastName }) });
         onClose();
         return;
+      }
+      /* Same name in the same district is almost always the same person
+         typed twice. Ask before creating a second record for them. */
+      const first = form.firstName.trim().toLowerCase();
+      const last = form.lastName.trim().toLowerCase();
+      const twin = (await db.farmers.toArray()).find(
+        (f) =>
+          !f.archived &&
+          f.firstName.trim().toLowerCase() === first &&
+          f.lastName.trim().toLowerCase() === last &&
+          f.district.trim().toLowerCase() === form.district.trim().toLowerCase(),
+      );
+      if (twin) {
+        const answer = await confirm({
+          title: tx('{name} is already registered', { name: `${twin.firstName} ${twin.lastName}` }),
+          message: tx('A farmer with this name already exists in {district} ({code}). Register a second, different person anyway?', {
+            district: twin.district,
+            code: twin.code,
+          }),
+          confirmLabel: tx('Yes, a different person'),
+        });
+        if (!answer.ok) {
+          setBusy(false);
+          return;
+        }
       }
       const farmer = await farmerService.create(user, {
         code: form.code.trim() || undefined,
@@ -732,9 +761,9 @@ export function FarmerFormModal({
       refresh();
       toast({
         tone: 'success',
-        title: `${farmer.firstName} ${farmer.lastName} registered`,
+        title: tx('{firstName} {lastName} registered', { firstName: farmer.firstName, lastName: farmer.lastName }),
         message: farmer.code,
-        action: { label: 'Open profile', run: () => navigate(`/farmers/${farmer.id}`) },
+        action: { label: tx('Open profile'), run: () => navigate(`/farmers/${farmer.id}`) },
       });
       onClose();
     } catch (err) {
@@ -750,16 +779,16 @@ export function FarmerFormModal({
     <Modal
       open
       onClose={onClose}
-      title={existing ? `Edit ${existing.firstName} ${existing.lastName}` : 'Register a farmer'}
-      subtitle={existing ? 'Changes are kept in the audit trail.' : 'The farmer ID is generated automatically and cannot be reused.'}
+      title={existing ? tx('Edit {name}', { name: `${existing.firstName} ${existing.lastName}` }) : tx('Register a farmer')}
+      subtitle={existing ? tx('Changes are kept in the audit trail.') : tx('The farmer ID is generated automatically and cannot be reused.')}
       footer={
         <>
           <span className="spacer" />
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {tx('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="add-farmer" loading={busy} icon="check">
-            {existing ? 'Save changes' : 'Register farmer'}
+            {existing ? tx('Save changes') : tx('Register farmer')}
           </Button>
         </>
       }
@@ -781,49 +810,49 @@ export function FarmerFormModal({
             invalid={Boolean(errors.idNumber)}
           />
         </Field>
-        <Field label="First name" required error={errors.firstName}>
+        <Field label={tx('First name')} required error={errors.firstName}>
           <Input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} invalid={Boolean(errors.firstName)} autoFocus />
         </Field>
-        <Field label="Last name" required error={errors.lastName}>
+        <Field label={tx('Last name')} required error={errors.lastName}>
           <Input value={form.lastName} onChange={(e) => set('lastName', e.target.value)} invalid={Boolean(errors.lastName)} />
         </Field>
-        <Field label="Phone" error={errors.phone} help="Used for mobile money payouts.">
+        <Field label={tx('Phone')} error={errors.phone} help={tx('Used for mobile money payouts.')}>
           <Input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+250 78…" invalid={Boolean(errors.phone)} />
         </Field>
-        <Field label="Gender">
+        <Field label={tx('Gender')}>
           <Select
             options={[
-              { value: 'F', label: 'Female' },
-              { value: 'M', label: 'Male' },
-              { value: 'other', label: 'Other' },
-              { value: 'undisclosed', label: 'Prefer not to say' },
+              { value: 'F', label: tx('Female') },
+              { value: 'M', label: tx('Male') },
+              { value: 'other', label: tx('Other') },
+              { value: 'undisclosed', label: tx('Prefer not to say') },
             ]}
             value={form.gender}
             onChange={(e) => set('gender', e.target.value)}
           />
         </Field>
-        <Field label="District" required error={errors.district}>
+        <Field label={tx('District')} required error={errors.district}>
           <Input value={form.district} onChange={(e) => set('district', e.target.value)} invalid={Boolean(errors.district)} />
         </Field>
-        <Field label="Sector">
+        <Field label={tx('Sector')}>
           <Input value={form.sector} onChange={(e) => set('sector', e.target.value)} />
         </Field>
-        <Field label="Cell">
+        <Field label={tx('Cell')}>
           <Input value={form.cell} onChange={(e) => set('cell', e.target.value)} />
         </Field>
-        <Field label="Village">
+        <Field label={tx('Village')}>
           <Input value={form.village} onChange={(e) => set('village', e.target.value)} />
         </Field>
-        <Field label="Cooperative" required error={errors.cooperativeId}>
+        <Field label={tx('Cooperative')} required error={errors.cooperativeId}>
           <Select options={cooperatives.map((c) => ({ value: c.id, label: c.name }))} value={form.cooperativeId} onChange={(e) => set('cooperativeId', e.target.value)} />
         </Field>
-        <Field label="Primary crop" required error={errors.primaryCropId}>
-          <Select options={crops.map((c) => ({ value: c.id, label: c.name }))} value={form.primaryCropId} onChange={(e) => set('primaryCropId', e.target.value)} />
+        <Field label={tx('Primary crop')} required error={errors.primaryCropId}>
+          <Select options={crops.map((c) => ({ value: c.id, label: cropLabel(c) }))} value={form.primaryCropId} onChange={(e) => set('primaryCropId', e.target.value)} />
         </Field>
-        <Field label="Farm size" error={errors.farmSizeHa} suffix="ha">
+        <Field label={tx('Farm size')} error={errors.farmSizeHa} suffix="ha">
           <Input type="number" step="0.1" min="0" className="input input--money num" value={form.farmSizeHa} onChange={(e) => set('farmSizeHa', e.target.value)} />
         </Field>
-        <Field label="Number of plots" error={errors.plots}>
+        <Field label={tx('Number of plots')} error={errors.plots}>
           <Input type="number" min="0" step="1" value={form.plots} onChange={(e) => set('plots', e.target.value)} />
         </Field>
       </form>
@@ -848,7 +877,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
       const text = await readFileText(file);
       const parsed = parseCSV(text);
       if (parsed.rows.length === 0) {
-        setError('That file has no data rows.');
+        setError(tx('That file has no data rows.'));
         return;
       }
       setPreview(parsed.rows);
@@ -886,7 +915,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
       });
       const created = await farmerService.importFarmers(user, drafts);
       refresh();
-      toast({ tone: 'success', title: `${created.length} farmers imported` });
+      toast({ tone: 'success', title: tx('{length} farmers imported', { length: created.length }) });
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -900,13 +929,13 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title="Import farmers from a spreadsheet"
-      subtitle="CSV exported from Excel. The whole file is checked before anything is saved."
+      title={tx('Import farmers from a spreadsheet')}
+      subtitle={tx('CSV exported from Excel. The whole file is checked before anything is saved.')}
       footer={
         <>
           <span className="spacer" />
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {tx('Cancel')}
           </Button>
           <Button variant="primary" onClick={doImport} disabled={!preview} loading={busy} icon="upload">
             Import {preview ? `${preview.length} farmers` : ''}
@@ -916,8 +945,9 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
     >
       <div className="stack gap-4">
         <Callout tone="info">
-          Column headers must be: <code style={{ fontSize: 'var(--fs-xs)' }}>{template}</code>. Cooperative and crop are
-          matched by name; unknown values fall back to the first on file.
+          {txr('Column headers must be: {columns}. Cooperative and crop are matched by name; unknown values fall back to the first on file.', {
+            columns: <code style={{ fontSize: 'var(--fs-xs)' }}>{template}</code>,
+          })}
         </Callout>
 
         <label className="btn btn--secondary" style={{ width: 'fit-content', cursor: 'pointer' }}>
@@ -939,7 +969,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
         {preview && (
           <div>
             <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              Preview, first 5 of {preview.length} rows
+              {tx('Preview, first 5 of {count} rows', { count: preview.length })}
             </p>
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
               <table className="grid" style={{ width: '100%' }}>
@@ -994,7 +1024,7 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">{t('nav.farmers.groups')}</h1>
-          <p className="page-sub">Tap a group to see only its farmers.</p>
+          <p className="page-sub">{tx('Tap a group to see only its farmers.')}</p>
         </div>
       </div>
 
@@ -1010,15 +1040,15 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
             </span>
             <div className="rowcard__grid" style={{ marginTop: 'var(--s-2)' }}>
               <div className="rowcard__cell">
-                <span>Members</span>
+                <span>{tx('Members')}</span>
                 <b>{formatNumber(g.members)}</b>
               </div>
               <div className="rowcard__cell">
-                <span>Earned</span>
+                <span>{tx('Earned')}</span>
                 <b>{formatMoney(g.earned)}</b>
               </div>
               <div className="rowcard__cell">
-                <span>Owed</span>
+                <span>{tx('Owed')}</span>
                 <b className={g.owed > 0 ? 'pos' : ''}>{formatMoney(g.owed)}</b>
               </div>
             </div>

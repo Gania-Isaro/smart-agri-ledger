@@ -15,6 +15,7 @@ import { Icon, type IconName } from './Icon';
 import type { StatusMeta } from '../../domain/status';
 import { useT } from '../../i18n';
 
+import { tx } from '../../i18n/tx';
 /* ---------------------------------------------------------------- button */
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'quiet-danger';
@@ -108,7 +109,7 @@ export function Chip({
     return (
       <span className={`chip ${on ? 'chip--on' : ''}`}>
         {children}
-        <button onClick={onRemove} aria-label="Remove filter">
+        <button onClick={onRemove} aria-label={tx('Remove filter')}>
           <Icon name="x" size={12} />
         </button>
       </span>

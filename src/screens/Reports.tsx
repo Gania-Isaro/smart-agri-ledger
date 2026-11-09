@@ -13,7 +13,7 @@ import { Icon, type IconName } from '../components/ui/Icon';
 import { Button, Field, Input, Skeleton } from '../components/ui/primitives';
 import { Modal } from '../components/ui/Modal';
 import { formatMoney, formatNumber } from '../domain/money';
-import { FARMER_STATUS, GRADE_META, LEDGER_TYPE_LABEL, PAYMENT_STATUS } from '../domain/status';
+import { FARMER_STATUS, GRADE_META, LEDGER_TYPE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from '../domain/status';
 import { formatDate, inRange, today } from '../lib/date';
 import { exportCSV, printHTML, type Column } from '../lib/csv';
 import { db } from '../db/db';
@@ -24,6 +24,7 @@ import * as ledgerService from '../services/ledgerService';
 import { counts, signedAmount } from '../domain/ledger';
 import { useT } from '../i18n';
 
+import { translated, tx } from '../i18n/tx';
 type ReportId =
   | 'farmer_activity'
   | 'harvest'
@@ -35,7 +36,7 @@ type ReportId =
   | 'seasonal'
   | 'financial_summary';
 
-const REPORTS: { id: ReportId; name: string; description: string; icon: IconName }[] = [
+const REPORTS: { id: ReportId; name: string; description: string; icon: IconName }[] = translated([
   { id: 'farmer_activity', name: 'Farmer activity report', description: 'Every farmer with their deliveries, earnings and current status.', icon: 'users' },
   { id: 'harvest', name: 'Harvest report', description: 'Delivery-by-delivery detail: quantity, grade, price and net value.', icon: 'basket' },
   { id: 'crop_production', name: 'Crop production report', description: 'Quantity and value produced per crop, with each crop’s share.', icon: 'sprout' },
@@ -45,7 +46,7 @@ const REPORTS: { id: ReportId; name: string; description: string; icon: IconName
   { id: 'cooperative', name: 'Cooperative report', description: 'Members, production and financial position for each cooperative.', icon: 'layers' },
   { id: 'seasonal', name: 'Seasonal report', description: 'Production and payments month by month across the season.', icon: 'calendar' },
   { id: 'financial_summary', name: 'Financial summary', description: 'The cooperative’s overall position: earned, paid, owed, advanced.', icon: 'chart' },
-];
+]);
 
 export function Reports() {
   const t = useT();
@@ -65,22 +66,22 @@ export function Reports() {
       {o && (
         <div className="metrics" style={{ marginBottom: 'var(--s-4)' }}>
           <div className="metric metric--accent">
-            <span className="metric__label">Produce collected</span>
+            <span className="metric__label">{tx('Produce collected')}</span>
             <span className="metric__value num">{formatNumber(Math.round(o.produceKg))}</span>
-            <span className="metric__foot">KG across {formatNumber(o.deliveries)} deliveries</span>
+            <span className="metric__foot">{tx('KG across {count} deliveries', { count: formatNumber(o.deliveries) })}</span>
           </div>
           <div className="metric">
-            <span className="metric__label">Earned by farmers</span>
+            <span className="metric__label">{tx('Earned by farmers')}</span>
             <span className="metric__value num">{formatMoney(o.totalOwed)}</span>
           </div>
           <div className="metric">
-            <span className="metric__label">Paid out</span>
+            <span className="metric__label">{tx('Paid out')}</span>
             <span className="metric__value num">{formatMoney(o.totalPaid)}</span>
           </div>
           <div className="metric metric--warn">
-            <span className="metric__label">Still owed</span>
+            <span className="metric__label">{tx('Still owed')}</span>
             <span className="metric__value num">{formatMoney(o.outstanding)}</span>
-            <span className="metric__foot">To {formatNumber(o.farmersOwed)} farmers</span>
+            <span className="metric__foot">{tx('To {count} farmers', { count: formatNumber(o.farmersOwed) })}</span>
           </div>
         </div>
       )}
@@ -136,7 +137,7 @@ function ReportModal({ id, onClose }: { id: ReportId; onClose: () => void }) {
       value: (row) => row[c.key] ?? '',
     }));
     exportCSV(`${id}-${today()}.csv`, data.rows, columns);
-    toast({ tone: 'success', title: 'CSV exported', message: 'Open it directly in Excel.' });
+    toast({ tone: 'success', title: tx('CSV exported'), message: tx('Open it directly in Excel.') });
   };
 
   const doPDF = () => {
@@ -160,7 +161,7 @@ function ReportModal({ id, onClose }: { id: ReportId; onClose: () => void }) {
     printHTML(
       data.title,
       `<h1>${escapeHTML(data.title)}</h1>
-       <p class="meta">Smart Agri-Ledger · ${from ? `${formatDate(from)} - ` : 'All records up to '}${formatDate(to)} · generated ${formatDate(today())}</p>
+       <p class="meta">Smart Agri-Ledger · ${from ? `${formatDate(from)} - ` : tx('All records up to') + ' '}${formatDate(to)} · ${tx('generated')} ${formatDate(today())}</p>
        ${cards}
        <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>`,
     );
@@ -177,23 +178,23 @@ function ReportModal({ id, onClose }: { id: ReportId; onClose: () => void }) {
         <>
           <span className="spacer" />
           <Button variant="ghost" onClick={onClose}>
-            Close
+            {tx('Close')}
           </Button>
           <Button icon="printer" onClick={doPDF} disabled={!data}>
-            Print / PDF
+            {tx('Print / PDF')}
           </Button>
           <Button variant="primary" icon="download" onClick={doCSV} disabled={!data}>
-            Export CSV
+            {tx('Export CSV')}
           </Button>
         </>
       }
     >
       <div className="stack gap-4">
         <div className="formgrid">
-          <Field label="From" help="Leave empty for all records.">
+          <Field label={tx('From')} help={tx('Leave empty for all records.')}>
             <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
           </Field>
-          <Field label="To">
+          <Field label={tx('To')}>
             <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </Field>
         </div>
@@ -254,7 +255,7 @@ function ReportModal({ id, onClose }: { id: ReportId; onClose: () => void }) {
               </div>
               {data.rows.length > 60 && (
                 <p className="muted" style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--s-2)' }}>
-                  Showing the first 60 rows. The export contains all {formatNumber(data.rows.length)}.
+                  {tx('Showing the first 60 rows. The export contains all {count}.', { count: formatNumber(data.rows.length) })}
                 </p>
               )}
             </div>
@@ -279,18 +280,18 @@ async function build(
     case 'farmer_activity': {
       const rows = await analytics.farmerReport();
       return {
-        title: 'Farmer activity report',
+        title: tx('Farmer activity report'),
         columns: [
-          { key: 'code', header: 'Farmer ID' },
-          { key: 'name', header: 'Farmer' },
-          { key: 'district', header: 'District' },
-          { key: 'crop', header: 'Primary crop' },
-          { key: 'deliveries', header: 'Deliveries', num: true },
-          { key: 'quantity', header: 'Quantity (KG)', num: true },
-          { key: 'earned', header: 'Earned', num: true },
-          { key: 'paid', header: 'Paid', num: true },
-          { key: 'balance', header: 'Balance', num: true },
-          { key: 'status', header: 'Status' },
+          { key: 'code', header: tx('Farmer ID') },
+          { key: 'name', header: tx('Farmer') },
+          { key: 'district', header: tx('District') },
+          { key: 'crop', header: tx('Primary crop') },
+          { key: 'deliveries', header: tx('Deliveries'), num: true },
+          { key: 'quantity', header: tx('Quantity (KG)'), num: true },
+          { key: 'earned', header: tx('Earned'), num: true },
+          { key: 'paid', header: tx('Paid'), num: true },
+          { key: 'balance', header: tx('Balance'), num: true },
+          { key: 'status', header: tx('Status') },
         ],
         rows: rows.map((r) => ({
           code: r.code,
@@ -305,7 +306,7 @@ async function build(
           status: FARMER_STATUS[r.status].label,
         })),
         totals: {
-          code: 'Total',
+          code: tx('Total'),
           deliveries: rows.reduce((s, r) => s + r.deliveries, 0),
           quantity: formatNumber(Math.round(rows.reduce((s, r) => s + r.quantity, 0))),
           earned: formatMoney(rows.reduce((s, r) => s + r.earned, 0)),
@@ -313,9 +314,9 @@ async function build(
           balance: formatMoney(rows.reduce((s, r) => s + r.balance, 0)),
         },
         cards: [
-          { label: 'Farmers', value: formatNumber(rows.length) },
-          { label: 'Delivered', value: formatNumber(rows.filter((r) => r.deliveries > 0).length) },
-          { label: 'Owed', value: formatNumber(rows.filter((r) => r.balance > 0).length) },
+          { label: tx('Farmers'), value: formatNumber(rows.length) },
+          { label: tx('Delivered'), value: formatNumber(rows.filter((r) => r.deliveries > 0).length) },
+          { label: tx('Owed'), value: formatNumber(rows.filter((r) => r.balance > 0).length) },
         ],
       };
     }
@@ -325,20 +326,20 @@ async function build(
       const byId = new Map(farmers.map((f) => [f.id, f]));
       const scoped = harvests.filter((h) => within(h.date));
       return {
-        title: 'Harvest report',
+        title: tx('Harvest report'),
         columns: [
-          { key: 'date', header: 'Date' },
-          { key: 'code', header: 'Farmer ID' },
-          { key: 'farmer', header: 'Farmer' },
-          { key: 'crop', header: 'Crop' },
-          { key: 'quantity', header: 'Quantity', num: true },
-          { key: 'unit', header: 'Unit' },
-          { key: 'grade', header: 'Grade' },
-          { key: 'price', header: 'Price/unit', num: true },
-          { key: 'gross', header: 'Gross value', num: true },
-          { key: 'deductions', header: 'Deductions', num: true },
-          { key: 'net', header: 'Net', num: true },
-          { key: 'status', header: 'Status' },
+          { key: 'date', header: tx('Date') },
+          { key: 'code', header: tx('Farmer ID') },
+          { key: 'farmer', header: tx('Farmer') },
+          { key: 'crop', header: tx('Crop') },
+          { key: 'quantity', header: tx('Quantity'), num: true },
+          { key: 'unit', header: tx('Unit') },
+          { key: 'grade', header: tx('Grade') },
+          { key: 'price', header: tx('Price/unit'), num: true },
+          { key: 'gross', header: tx('Gross value'), num: true },
+          { key: 'deductions', header: tx('Deductions'), num: true },
+          { key: 'net', header: tx('Net'), num: true },
+          { key: 'status', header: tx('Status') },
         ],
         rows: scoped.map((h) => ({
           date: formatDate(h.date),
@@ -355,15 +356,15 @@ async function build(
           status: h.status,
         })),
         totals: {
-          date: 'Total',
+          date: tx('Total'),
           gross: formatMoney(scoped.reduce((s, h) => s + h.gross, 0)),
           deductions: formatMoney(scoped.reduce((s, h) => s + h.deductions, 0)),
           net: formatMoney(scoped.reduce((s, h) => s + h.net, 0)),
         },
         cards: [
-          { label: 'Deliveries', value: formatNumber(scoped.length) },
-          { label: 'Gross value', value: formatMoney(scoped.reduce((s, h) => s + h.gross, 0)) },
-          { label: 'Net to farmers', value: formatMoney(scoped.reduce((s, h) => s + h.net, 0)) },
+          { label: tx('Deliveries'), value: formatNumber(scoped.length) },
+          { label: tx('Gross value'), value: formatMoney(scoped.reduce((s, h) => s + h.gross, 0)) },
+          { label: tx('Net to farmers'), value: formatMoney(scoped.reduce((s, h) => s + h.net, 0)) },
         ],
       };
     }
@@ -372,14 +373,14 @@ async function build(
       const totals = await harvestService.totalsByCrop();
       const grand = totals.reduce((s, t) => s + t.value, 0);
       return {
-        title: 'Crop production report',
+        title: tx('Crop production report'),
         columns: [
-          { key: 'crop', header: 'Crop' },
-          { key: 'deliveries', header: 'Deliveries', num: true },
-          { key: 'quantity', header: 'Quantity', num: true },
-          { key: 'unit', header: 'Unit' },
-          { key: 'value', header: 'Gross value', num: true },
-          { key: 'share', header: 'Share of value', num: true },
+          { key: 'crop', header: tx('Crop') },
+          { key: 'deliveries', header: tx('Deliveries'), num: true },
+          { key: 'quantity', header: tx('Quantity'), num: true },
+          { key: 'unit', header: tx('Unit') },
+          { key: 'value', header: tx('Gross value'), num: true },
+          { key: 'share', header: tx('Share of value'), num: true },
         ],
         rows: totals.map((t) => ({
           crop: lookups.cropName(t.cropId),
@@ -389,26 +390,51 @@ async function build(
           value: formatMoney(t.value),
           share: grand ? `${Math.round((t.value / grand) * 100)}%` : '0%',
         })),
-        totals: { crop: 'Total', deliveries: totals.reduce((s, t) => s + t.deliveries, 0), value: formatMoney(grand), share: '100%' },
+        totals: { crop: tx('Total'), deliveries: totals.reduce((s, t) => s + t.deliveries, 0), value: formatMoney(grand), share: '100%' },
       };
     }
 
     case 'payments': {
-      const [payments, farmers] = await Promise.all([paymentService.list(), db.farmers.toArray()]);
+      const [listed, farmers, txs, activities] = await Promise.all([
+        paymentService.list(),
+        db.farmers.toArray(),
+        db.transactions.toArray(),
+        db.activities.toArray(),
+      ]);
       const byId = new Map(farmers.map((f) => [f.id, f]));
+      const activityById = new Map(activities.map((a) => [a.id, a]));
+      /* A payment recorded with "Record activity" goes straight to the ledger
+         without a payment record. It is still money paid, so it belongs here,
+         or this report would disagree with every other total in the app. */
+      const direct = txs
+        .filter((t) => t.type === 'payment' && !t.paymentId && counts(t))
+        .map((t) => {
+          const data = t.activityId ? activityById.get(t.activityId)?.data : undefined;
+          return {
+            id: t.id,
+            farmerId: t.farmerId,
+            date: t.date,
+            reference: t.reference || t.code,
+            amount: t.amount,
+            method: (data?.method as string | undefined) ?? '',
+            status: 'paid' as const,
+            reason: t.description,
+          };
+        });
+      const payments = [...listed, ...direct].sort((a, b) => (a.date < b.date ? 1 : -1));
       const scoped = payments.filter((p) => within(p.date));
       const paid = scoped.filter((p) => p.status === 'paid');
       return {
-        title: 'Payment report',
+        title: tx('Payment report'),
         columns: [
-          { key: 'date', header: 'Date' },
-          { key: 'reference', header: 'Reference' },
-          { key: 'code', header: 'Farmer ID' },
-          { key: 'farmer', header: 'Farmer' },
-          { key: 'amount', header: 'Amount', num: true },
-          { key: 'method', header: 'Method' },
-          { key: 'status', header: 'Status' },
-          { key: 'reason', header: 'Reason' },
+          { key: 'date', header: tx('Date') },
+          { key: 'reference', header: tx('Reference') },
+          { key: 'code', header: tx('Farmer ID') },
+          { key: 'farmer', header: tx('Farmer') },
+          { key: 'amount', header: tx('Amount'), num: true },
+          { key: 'method', header: tx('Method') },
+          { key: 'status', header: tx('Status') },
+          { key: 'reason', header: tx('Reason') },
         ],
         rows: scoped.map((p) => ({
           date: formatDate(p.date),
@@ -416,15 +442,15 @@ async function build(
           code: byId.get(p.farmerId)?.code ?? '',
           farmer: `${byId.get(p.farmerId)?.firstName ?? ''} ${byId.get(p.farmerId)?.lastName ?? ''}`.trim(),
           amount: formatMoney(p.amount),
-          method: p.method,
+          method: PAYMENT_METHOD_LABEL[p.method] ?? (p.method || '-'),
           status: PAYMENT_STATUS[p.status].label,
           reason: p.reason,
         })),
-        totals: { date: 'Total', amount: formatMoney(scoped.reduce((s, p) => s + p.amount, 0)) },
+        totals: { date: tx('Total, all statuses'), amount: formatMoney(scoped.filter((p) => p.status !== 'cancelled').reduce((s, p) => s + p.amount, 0)) },
         cards: [
-          { label: 'Payments', value: formatNumber(scoped.length) },
-          { label: 'Settled', value: formatMoney(paid.reduce((s, p) => s + p.amount, 0)) },
-          { label: 'Not yet paid', value: formatMoney(scoped.filter((p) => p.status !== 'paid' && p.status !== 'cancelled').reduce((s, p) => s + p.amount, 0)) },
+          { label: tx('Payments'), value: formatNumber(scoped.length) },
+          { label: tx('Settled'), value: formatMoney(paid.reduce((s, p) => s + p.amount, 0)) },
+          { label: tx('Not yet paid'), value: formatMoney(scoped.filter((p) => p.status !== 'paid' && p.status !== 'cancelled').reduce((s, p) => s + p.amount, 0)) },
         ],
       };
     }
@@ -432,16 +458,16 @@ async function build(
     case 'outstanding': {
       const rows = (await analytics.farmerReport()).filter((r) => r.balance !== 0);
       return {
-        title: 'Outstanding balances',
+        title: tx('Outstanding balances'),
         columns: [
-          { key: 'code', header: 'Farmer ID' },
-          { key: 'name', header: 'Farmer' },
-          { key: 'district', header: 'District' },
-          { key: 'earned', header: 'Earned', num: true },
-          { key: 'paid', header: 'Paid', num: true },
-          { key: 'advances', header: 'Advances', num: true },
-          { key: 'deductions', header: 'Deductions', num: true },
-          { key: 'balance', header: 'Balance owed', num: true },
+          { key: 'code', header: tx('Farmer ID') },
+          { key: 'name', header: tx('Farmer') },
+          { key: 'district', header: tx('District') },
+          { key: 'earned', header: tx('Earned'), num: true },
+          { key: 'paid', header: tx('Paid'), num: true },
+          { key: 'advances', header: tx('Advances'), num: true },
+          { key: 'deductions', header: tx('Deductions'), num: true },
+          { key: 'balance', header: tx('Balance owed'), num: true },
         ],
         rows: rows.map((r) => ({
           code: r.code,
@@ -453,11 +479,11 @@ async function build(
           deductions: formatMoney(r.deductions),
           balance: formatMoney(r.balance),
         })),
-        totals: { code: 'Total', balance: formatMoney(rows.reduce((s, r) => s + r.balance, 0)) },
+        totals: { code: tx('Net (owed minus advances)'), balance: formatMoney(rows.reduce((s, r) => s + r.balance, 0)) },
         cards: [
-          { label: 'Farmers owed', value: formatNumber(rows.filter((r) => r.balance > 0).length) },
-          { label: 'Total owed', value: formatMoney(rows.filter((r) => r.balance > 0).reduce((s, r) => s + r.balance, 0)) },
-          { label: 'In advance', value: formatNumber(rows.filter((r) => r.balance < 0).length) },
+          { label: tx('Farmers owed'), value: formatNumber(rows.filter((r) => r.balance > 0).length) },
+          { label: tx('Total owed'), value: formatMoney(rows.filter((r) => r.balance > 0).reduce((s, r) => s + r.balance, 0)) },
+          { label: tx('In advance'), value: formatNumber(rows.filter((r) => r.balance < 0).length) },
         ],
       };
     }
@@ -468,16 +494,16 @@ async function build(
       const scoped = txs.filter((t) => within(t.date)).sort((a, b) => (a.date < b.date ? -1 : 1));
       let running = 0;
       return {
-        title: 'Farmer ledger report',
+        title: tx('Farmer ledger report'),
         columns: [
-          { key: 'date', header: 'Date' },
-          { key: 'code', header: 'Transaction' },
-          { key: 'farmer', header: 'Farmer' },
-          { key: 'type', header: 'Type' },
-          { key: 'description', header: 'Description' },
-          { key: 'debit', header: 'Debit', num: true },
-          { key: 'credit', header: 'Credit', num: true },
-          { key: 'by', header: 'Created by' },
+          { key: 'date', header: tx('Date') },
+          { key: 'code', header: tx('Transaction') },
+          { key: 'farmer', header: tx('Farmer') },
+          { key: 'type', header: tx('Type') },
+          { key: 'description', header: tx('Description') },
+          { key: 'debit', header: tx('Debit'), num: true },
+          { key: 'credit', header: tx('Credit'), num: true },
+          { key: 'by', header: tx('Created by') },
         ],
         rows: scoped.map((t) => {
           running += signedAmount(t);
@@ -493,7 +519,7 @@ async function build(
           };
         }),
         totals: {
-          date: 'Net position',
+          date: tx('Net position'),
           debit: formatMoney(scoped.filter((t) => counts(t) && t.direction === 'debit').reduce((s, t) => s + t.amount, 0)),
           credit: formatMoney(scoped.filter((t) => counts(t) && t.direction === 'credit').reduce((s, t) => s + t.amount, 0)),
           by: formatMoney(running),
@@ -504,15 +530,15 @@ async function build(
     case 'cooperative': {
       const rows = await analytics.farmerReport();
       return {
-        title: 'Cooperative report',
+        title: tx('Cooperative report'),
         columns: [
-          { key: 'name', header: 'Cooperative' },
-          { key: 'district', header: 'District' },
-          { key: 'members', header: 'Members', num: true },
-          { key: 'quantity', header: 'Quantity (KG)', num: true },
-          { key: 'earned', header: 'Earned', num: true },
-          { key: 'paid', header: 'Paid', num: true },
-          { key: 'balance', header: 'Owed', num: true },
+          { key: 'name', header: tx('Cooperative') },
+          { key: 'district', header: tx('District') },
+          { key: 'members', header: tx('Members'), num: true },
+          { key: 'quantity', header: tx('Quantity (KG)'), num: true },
+          { key: 'earned', header: tx('Earned'), num: true },
+          { key: 'paid', header: tx('Paid'), num: true },
+          { key: 'balance', header: tx('Owed'), num: true },
         ],
         rows: cooperatives.map((c) => {
           const members = rows.filter((r) => r.cooperative === c.name);
@@ -527,7 +553,7 @@ async function build(
           };
         }),
         totals: {
-          name: 'Total',
+          name: tx('Total'),
           members: rows.length,
           earned: formatMoney(rows.reduce((s, r) => s + r.earned, 0)),
           paid: formatMoney(rows.reduce((s, r) => s + r.paid, 0)),
@@ -549,13 +575,13 @@ async function build(
         };
       });
       return {
-        title: 'Seasonal report',
+        title: tx('Seasonal report'),
         columns: [
-          { key: 'month', header: 'Month' },
-          { key: 'quantity', header: 'Produce (KG)', num: true },
-          { key: 'earned', header: 'Earned', num: true },
-          { key: 'paid', header: 'Paid', num: true },
-          { key: 'gap', header: 'Unsettled', num: true },
+          { key: 'month', header: tx('Month') },
+          { key: 'quantity', header: tx('Produce (KG)'), num: true },
+          { key: 'earned', header: tx('Earned'), num: true },
+          { key: 'paid', header: tx('Paid'), num: true },
+          { key: 'gap', header: tx('Unsettled'), num: true },
         ],
         rows: merged,
       };
@@ -564,27 +590,27 @@ async function build(
     case 'financial_summary': {
       const [position, o] = await Promise.all([ledgerService.position(), analytics.overview()]);
       return {
-        title: 'Financial summary',
+        title: tx('Financial summary'),
         columns: [
-          { key: 'item', header: 'Item' },
-          { key: 'value', header: 'Amount', num: true },
+          { key: 'item', header: tx('Item') },
+          { key: 'value', header: tx('Amount'), num: true },
         ],
         rows: [
-          { item: 'Total earned by farmers (credits)', value: formatMoney(position.totalEarned) },
-          { item: 'Total paid to farmers (debits)', value: formatMoney(position.totalPaid) },
-          { item: 'Advances and loans issued', value: formatMoney(position.totalAdvances) },
-          { item: 'Deductions applied', value: formatMoney(position.totalDeductions) },
-          { item: 'Outstanding to farmers', value: formatMoney(position.outstanding) },
-          { item: 'Advances still to recover', value: formatMoney(position.inAdvance) },
-          { item: 'Farmers currently owed', value: formatNumber(position.farmersOwed) },
-          { item: 'Farmers on the register', value: formatNumber(o.totalFarmers) },
-          { item: 'Deliveries recorded', value: formatNumber(o.deliveries) },
-          { item: 'Produce collected (KG)', value: formatNumber(Math.round(o.produceKg)) },
+          { item: tx('Total earned by farmers (credits)'), value: formatMoney(position.totalEarned) },
+          { item: tx('Total paid to farmers (debits)'), value: formatMoney(position.totalPaid) },
+          { item: tx('Advances and loans issued'), value: formatMoney(position.totalAdvances) },
+          { item: tx('Deductions applied'), value: formatMoney(position.totalDeductions) },
+          { item: tx('Outstanding to farmers'), value: formatMoney(position.outstanding) },
+          { item: tx('Advances still to recover'), value: formatMoney(position.inAdvance) },
+          { item: tx('Farmers currently owed'), value: formatNumber(position.farmersOwed) },
+          { item: tx('Farmers on the register'), value: formatNumber(o.totalFarmers) },
+          { item: tx('Deliveries recorded'), value: formatNumber(o.deliveries) },
+          { item: tx('Produce collected (KG)'), value: formatNumber(Math.round(o.produceKg)) },
         ],
         cards: [
-          { label: 'Earned', value: formatMoney(position.totalEarned) },
-          { label: 'Paid', value: formatMoney(position.totalPaid) },
-          { label: 'Outstanding', value: formatMoney(position.outstanding) },
+          { label: tx('Earned'), value: formatMoney(position.totalEarned) },
+          { label: tx('Paid'), value: formatMoney(position.totalPaid) },
+          { label: tx('Outstanding'), value: formatMoney(position.outstanding) },
         ],
       };
     }
