@@ -81,13 +81,6 @@ const UNIT_OPTIONS = [
   { value: 'PIECE', label: 'Piece' },
 ];
 
-const GRADE_OPTIONS = [
-  { value: 'A', label: 'Grade A, premium' },
-  { value: 'B', label: 'Grade B, standard' },
-  { value: 'C', label: 'Grade C, low' },
-  { value: 'REJECT', label: 'Reject, not accepted' },
-];
-
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'mobile_money', label: 'Mobile money' },
   { value: 'bank_transfer', label: 'Bank transfer' },
@@ -118,7 +111,6 @@ const reason = (help: string): FieldSpec => ({ key: 'reason', label: 'Reason', t
 const produceFields: FieldSpec[] = [
   { key: 'quantity', label: 'Quantity', type: 'number', required: true, min: 0, half: true },
   { key: 'unit', label: 'Unit', type: 'select', required: true, options: UNIT_OPTIONS, half: true },
-  { key: 'grade', label: 'Quality grade', type: 'select', required: true, options: GRADE_OPTIONS, half: true },
   {
     key: 'pricePerUnit',
     label: 'Price per unit',
@@ -249,12 +241,6 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
     { key: 'rejected', label: 'Quantity rejected', type: 'number', min: 0, half: true },
     notes,
   ]),
-  type('grading', 'Grading', 'harvest', 'star', [
-    { key: 'quantity', label: 'Quantity graded', type: 'number', min: 0, half: true },
-    { key: 'unit', label: 'Unit', type: 'select', options: UNIT_OPTIONS, half: true },
-    { key: 'grade', label: 'Grade assigned', type: 'select', required: true, options: GRADE_OPTIONS, half: true },
-    notes,
-  ]),
   type('weighing', 'Weighing', 'harvest', 'scale', [
     { key: 'quantity', label: 'Weight recorded', type: 'number', required: true, min: 0, half: true },
     { key: 'unit', label: 'Unit', type: 'select', required: true, options: UNIT_OPTIONS, half: true },
@@ -363,7 +349,6 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
     { key: 'quantity', label: 'Quantity received', type: 'number', required: true, min: 0, half: true },
     { key: 'unit', label: 'Unit', type: 'select', required: true, options: UNIT_OPTIONS, half: true },
     { key: 'location', label: 'Warehouse', type: 'text', half: true },
-    { key: 'grade', label: 'Grade on arrival', type: 'select', options: GRADE_OPTIONS, half: true },
     notes,
   ]),
   type('transportation', 'Transportation', 'logistics', 'truck', [
@@ -467,7 +452,6 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
     notes,
   ]),
   type('quality_inspection', 'Quality inspection', 'other', 'badge-check', [
-    { key: 'grade', label: 'Grade assigned', type: 'select', required: true, options: GRADE_OPTIONS, half: true },
     { key: 'inspector', label: 'Inspector', type: 'text', half: true },
     { key: 'outcome', label: 'Outcome', type: 'select', half: true, options: [
       { value: 'accepted', label: 'Accepted' },
@@ -505,4 +489,4 @@ export function byCategory(types: ActivityType[]): { category: ActivityCategory;
     .filter((g) => g.types.length > 0);
 }
 
-export { UNIT_OPTIONS, GRADE_OPTIONS, PAYMENT_METHOD_OPTIONS };
+export { UNIT_OPTIONS, PAYMENT_METHOD_OPTIONS };

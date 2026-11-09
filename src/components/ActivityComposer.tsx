@@ -283,7 +283,6 @@ function ActivityForm({
       cropId: v.cropId || crop.id,
       unit: v.unit || crop.defaultUnit,
       pricePerUnit: v.pricePerUnit || String(crop.defaultPricePerUnit),
-      grade: v.grade || 'A',
     }));
   }, [farmer, crops, type.createsHarvest]);
 

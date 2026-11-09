@@ -110,8 +110,7 @@ export function Farmers({ search }: { search: string }) {
         matchesMulti(filters.activity, r.latestActivity?.category) &&
         matchesDate(filters.date, r.latestHarvest?.date ?? r.latestActivity?.date ?? null) &&
         matchesNumber(filters.quantity, r.totalQuantity) &&
-        matchesNumber(filters.balance, r.financials.balance) &&
-        matchesMulti(filters.grade, r.latestHarvest?.grade),
+        matchesNumber(filters.balance, r.financials.balance) 
     );
   }, [all, filters, onlyActive, coopId]);
 
@@ -606,11 +605,6 @@ export function Farmers({ search }: { search: string }) {
                 { value: 'logistics', label: tx('Logistics') },
                 { value: 'operations', label: tx('Operations') },
                 { value: 'other', label: tx('Other') },
-              ] },
-              { key: 'grade', label: tx('Quality grade'), type: 'multi', options: [
-                { value: 'A', label: tx('Grade A') },
-                { value: 'B', label: tx('Grade B') },
-                { value: 'C', label: tx('Grade C') },
               ] },
               { key: 'date', label: tx('Last activity'), type: 'daterange' },
               { key: 'quantity', label: tx('Quantity delivered'), type: 'numrange' },

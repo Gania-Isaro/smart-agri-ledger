@@ -179,7 +179,8 @@ export interface Harvest {
   date: ISODate;
   quantity: number;
   unit: Unit;
-  grade: QualityGrade;
+  /** Older records may carry a quality grade; it is no longer used. */
+  grade?: QualityGrade;
   /** Whole RWF per unit. */
   pricePerUnit: number;
   /** Whole RWF deducted at intake (transport, drying, packaging losses). */

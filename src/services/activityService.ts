@@ -23,7 +23,6 @@ import type {
   FieldSpec,
   Harvest,
   ID,
-  QualityGrade,
   Unit,
   User,
 } from '../domain/types';
@@ -267,7 +266,6 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
       date,
       quantity,
       unit: (data.unit as Unit) || 'KG',
-      grade: (data.grade as QualityGrade) || 'B',
       pricePerUnit,
       deductions,
       status: 'recorded',

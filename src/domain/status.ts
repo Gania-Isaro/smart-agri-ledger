@@ -12,7 +12,6 @@ import type {
   FarmerStatus,
   HarvestStatus,
   PaymentStatus,
-  QualityGrade,
 } from './types';
 import { translated } from '../i18n/tx';
 
@@ -55,7 +54,7 @@ export const ACTIVITY_STATUS: Record<ActivityStatus, StatusMeta> = translated(ke
 
 export const HARVEST_STATUS: Record<HarvestStatus, StatusMeta> = translated(keyed({
   recorded: { label: 'Recorded', glyph: '◐', tone: 'amber', help: 'Captured in the field, awaiting verification.' },
-  verified: { label: 'Verified', glyph: '✓', tone: 'green', help: 'Weight and grade confirmed at intake.' },
+  verified: { label: 'Verified', glyph: '✓', tone: 'green', help: 'Weight confirmed at intake.' },
   rejected: { label: 'Rejected', glyph: '✕', tone: 'red', help: 'Produce not accepted. No credit posted.' },
 }));
 
@@ -76,13 +75,6 @@ export const BATCH_STATUS: Record<BatchStatus, StatusMeta> = translated(keyed({
   completed: { label: 'Completed', glyph: '✓', tone: 'green', help: 'Every farmer in the list has been paid and recorded.' },
   cancelled: { label: 'Cancelled', glyph: '✕', tone: 'slate' },
 }));
-
-export const GRADE_META: Record<QualityGrade, StatusMeta> = translated({
-  A: { label: 'Grade A', glyph: 'A', tone: 'green', help: 'Premium quality.' },
-  B: { label: 'Grade B', glyph: 'B', tone: 'teal', help: 'Standard quality.' },
-  C: { label: 'Grade C', glyph: 'C', tone: 'amber', help: 'Low quality, reduced price.' },
-  REJECT: { label: 'Reject', glyph: '✕', tone: 'red', help: 'Not accepted.' },
-});
 
 export const LEDGER_TYPE_LABEL: Record<string, string> = translated({
   harvest: 'Harvest',

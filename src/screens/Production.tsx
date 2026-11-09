@@ -1,4 +1,4 @@
-/** Harvests, crop performance and quality. */
+/** Harvests and crop performance. */
 
 import { useMemo, useState } from 'react';
 import { useLookups, useQuery, useStore } from '../state/store';
@@ -6,14 +6,14 @@ import { navigate, useRoute } from '../state/router';
 import { DataGrid, type ColumnDef } from '../components/grid/DataGrid';
 import { FilterBar, matchesDate, matchesMulti, matchesNumber, type FilterValues } from '../components/Filters';
 import { Badge, Callout } from '../components/ui/primitives';
-import { ChartCard, HBars, Meter } from '../components/charts';
+import { ChartCard, HBars } from '../components/charts';
 import { formatMoney, formatNumber } from '../domain/money';
-import { GRADE_META, HARVEST_STATUS } from '../domain/status';
+import { HARVEST_STATUS } from '../domain/status';
 import { formatDateShort } from '../lib/date';
 import { db } from '../db/db';
 import * as harvestService from '../services/harvestService';
 import * as analytics from '../services/analyticsService';
-import type { Farmer, QualityGrade } from '../domain/types';
+import type { Farmer } from '../domain/types';
 import { usePrefs } from '../i18n';
 
 import { cropLabel, tx } from '../i18n/tx';
@@ -27,7 +27,6 @@ export function Production({ search }: { search: string }) {
   const sub = route.segments[1] ?? 'harvests';
 
   if (sub === 'crops') return <Crops />;
-  if (sub === 'quality') return <Quality />;
   return <Harvests search={search} />;
 }
 
@@ -51,7 +50,6 @@ function Harvests({ search }: { search: string }) {
       all.filter(
         (h) =>
           matchesMulti(filters.status, h.status) &&
-          matchesMulti(filters.grade, h.grade) &&
           matchesMulti(filters.crop, h.cropId) &&
           matchesMulti(filters.district, h.farmer?.district) &&
           matchesDate(filters.date, h.date) &&
@@ -155,28 +153,6 @@ function Harvests({ search }: { search: string }) {
             {formatNumber(r.quantity)} <span className="muted">{r.unit}</span>
           </span>
         ),
-      },
-      {
-        key: 'grade',
-        header: tx('Grade'),
-        width: 110,
-        mobile: 'badge',
-        sortValue: (r) => r.grade,
-        searchValue: (r) => GRADE_META[r.grade].label,
-        exportValue: (r) => r.grade,
-        edit: can('harvest.edit')
-          ? {
-              type: 'select',
-              options: (['A', 'B', 'C', 'REJECT'] as QualityGrade[]).map((g) => ({ value: g, label: GRADE_META[g].label })),
-              value: (r) => r.grade,
-              commit: async (r, next) => {
-                if (!user) return;
-                await harvestService.correct(user, r.id, { grade: next as QualityGrade }, tx('Grade reassessed at intake'));
-                refresh();
-              },
-            }
-          : undefined,
-        render: (r) => <Badge meta={GRADE_META[r.grade]} />,
       },
       {
         key: 'price',
@@ -297,7 +273,7 @@ function Harvests({ search }: { search: string }) {
       {unverified > 0 && can('harvest.verify') && (
         <div style={{ marginBottom: 'var(--s-3)' }}>
           <Callout tone="warn" icon="alert">
-            {txr('{records} were captured in the field and still need a weight and grade check. Select them and choose Verify.', {
+            {txr('{records} were captured in the field and still need their weight checked. Select them and choose Verify.', {
               records: <b>{tx('{count} harvest records', { count: unverified })}</b>,
             })}
           </Callout>
@@ -321,7 +297,6 @@ function Harvests({ search }: { search: string }) {
           <FilterBar
             specs={[
               { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(HARVEST_STATUS).map(([value, m]) => ({ value, label: m.label })) },
-              { key: 'grade', label: tx('Grade'), type: 'multi', options: Object.entries(GRADE_META).map(([value, m]) => ({ value, label: m.label })) },
               { key: 'crop', label: tx('Crop'), type: 'multi', options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })) },
               { key: 'district', label: tx('District'), type: 'multi', options: [...new Set(all.map((r) => r.farmer?.district ?? ''))].filter(Boolean).map((d) => ({ value: d, label: d })) },
               { key: 'date', label: tx('Harvest date'), type: 'daterange' },
@@ -425,73 +400,3 @@ function Crops() {
   );
 }
 
-/* --------------------------------------------------------------- quality */
-
-function Quality() {
-  const { t } = usePrefs();
-  const query = useQuery(async () => harvestService.list());
-  const rows = query.data ?? [];
-
-  const byGrade = (['A', 'B', 'C', 'REJECT'] as QualityGrade[]).map((g) => {
-    const set = rows.filter((r) => r.grade === g);
-    return {
-      grade: g,
-      count: set.length,
-      quantity: set.reduce((s, r) => s + r.quantity, 0),
-      value: set.reduce((s, r) => s + r.gross, 0),
-    };
-  });
-
-  const total = rows.length;
-  const premium = byGrade[0]?.count ?? 0;
-  const verified = rows.filter((r) => r.status === 'verified').length;
-
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">{t('prod.qualityTitle')}</h1>
-          <p className="page-sub">{t('prod.qualitySub')}</p>
-        </div>
-      </div>
-
-      <div className="chartgrid">
-        <ChartCard title={tx('Deliveries by grade')} subtitle={tx('Number of deliveries in each grade')}>
-          <HBars
-            data={byGrade.map((g) => ({
-              label: GRADE_META[g.grade].label,
-              value: g.count,
-              colour: g.grade === 'A' ? 'var(--c-green-600)' : g.grade === 'B' ? 'var(--c-teal-600)' : g.grade === 'C' ? 'var(--c-amber-600)' : 'var(--c-red-600)',
-            }))}
-            unit=""
-          />
-        </ChartCard>
-
-        <ChartCard title={tx('Premium share')} subtitle={tx('Grade A as a share of all deliveries')}>
-          <Meter value={premium} total={total} label={tx('{premium} of {total} deliveries are Grade A', { premium, total })} caption={tx('Higher grades earn a higher price per unit.')} />
-        </ChartCard>
-
-        <ChartCard title={tx('Verification progress')} subtitle={tx('Deliveries checked at intake')}>
-          <Meter
-            value={verified}
-            total={total}
-            label={tx('{verified} of {total} verified', { verified, total })}
-            caption={tx('Unverified rows are field entries awaiting a weight and grade check.')}
-            colour="var(--c-teal-600)"
-          />
-        </ChartCard>
-
-        <ChartCard title={tx('Value by grade')} subtitle={tx('Gross value received per grade')}>
-          <HBars
-            data={byGrade.map((g) => ({
-              label: GRADE_META[g.grade].label,
-              value: g.value,
-              colour: g.grade === 'A' ? 'var(--c-green-600)' : g.grade === 'B' ? 'var(--c-teal-600)' : g.grade === 'C' ? 'var(--c-amber-600)' : 'var(--c-red-600)',
-            }))}
-            money
-          />
-        </ChartCard>
-      </div>
-    </>
-  );
-}

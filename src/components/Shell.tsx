@@ -54,7 +54,6 @@ export const NAV: NavEntry[] = [
     children: [
       { label: 'nav.production.harvests', path: '/production/harvests', countKey: 'unverified' },
       { label: 'nav.production.crops', path: '/production/crops' },
-      { label: 'nav.production.quality', path: '/production/quality' },
     ],
   },
   {

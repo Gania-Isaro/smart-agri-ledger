@@ -13,7 +13,7 @@ import { Icon, type IconName } from '../components/ui/Icon';
 import { Button, Field, Input, Skeleton } from '../components/ui/primitives';
 import { Modal } from '../components/ui/Modal';
 import { formatMoney, formatNumber } from '../domain/money';
-import { FARMER_STATUS, GRADE_META, LEDGER_TYPE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from '../domain/status';
+import { FARMER_STATUS, LEDGER_TYPE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from '../domain/status';
 import { formatDate, inRange, today } from '../lib/date';
 import { exportCSV, printHTML, type Column } from '../lib/csv';
 import { db } from '../db/db';
@@ -38,7 +38,7 @@ type ReportId =
 
 const REPORTS: { id: ReportId; name: string; description: string; icon: IconName }[] = translated([
   { id: 'farmer_activity', name: 'Farmer activity report', description: 'Every farmer with their deliveries, earnings and current status.', icon: 'users' },
-  { id: 'harvest', name: 'Harvest report', description: 'Delivery-by-delivery detail: quantity, grade, price and net value.', icon: 'basket' },
+  { id: 'harvest', name: 'Harvest report', description: 'Delivery-by-delivery detail: quantity, price and net value.', icon: 'basket' },
   { id: 'crop_production', name: 'Crop production report', description: 'Quantity and value produced per crop, with each crop’s share.', icon: 'sprout' },
   { id: 'payments', name: 'Payment report', description: 'All payments with status, method, reference and approver.', icon: 'coins' },
   { id: 'outstanding', name: 'Outstanding balances', description: 'Who is still owed, how much, and what has already been paid.', icon: 'wallet' },
@@ -334,7 +334,6 @@ async function build(
           { key: 'crop', header: tx('Crop') },
           { key: 'quantity', header: tx('Quantity'), num: true },
           { key: 'unit', header: tx('Unit') },
-          { key: 'grade', header: tx('Grade') },
           { key: 'price', header: tx('Price/unit'), num: true },
           { key: 'gross', header: tx('Gross value'), num: true },
           { key: 'deductions', header: tx('Deductions'), num: true },
@@ -348,7 +347,6 @@ async function build(
           crop: lookups.cropName(h.cropId),
           quantity: formatNumber(h.quantity),
           unit: h.unit,
-          grade: GRADE_META[h.grade].label,
           price: formatMoney(h.pricePerUnit),
           gross: formatMoney(h.gross),
           deductions: h.deductions ? formatMoney(h.deductions) : '',

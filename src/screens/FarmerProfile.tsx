@@ -14,7 +14,7 @@ import { Badge, Button, Callout, EmptyState, Skeleton } from '../components/ui/p
 import { ActivityComposer } from '../components/ActivityComposer';
 import { LedgerTable } from '../components/LedgerTable';
 import { formatMoney, formatNumber } from '../domain/money';
-import { ACTIVITY_STATUS, FARMER_STATUS, GRADE_META, HARVEST_STATUS, PAYMENT_STATUS, PAYMENT_METHOD_LABEL } from '../domain/status';
+import { ACTIVITY_STATUS, FARMER_STATUS, HARVEST_STATUS, PAYMENT_STATUS, PAYMENT_METHOD_LABEL } from '../domain/status';
 import { formatDate, formatDateTime, timeAgo, today } from '../lib/date';
 import { db } from '../db/db';
 import * as farmerService from '../services/farmerService';
@@ -349,7 +349,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                 <table className="grid" style={{ width: '100%' }}>
                   <thead>
                     <tr>
-                      {['Date', 'Crop', 'Quantity', 'Grade', 'Price', 'Gross', 'Deductions', 'Net', 'Status'].map((h) => (
+                      {['Date', 'Crop', 'Quantity', 'Price', 'Gross', 'Deductions', 'Net', 'Status'].map((h) => (
                         <th key={h} className={['Quantity', 'Price', 'Gross', 'Deductions', 'Net'].includes(h) ? 'num' : ''}>
                           <span className="th">{h}</span>
                         </th>
@@ -362,7 +362,6 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                         <td><span className="cell num">{formatDate(h.date)}</span></td>
                         <td><span className="cell">{lookups.cropName(h.cropId)}</span></td>
                         <td className="num"><span className="cell num">{formatNumber(h.quantity)} {h.unit}</span></td>
-                        <td><span className="cell"><Badge meta={GRADE_META[h.grade]} /></span></td>
                         <td className="num"><span className="cell num">{formatMoney(h.pricePerUnit)}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(h.gross)}</span></td>
                         <td className="num"><span className="cell num neg">{h.deductions ? `− ${formatMoney(h.deductions)}` : '-'}</span></td>

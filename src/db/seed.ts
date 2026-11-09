@@ -30,7 +30,6 @@ import type {
   Payment,
   PaymentBatch,
   PaymentMethod,
-  QualityGrade,
   Unit,
   User,
 } from '../domain/types';
@@ -330,8 +329,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       const date = h === 0 ? addDays(anchor, -between(2, 26)) : addDays(anchor, -between(34, 96));
       const unit: Unit = crop.defaultUnit;
       const quantity = unit === 'BUNCH' ? between(8, 40) : between(60, 900);
-      const grade: QualityGrade = chance(0.5) ? 'A' : chance(0.75) ? 'B' : 'C';
-      const priceFactor = grade === 'A' ? 1 : grade === 'B' ? 0.92 : 0.8;
+      const priceFactor = chance(0.5) ? 1 : chance(0.75) ? 0.92 : 0.8;
       const pricePerUnit = Math.round((crop.defaultPricePerUnit * priceFactor) / 5) * 5;
       const deductions = chance(0.4) ? between(1, 6) * 1000 : 0;
       const gross = grossValue(quantity, pricePerUnit);
@@ -344,7 +342,6 @@ export async function seedDatabase(): Promise<SeedResult> {
         date,
         quantity,
         unit,
-        grade,
         pricePerUnit,
         deductions,
         status: verified ? 'verified' : 'recorded',
@@ -352,7 +349,7 @@ export async function seedDatabase(): Promise<SeedResult> {
         createdBy: 'acc_demo',
         createdAt: `${date}T11:00:00.000Z`,
         updatedAt: `${date}T11:00:00.000Z`,
-        notes: grade === 'C' ? 'High moisture content at intake.' : undefined,
+        notes: priceFactor < 0.85 ? 'High moisture content at intake.' : undefined,
       };
       harvests.push(harvest);
       delivered += gross;
@@ -362,7 +359,7 @@ export async function seedDatabase(): Promise<SeedResult> {
       const act: Activity = {
         id: uid('act'), farmerId: farmer.id, typeId: 'harvesting', category: 'harvest',
         status: verified ? 'verified' : 'completed', date, cropId: crop.id,
-        data: { quantity, unit, grade, pricePerUnit, deductions, grossValue: gross },
+        data: { quantity, unit, pricePerUnit, deductions, grossValue: gross },
         harvestId: harvest.id, transactionId: tx.id, documentIds: [],
         createdBy: 'acc_demo', createdAt: `${date}T11:00:00.000Z`, updatedAt: `${date}T11:00:00.000Z`,
       };
@@ -374,8 +371,8 @@ export async function seedDatabase(): Promise<SeedResult> {
       if (deductions > 0) {
         post(farmer.id, 'deduction', deductions, 'Transport and drying at intake', date, { harvestId: harvest.id }, 'acc_demo');
       }
-      if (grade === 'A' && chance(0.45)) {
-        post(farmer.id, 'bonus', between(2, 6) * 2500, 'Grade A quality bonus', addDays(date, 1), { harvestId: harvest.id }, 'acc_demo');
+      if (priceFactor === 1 && chance(0.45)) {
+        post(farmer.id, 'bonus', between(2, 6) * 2500, 'Loyalty bonus', addDays(date, 1), { harvestId: harvest.id }, 'acc_demo');
       }
     }
 
@@ -511,7 +508,7 @@ export async function seedDatabase(): Promise<SeedResult> {
   const notifications: AppNotification[] = [
     { id: uid('ntf'), kind: 'financial', title: `${awaiting} farmers are awaiting payment`, body: 'Open the outstanding list to build a payment batch.', at: nowStamp(), read: false, link: '#/payments/outstanding' },
     { id: uid('ntf'), kind: 'financial', title: 'Payment batch requires approval', body: `${batch.name} has ${pendingPay} payments still pending approval.`, at: addStamp(-2), read: false, link: '#/payments/batches' },
-    { id: uid('ntf'), kind: 'operational', title: `${unverified} harvest records need verification`, body: 'Field entries are waiting on a weight and grade check.', at: addStamp(-5), read: false, link: '#/production/harvests' },
+    { id: uid('ntf'), kind: 'operational', title: `${unverified} harvest records need verification`, body: 'Field entries are waiting for their weight to be checked.', at: addStamp(-5), read: false, link: '#/production/harvests' },
     { id: uid('ntf'), kind: 'financial', title: `Balance adjusted for ${disputedFarmer.code}`, body: 'A 12,000 RWF debit adjustment was posted and is under dispute.', at: addStamp(-26), read: false, link: '#/ledger/transactions' },
     { id: uid('ntf'), kind: 'operational', title: 'New farmer registered', body: `${farmers[farmers.length - 1]!.firstName} ${farmers[farmers.length - 1]!.lastName} was added to the register.`, at: addStamp(-50), read: true, link: '#/farmers' },
   ];

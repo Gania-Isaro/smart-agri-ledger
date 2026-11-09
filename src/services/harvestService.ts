@@ -4,7 +4,7 @@ import { db } from '../db/db';
 import { nowStamp } from '../lib/date';
 import { grossValue, toNonNegativeMoney, toQuantity, weightKg } from '../domain/money';
 import { assertCan } from '../domain/rbac';
-import type { Harvest, HarvestStatus, ID, QualityGrade, User } from '../domain/types';
+import type { Harvest, HarvestStatus, ID, User } from '../domain/types';
 import * as audit from './audit';
 import { postSystem, voidTransaction } from './ledgerService';
 import { counts } from '../domain/ledger';
@@ -62,14 +62,14 @@ export async function setStatus(user: User, ids: ID[], status: HarvestStatus): P
 }
 
 /**
- * Correct a harvest. Quantity, price and grade all feed the farmer credit, so
+ * Correct a harvest. Quantity, price and deductions all feed the farmer credit, so
  * changing them writes a balancing ledger entry rather than quietly rewriting
  * history. The farmer must be able to see why their balance moved.
  */
 export async function correct(
   user: User,
   id: ID,
-  patch: { quantity?: number; pricePerUnit?: number; grade?: QualityGrade; deductions?: number; notes?: string },
+  patch: { quantity?: number; pricePerUnit?: number; deductions?: number; notes?: string },
   reason: string,
 ): Promise<HarvestRow> {
   assertCan(user, 'harvest.edit');
@@ -83,7 +83,6 @@ export async function correct(
     ...before,
     quantity: patch.quantity !== undefined ? toQuantity(patch.quantity, 'Quantity') : before.quantity,
     pricePerUnit: patch.pricePerUnit !== undefined ? toNonNegativeMoney(patch.pricePerUnit, 'Price per unit') : before.pricePerUnit,
-    grade: patch.grade ?? before.grade,
     deductions: patch.deductions !== undefined ? toNonNegativeMoney(patch.deductions, 'Deductions') : before.deductions,
     notes: patch.notes ?? before.notes,
     updatedAt: nowStamp(),
