@@ -41,7 +41,7 @@ export const CATEGORY_META: Record<
   financial: {
     label: 'Financial',
     icon: 'coins',
-    blurb: 'Anything that changes what a farmer is owed',
+    blurb: 'Anything that changes what a worker is owed',
     accent: 'var(--c-purple-600)',
   },
   other: {
@@ -228,7 +228,7 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
   type('harvesting', 'Harvesting', 'harvest', 'basket', [...produceFields, notes, attachment], {
     createsHarvest: true,
     postsLedger: 'harvest',
-    description: 'Records produce received and credits the farmer account.',
+    description: 'Records produce received and credits the worker account.',
   }),
   type('collection', 'Collection', 'harvest', 'box', [...produceFields, notes], {
     createsHarvest: true,
@@ -302,7 +302,7 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
       label: 'Issued on credit',
       type: 'select',
       half: true,
-      help: 'On credit posts a debit to the farmer account, recovered at harvest.',
+      help: 'On credit posts a debit to the worker account, recovered at harvest.',
       options: [
         { value: 'no', label: 'No, free / already paid' },
         { value: 'yes', label: 'Yes, recover from harvest' },
@@ -366,13 +366,13 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
   ]),
 
   /* ---- Financial ---- */
-  type('farmer_payment', 'Farmer payment', 'financial', 'coins', [
-    amount('Amount paid', 'Checked against the farmer outstanding balance before posting.'),
+  type('farmer_payment', 'Worker payment', 'financial', 'coins', [
+    amount('Amount paid', 'Checked against the worker outstanding balance before posting.'),
     { key: 'method', label: 'Payment method', type: 'select', required: true, options: PAYMENT_METHOD_OPTIONS, half: true },
     reference,
     reason('What this payment settles, e.g. August maize delivery.'),
     notes,
-  ], { postsLedger: 'payment', description: 'Records money you have already paid a farmer, and debits their account.' }),
+  ], { postsLedger: 'payment', description: 'Records money you have already paid a worker, and debits their account.' }),
 
   type('advance_payment', 'Advance payment', 'financial', 'hand-coins', [
     amount('Advance amount', 'Money already handed over. Recovered automatically from future harvest credits.'),
@@ -386,13 +386,13 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
     amount('Bonus amount'),
     reason('Quality, loyalty or volume bonus.'),
     notes,
-  ], { postsLedger: 'bonus', description: 'Credits the farmer account.' }),
+  ], { postsLedger: 'bonus', description: 'Credits the worker account.' }),
 
   type('deduction', 'Deduction', 'financial', 'minus-circle', [
     amount('Deduction amount'),
     reason('Transport, drying, losses or repayment.'),
     notes,
-  ], { postsLedger: 'deduction', description: 'Withholds money from what the farmer is owed.' }),
+  ], { postsLedger: 'deduction', description: 'Withholds money from what the worker is owed.' }),
 
   type('loan', 'Loan / credit', 'financial', 'bank', [
     amount('Loan amount'),
@@ -403,10 +403,10 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
 
   type('reimbursement', 'Reimbursement', 'financial', 'receipt', [
     amount('Reimbursement amount'),
-    reason('What the farmer spent on behalf of the cooperative.'),
+    reason('What the worker spent on behalf of the cooperative.'),
     attachment,
     notes,
-  ], { postsLedger: 'reimbursement', description: 'Credits the farmer for money they fronted.' }),
+  ], { postsLedger: 'reimbursement', description: 'Credits the worker for money they fronted.' }),
 
   type('adjustment', 'Adjustment', 'financial', 'edit', [
     amount('Adjustment amount'),
@@ -416,7 +416,7 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
       type: 'select',
       required: true,
       half: true,
-      help: 'Credit increases what the farmer is owed. Debit reduces it.',
+      help: 'Credit increases what the worker is owed. Debit reduces it.',
       options: [
         { value: 'credit', label: 'Credit, increase what we owe' },
         { value: 'debit', label: 'Debit, reduce what we owe' },

@@ -45,6 +45,10 @@ type Listener = (s: SyncStatus) => void;
 
 interface Engine {
   coopId: string;
+  /** The owner tags their own audit entries so managers never read them. */
+  isOwner: boolean;
+  /** The manager's group; null for the owner. */
+  myGroup: string | null;
   db: AgriLedgerDB;
   pending: Map<string, Set<string>>;
   status: SyncStatus;
@@ -144,22 +148,61 @@ export function syncMiddleware(): Middleware<DBCore> {
 
 /* ---------------------------------------------------------------- upload */
 
+/** Tables whose rows belong to one worker, and so to that worker's group. */
+const BY_WORKER = new Set(['activities', 'harvests', 'payments', 'transactions', 'workdays', 'documents']);
+const OWNER_ONLY = '__owner';
+
+/**
+ * Which group a record belongs to, for the database to decide who may read it.
+ * Workers belong to their group, everything about a worker follows them, and
+ * a group record belongs to itself. Shared records (crops, settings, activity
+ * types, counters, people) have no group.
+ */
+async function groupOf(e: Engine, table: string, row: Record<string, unknown> | undefined, workerGroup: Map<string, string>): Promise<string | null> {
+  if (!row) return e.myGroup;
+  if (table === 'farmers') return (row.cooperativeId as string) ?? null;
+  if (table === 'cooperatives') return (row.id as string) ?? null;
+  if (table === 'audit') return e.isOwner ? OWNER_ONLY : e.myGroup;
+  if (BY_WORKER.has(table) && row.farmerId) {
+    const id = row.farmerId as string;
+    if (!workerGroup.has(id)) {
+      const f = (await e.db.table('farmers').get(id)) as { cooperativeId?: string } | undefined;
+      workerGroup.set(id, f?.cooperativeId ?? '');
+    }
+    return workerGroup.get(id) || e.myGroup;
+  }
+  return null;
+}
+
 async function push(e: Engine) {
   const sb = supabase();
+  const workerGroup = new Map<string, string>();
   for (const [table, ids] of [...e.pending.entries()]) {
     const list = [...ids];
     for (let i = 0; i < list.length; i += BATCH) {
       const chunk = list.slice(i, i + BATCH);
       const rows = await e.db.table(table).bulkGet(chunk);
-      const payload = chunk.map((id, j) => ({
-        coop_id: e.coopId,
-        tbl: table,
-        id,
-        data: rows[j] ?? null,
-        deleted: !rows[j],
-      }));
+      const payload = [];
+      for (let j = 0; j < chunk.length; j++) {
+        const row = rows[j] as Record<string, unknown> | undefined;
+        payload.push({
+          coop_id: e.coopId,
+          tbl: table,
+          id: chunk[j]!,
+          data: row ?? null,
+          deleted: !row,
+          group_id: await groupOf(e, table, row, workerGroup),
+        });
+      }
       const { error } = await sb.from('records').upsert(payload, { onConflict: 'coop_id,tbl,id' });
-      if (error) throw new Error(error.message);
+      if (error && error.code === '42501') {
+        // Something this person may not write (for example another group's
+        // record): send the rest one by one and drop the refused ones.
+        for (const one of payload) {
+          const r = await sb.from('records').upsert([one], { onConflict: 'coop_id,tbl,id' });
+          if (r.error && r.error.code !== '42501') throw new Error(r.error.message);
+        }
+      } else if (error) throw new Error(error.message);
       for (const id of chunk) ids.delete(id);
       if (!ids.size) e.pending.delete(table);
       savePending(e);
@@ -289,10 +332,17 @@ export function syncNow(): Promise<void> {
  * has finished (or failed), so a phone joining an existing cooperative opens
  * with its records already there.
  */
-export async function startSync(db: AgriLedgerDB, coopId: string, onRemote: () => void): Promise<void> {
+export async function startSync(
+  db: AgriLedgerDB,
+  coopId: string,
+  onRemote: () => void,
+  who: { isOwner: boolean; myGroup: string | null } = { isOwner: true, myGroup: null },
+): Promise<void> {
   stopSync();
   const e: Engine = {
     coopId,
+    isOwner: who.isOwner,
+    myGroup: who.myGroup,
     db,
     pending: loadPending(coopId),
     status: { pending: 0, lastSyncedAt: localStorage.getItem(lastKey(coopId)), syncing: false, error: null },
@@ -320,6 +370,22 @@ export async function startSync(db: AgriLedgerDB, coopId: string, onRemote: () =
   };
 
   setStatus(e, {});
+
+  // Records uploaded before groups existed carry no group. The owner's phone
+  // uploads everything once more so each record gets its group.
+  const tagged = `agri.sync.grouped.${coopId}`;
+  if (who.isOwner && !localStorage.getItem(tagged)) {
+    for (const t of db.tables) {
+      if (LOCAL_ONLY.has(t.name)) continue;
+      const keys = (await t.toCollection().primaryKeys()) as unknown[];
+      if (keys.length) markChanged(t.name, keys);
+    }
+    try {
+      localStorage.setItem(tagged, '1');
+    } catch {
+      /* it simply runs again next time */
+    }
+  }
   await syncNow();
 }
 

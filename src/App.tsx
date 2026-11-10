@@ -20,7 +20,6 @@ import { FarmerProfile } from './screens/FarmerProfile';
 import { Activities } from './screens/Activities';
 import { Production } from './screens/Production';
 import { Payments } from './screens/Payments';
-import { Ledger } from './screens/Ledger';
 import { Work } from './screens/Work';
 import { signedAmount } from './domain/ledger';
 import { Reports } from './screens/Reports';
@@ -172,7 +171,9 @@ function Screen({
       return <Payments search={search} />;
 
     case 'ledger':
-      return <Ledger search={search} />;
+      // The ledger stays as the engine behind every balance; people see it on
+      // each worker's page and in the payments and totals.
+      return <Redirect to="/payments/outstanding" />;
 
     case 'work':
       // Older links went to #/work; Daily work now sits under Farmers.

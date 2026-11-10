@@ -154,22 +154,19 @@ function CreateForm({ onConfirm }: { onConfirm: (email: string) => void }) {
         run(e, async () => {
           const r = await cloudCreate({ name, email, password, cooperativeName: coop });
           if (r.needsConfirmation) onConfirm(email.trim());
-          else if (r.membership?.inviteCode) {
+          else if (r.membership) {
             toast({
               tone: 'success',
               title: tx('Cooperative created'),
-              message: tx('Field manager code: {manager}. Accountant code: {accountant}. You can see them again in Settings.', {
-                manager: r.membership.inviteCode,
-                accountant: r.membership.accountantCode ?? '',
-              }),
-              duration: 15000,
+              message: tx('Next, open Workers then Groups: create your groups and give each manager their group’s code.'),
+              duration: 12000,
             });
           }
         })
       }
     >
       <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-        {tx('For the owner. You create the cooperative once, then give one code to the field manager and another to the accountant.')}
+        {tx('For the owner. You create the cooperative once, then each group gets its own manager code.')}
       </p>
       <Field label={tx('Your name')} required>
         <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
@@ -206,7 +203,7 @@ function JoinForm({ onConfirm }: { onConfirm: (email: string) => void }) {
       }
     >
       <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-        {tx('For the field manager or the accountant. Ask the owner for your code, it looks like ABCD-1234. The code decides your role.')}
+        {tx('For a group manager. Ask the owner for your group’s code, it looks like ABCD-1234. You will see only your group.')}
       </p>
       <Field label={tx('Invite code')} required>
         <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABCD-1234" autoCapitalize="characters" />

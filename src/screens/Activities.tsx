@@ -83,7 +83,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: tx('Farmer'),
+        header: tx('Worker'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => `${r.farmer?.lastName ?? ''} ${r.farmer?.firstName ?? ''}`,
@@ -97,7 +97,7 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: tx('Farmer ID'),
+        header: tx('Worker ID'),
         width: 92,
         optional: true,
         sortValue: (r) => r.farmer?.code ?? '',
@@ -248,7 +248,7 @@ export function Activities({ search }: { search: string }) {
         <div>
           <h1 className="page-title">{section?.title ?? tx('All activities')}</h1>
           <p className="page-sub">
-            {section?.blurb ?? tx('Everything recorded against a farmer, newest first. Click a row to open the farmer.')}
+            {section?.blurb ?? tx('Everything recorded against a worker, newest first. Click a row to open the worker.')}
           </p>
         </div>
         <Button variant="primary" icon="plus" onClick={() => setComposer(true)}>

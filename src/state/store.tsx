@@ -256,7 +256,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * prepared, then load the reference data the screens need. Everything after
    * this reads through the `db` binding, which now refers to this account.
    */
-  const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean }) => {
+  const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean; groupId?: string | null }) => {
     openAccountDatabase(acc.id, { cloud: person?.cloud });
     await prepareAccount(acc.id, {
       cooperativeName: acc.cooperativeName,
@@ -268,14 +268,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Each person on an online cooperative has their own user record, with
       // the role the cooperative gave them.
       const existing = await db.users.get(person.id);
-      if (!existing || existing.role !== person.role || existing.name !== acc.name) {
+      const group = person.groupId ?? null;
+      if (!existing || existing.role !== person.role || existing.name !== acc.name || existing.cooperativeId !== group) {
         await db.users.put({
           id: person.id,
           name: acc.name,
           email: acc.email,
           pin: '',
           role: person.role,
-          cooperativeId: 'coop_own',
+          // A manager belongs to one group; the owner to none, and so sees all.
+          cooperativeId: group,
           active: true,
           createdAt: existing?.createdAt ?? new Date().toISOString(),
         });
@@ -310,6 +312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const acc = cloudAccount(m);
       openAccountDatabase(acc.id, { cloud: true });
       setMembershipState(m);
+      const isOwner = m.role === 'owner';
       await startSync(db, m.coopId, () => {
         // Records arrived from another phone: reload reference data and screens.
         void Promise.all([db.users.toArray(), db.crops.toArray(), db.cooperatives.toArray()]).then(([u, c, co]) => {
@@ -318,9 +321,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setCooperatives(co);
           setRevision((r) => r + 1);
         });
-      });
-      const role: User['role'] = m.role === 'owner' ? 'super_admin' : m.role === 'accountant' ? 'accountant' : 'manager';
-      await activate(acc, { id: m.userId, role, cloud: true });
+      }, { isOwner, myGroup: isOwner ? null : m.groupId });
+      const role: User['role'] = isOwner ? 'super_admin' : 'manager';
+      await activate(acc, { id: m.userId, role, cloud: true, groupId: isOwner ? null : m.groupId });
     },
     [activate],
   );
@@ -331,9 +334,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !account) return;
     (async () => {
-      const [notifs, types] = await Promise.all([db.notifications.toArray(), catalog()]);
+      const [notifs, types, groups] = await Promise.all([db.notifications.toArray(), catalog(), db.cooperatives.toArray()]);
       setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
       setActivityTypes(types);
+      setCooperatives(groups);
     })();
   }, [revision, ready, account]);
 

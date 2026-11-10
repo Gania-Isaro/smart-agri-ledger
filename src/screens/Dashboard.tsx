@@ -18,6 +18,7 @@ import { FARMER_STATUS } from '../domain/status';
 import * as analytics from '../services/analyticsService';
 import * as paymentService from '../services/paymentService';
 import { ActivityComposer } from '../components/ActivityComposer';
+import { MoneyTotals } from '../components/MoneyTotals';
 import { usePrefs } from '../i18n';
 
 import { tx } from '../i18n/tx';
@@ -74,6 +75,9 @@ export function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* ---- the owner's money: per day, week, month, year, per group ---- */}
+      <MoneyTotals />
 
       {/* ---- what needs doing ---- */}
       {o && (o.farmersOwed > 0 || o.unverifiedHarvests > 0 || o.pendingPayments > 0) && (
@@ -182,7 +186,7 @@ export function Dashboard() {
         </ChartCard>
 
         <ChartCard title={t('chart.byStatus')} subtitle={t('chart.byStatusSub')}>
-          {statuses.loading ? <Skeleton height={150} /> : <HBars data={statusBars} unit="" emptyLabel={tx('No farmers registered yet')} />}
+          {statuses.loading ? <Skeleton height={150} /> : <HBars data={statusBars} unit="" emptyLabel={tx('No workers registered yet')} />}
         </ChartCard>
 
         <ChartCard title={t('chart.byDistrict')} subtitle={t('chart.byDistrictSub')}>

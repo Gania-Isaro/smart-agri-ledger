@@ -31,6 +31,8 @@ import { usePrefs } from '../i18n';
 
 import { cropLabel, tx } from '../i18n/tx';
 import { txr } from '../i18n/rich';
+import * as groupService from '../services/groupService';
+import * as cloud from '../cloud/account';
 interface Row extends farmerService.FarmerRow {
   latestActivity?: Activity;
   latestHarvest?: Harvest;
@@ -159,7 +161,7 @@ export function Farmers({ search }: { search: string }) {
                 // payment reaches the wrong person.
                 await farmerService.update(user, r.id, { code: next });
                 refresh();
-                toast({ tone: 'success', title: tx('Farmer ID changed to {v}', { v: next.trim() }) });
+                toast({ tone: 'success', title: tx('Worker ID changed to {v}', { v: next.trim() }) });
               },
             }
           : undefined,
@@ -474,7 +476,7 @@ export function Farmers({ search }: { search: string }) {
         run: async (ids: string[]) => {
           const owed = all.filter((r) => ids.includes(r.id) && r.financials.balance > 0);
           if (owed.length === 0) {
-            toast({ tone: 'warn', title: tx('Nobody in that selection is owed money'), message: tx('A batch only includes farmers with a positive balance.') });
+            toast({ tone: 'warn', title: tx('Nobody in that selection is owed money'), message: tx('A batch only includes workers with a positive balance.') });
             return;
           }
           const total = owed.reduce((s, r) => s + r.financials.balance, 0);
@@ -484,16 +486,16 @@ export function Farmers({ search }: { search: string }) {
               <>
                 <p>
                   {txr('This creates pending payments for {farmers} totalling {amount}.', {
-                    farmers: <b>{tx('{count} farmers', { count: owed.length })}</b>,
+                    farmers: <b>{tx('{count} workers', { count: owed.length })}</b>,
                     amount: <b>{formatMoney(total)}</b>,
                   })}
                 </p>
                 <p style={{ marginTop: 'var(--s-2)' }} className="muted">
-                  {tx('Each amount comes from that farmer’s ledger balance. Nothing is paid until the batch is approved and settled.')}
+                  {tx('Each amount comes from that worker’s ledger balance. Nothing is paid until the batch is approved and settled.')}
                 </p>
               </>
             ),
-            confirmLabel: tx('Create batch for {length} farmers', { length: owed.length }),
+            confirmLabel: tx('Create batch for {length} workers', { length: owed.length }),
           });
           if (!answer.ok || !user) return;
           try {
@@ -505,7 +507,7 @@ export function Farmers({ search }: { search: string }) {
             toast({
               tone: 'success',
               title: tx('Payment batch created'),
-              message: tx('{code} · {length} farmers', { code: batch.code, length: owed.length }),
+              message: tx('{code} · {length} workers', { code: batch.code, length: owed.length }),
               action: { label: tx('Open'), run: () => navigate(`/payments/batches/${batch.id}`) },
             });
           } catch (e) {
@@ -521,7 +523,7 @@ export function Farmers({ search }: { search: string }) {
         icon: 'tag' as const,
         run: async (ids: string[]) => {
           const answer = await confirm({
-            title: tx('Mark {length} farmers as active', { length: ids.length }),
+            title: tx('Mark {length} workers as active', { length: ids.length }),
             message: tx('Status normally follows the records automatically. Setting it by hand is useful for correcting a stale row.'),
             confirmLabel: tx('Mark as active'),
           });
@@ -529,7 +531,7 @@ export function Farmers({ search }: { search: string }) {
           try {
             await farmerService.setStatus(user, ids, 'active');
             refresh();
-            toast({ tone: 'success', title: tx('{length} farmers updated', { length: ids.length }) });
+            toast({ tone: 'success', title: tx('{length} workers updated', { length: ids.length }) });
           } catch (e) {
             fail(e);
           }
@@ -582,12 +584,12 @@ export function Farmers({ search }: { search: string }) {
         onRowClick={(r) => navigate(`/farmers/${r.id}`)}
         onError={fail}
         bulkActions={bulkActions}
-        emptyTitle={tx('No farmers registered yet')}
-        emptyMessage={tx('Add your first farmer, or import a list from a spreadsheet.')}
+        emptyTitle={tx('No workers registered yet')}
+        emptyMessage={tx('Add your first worker, or import a list from a spreadsheet.')}
         emptyAction={
           can('farmer.create') ? (
             <Button variant="primary" icon="plus" onClick={() => setAddOpen(true)}>
-              {tx('Add farmer')}
+              {tx('Add worker')}
             </Button>
           ) : undefined
         }
@@ -658,7 +660,6 @@ export function FarmersTabs() {
   const { t } = usePrefs();
   const tabs = [
     { path: '/farmers', label: t('nav.farmers.all'), on: route.path === '/farmers' },
-    { path: '/farmers/active', label: t('nav.farmers.active'), on: route.path === '/farmers/active' },
     { path: '/farmers/groups', label: t('nav.farmers.groups'), on: route.path === '/farmers/groups' },
     { path: '/farmers/work', label: t('nav.work'), on: route.path.startsWith('/farmers/work') },
   ];
@@ -692,8 +693,8 @@ export function useRemoveFarmer() {
       if (history === 0) {
         const r = await confirm({
           title: tx('Delete {name}?', { name }),
-          message: tx('Nothing has been recorded for this farmer yet, so they are removed completely. This cannot be undone.'),
-          confirmLabel: tx('Delete farmer'),
+          message: tx('Nothing has been recorded for this worker yet, so they are removed completely. This cannot be undone.'),
+          confirmLabel: tx('Delete worker'),
           tone: 'danger',
         });
         if (!r.ok) return null;
@@ -705,7 +706,7 @@ export function useRemoveFarmer() {
       const r = await confirm({
         title: tx('Archive {name}?', { name }),
         message: tx('{name} already has records in the books ({count}: harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
-        confirmLabel: tx('Archive farmer'),
+        confirmLabel: tx('Archive worker'),
         tone: 'danger',
       });
       if (!r.ok) return null;
@@ -823,7 +824,7 @@ export function FarmerFormModal({
       if (twin) {
         const answer = await confirm({
           title: tx('{name} is already registered', { name: `${twin.firstName} ${twin.lastName}` }),
-          message: tx('A farmer with this name already exists in {district} ({code}). Register a second, different person anyway?', {
+          message: tx('A worker with this name already exists in {district} ({code}). Register a second, different person anyway?', {
             district: twin.district,
             code: twin.code,
           }),
@@ -875,8 +876,8 @@ export function FarmerFormModal({
     <Modal
       open
       onClose={onClose}
-      title={existing ? tx('Edit {name}', { name: `${existing.firstName} ${existing.lastName}` }) : tx('Register a farmer')}
-      subtitle={existing ? tx('Changes are kept in the audit trail.') : tx('The farmer ID is generated automatically and cannot be reused.')}
+      title={existing ? tx('Edit {name}', { name: `${existing.firstName} ${existing.lastName}` }) : tx('Register a worker')}
+      subtitle={existing ? tx('Changes are kept in the audit trail.') : tx('The worker ID is generated automatically and cannot be reused.')}
       footer={
         <>
           <span className="spacer" />
@@ -884,7 +885,7 @@ export function FarmerFormModal({
             {tx('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="add-farmer" loading={busy} icon="check">
-            {existing ? tx('Save changes') : tx('Register farmer')}
+            {existing ? tx('Save changes') : tx('Register worker')}
           </Button>
         </>
       }
@@ -1011,7 +1012,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
       });
       const created = await farmerService.importFarmers(user, drafts);
       refresh();
-      toast({ tone: 'success', title: tx('{length} farmers imported', { length: created.length }) });
+      toast({ tone: 'success', title: tx('{length} workers imported', { length: created.length }) });
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -1025,7 +1026,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title={tx('Import farmers from a spreadsheet')}
+      title={tx('Import workers from a spreadsheet')}
       subtitle={tx('CSV exported from Excel. The whole file is checked before anything is saved.')}
       footer={
         <>
@@ -1034,7 +1035,7 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
             {tx('Cancel')}
           </Button>
           <Button variant="primary" onClick={doImport} disabled={!preview} loading={busy} icon="upload">
-            Import {preview ? `${preview.length} farmers` : ''}
+            Import {preview ? `${preview.length} workers` : ''}
           </Button>
         </>
       }
@@ -1101,8 +1102,11 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
 /* ---------------------------------------------------------------- groups */
 
 function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
-  const { cooperatives } = useStore();
+  const { cooperatives, can, membership, cloudEnabled } = useStore();
   const { t } = usePrefs();
+  const [editing, setEditing] = useState<{ id?: string; name: string; district: string } | null>(null);
+  const isOwner = can('settings.manage');
+  const online = Boolean(cloudEnabled && membership);
 
   const groups = cooperatives.map((c) => {
     const members = rows.filter((r) => r.cooperativeId === c.id);
@@ -1121,23 +1125,52 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">{t('nav.farmers.groups')}</h1>
-          <p className="page-sub">{tx('Tap a group to see only its farmers.')}</p>
+          <p className="page-sub">
+            {isOwner
+              ? tx('Each group can have its own manager, who sees only that group. Tap a group to see its workers.')
+              : tx('Tap a group to see only its workers.')}
+          </p>
         </div>
+        {isOwner && (
+          <div className="row gap-2 no-print">
+            <Button variant="primary" icon="plus" onClick={() => setEditing({ name: '', district: '' })}>
+              {tx('New group')}
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="reportlist">
+      {isOwner && !online && (
+        <Callout tone="info" icon="info">
+          {tx('Manager codes need the online account. On this phone-only account, groups still keep workers and totals apart.')}
+        </Callout>
+      )}
+
+      <div className="reportlist" style={{ marginTop: 'var(--s-3)' }}>
         {groups.map((g) => (
-          <button key={g.coop.id} className="reporttile" onClick={() => navigate(`/farmers?coop=${g.coop.id}`)}>
+          <div key={g.coop.id} className="reporttile" role="button" tabIndex={0} onClick={() => navigate(`/farmers?coop=${g.coop.id}`)} onKeyDown={(e) => e.key === 'Enter' && navigate(`/farmers?coop=${g.coop.id}`)}>
             <span className="row gap-2">
               <Icon name="users" size={16} />
               <span className="reporttile__name">{g.coop.name}</span>
+              <span className="spacer" />
+              {isOwner && (
+                <IconButton
+                  icon="edit"
+                  size={15}
+                  label={tx('Edit {name}', { name: g.coop.name })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditing({ id: g.coop.id, name: g.coop.name, district: g.coop.district });
+                  }}
+                />
+              )}
             </span>
-            <span className="reporttile__desc">
-              {g.coop.district} · {g.coop.contact}
-            </span>
+            {(g.coop.district || g.coop.contact) && (
+              <span className="reporttile__desc">{[g.coop.district, g.coop.contact].filter(Boolean).join(' · ')}</span>
+            )}
             <div className="rowcard__grid" style={{ marginTop: 'var(--s-2)' }}>
               <div className="rowcard__cell">
-                <span>{tx('Members')}</span>
+                <span>{tx('Workers')}</span>
                 <b>{formatNumber(g.members)}</b>
               </div>
               <div className="rowcard__cell">
@@ -1149,9 +1182,116 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
                 <b className={g.owed > 0 ? 'pos' : ''}>{formatMoney(g.owed)}</b>
               </div>
             </div>
-          </button>
+            {isOwner && online && membership && <ManagerCode coopId={membership.coopId} groupId={g.coop.id} />}
+          </div>
         ))}
       </div>
+
+      {editing && <GroupModal value={editing} onClose={() => setEditing(null)} />}
     </>
   );
 }
+
+/** The code a group's manager joins with. Shown to the owner only. */
+function ManagerCode({ coopId, groupId }: { coopId: string; groupId: string }) {
+  const { toast, fail, confirm } = useStore();
+  const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const show = async (renew = false) => {
+    setBusy(true);
+    try {
+      setCode(renew ? await cloud.newGroupCode(coopId, groupId) : await cloud.groupCode(coopId, groupId));
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-3)' }} onClick={(e) => e.stopPropagation()}>
+      {code ? (
+        <>
+          <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>{tx('Manager code')}</span>
+          <b className="num" style={{ letterSpacing: 1 }}>{code}</b>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              void navigator.clipboard?.writeText(code);
+              toast({ tone: 'success', title: tx('Code copied') });
+            }}
+          >
+            {tx('Copy')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            loading={busy}
+            onClick={async () => {
+              const r = await confirm({
+                title: tx('Make a new code?'),
+                message: tx('The old code stops working for new sign-ups. Managers already in the group stay in it.'),
+                confirmLabel: tx('New code'),
+              });
+              if (r.ok) await show(true);
+            }}
+          >
+            {tx('New code')}
+          </Button>
+        </>
+      ) : (
+        <Button size="sm" icon="lock" loading={busy} onClick={() => void show()}>
+          {tx('Show manager code')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function GroupModal({ value, onClose }: { value: { id?: string; name: string; district: string }; onClose: () => void }) {
+  const { user, refresh, toast, fail } = useStore();
+  const [name, setName] = useState(value.name);
+  const [district, setDistrict] = useState(value.district);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setBusy(true);
+    try {
+      if (value.id) await groupService.updateGroup(user, value.id, { name, district });
+      else await groupService.createGroup(user, { name, district });
+      refresh();
+      toast({ tone: 'success', title: value.id ? tx('Group saved') : tx('Group created'), message: name });
+      onClose();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={value.id ? tx('Edit {name}', { name: value.name }) : tx('New group')}
+      footer={
+        <>
+          <span className="spacer" />
+          <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
+          <Button variant="primary" type="submit" form="group-form" loading={busy} icon="check">{tx('Save')}</Button>
+        </>
+      }
+    >
+      <form id="group-form" onSubmit={submit} className="formgrid">
+        <Field label={tx('Group name')} required>
+          <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        </Field>
+        <Field label={t2('District')}>
+          <Input value={district} onChange={(e) => setDistrict(e.target.value)} />
+        </Field>
+      </form>
+    </Modal>
+  );
+}
+
+const t2 = (s: string) => tx(s);

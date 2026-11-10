@@ -31,7 +31,6 @@ export const NAV: NavEntry[] = [
     icon: 'users',
     children: [
       { label: 'nav.farmers.all', path: '/farmers' },
-      { label: 'nav.farmers.active', path: '/farmers/active' },
       { label: 'nav.farmers.groups', path: '/farmers/groups' },
       { label: 'nav.work', path: '/farmers/work' },
     ],
@@ -61,20 +60,8 @@ export const NAV: NavEntry[] = [
     path: '/payments',
     icon: 'coins',
     children: [
-      { label: 'nav.payments.pending', path: '/payments/pending', countKey: 'pendingPayments' },
-      { label: 'nav.payments.batches', path: '/payments/batches' },
-      { label: 'nav.payments.completed', path: '/payments/completed' },
       { label: 'nav.payments.outstanding', path: '/payments/outstanding', countKey: 'awaitingPayment' },
-    ],
-  },
-  {
-    label: 'nav.ledger',
-    path: '/ledger',
-    icon: 'book',
-    children: [
-      { label: 'nav.ledger.farmers', path: '/ledger' },
-      { label: 'nav.ledger.transactions', path: '/ledger/transactions' },
-      { label: 'nav.ledger.adjustments', path: '/ledger/adjustments' },
+      { label: 'nav.payments.paid', path: '/payments/paid' },
     ],
   },
   { label: 'nav.reports', path: '/reports', icon: 'chart' },
@@ -86,7 +73,7 @@ const TABS: { label: string; path: string; icon: IconName }[] = [
   { label: 'nav.farmers', path: '/farmers', icon: 'users' },
   { label: 'nav.activity', path: '/activities', icon: 'list' },
   { label: 'nav.payments', path: '/payments/outstanding', icon: 'coins' },
-  { label: 'nav.ledgerShort', path: '/ledger', icon: 'book' },
+  { label: 'nav.reports', path: '/reports', icon: 'chart' },
 ];
 
 function isOn(routePath: string, target: string): boolean {

@@ -61,13 +61,15 @@ export interface WorkDayInput {
   photo: string;
   photoTakenAt: string;
   notes?: string;
+  /** True when the pay was handed over at the time; otherwise it is owed. */
+  paidNow?: boolean;
 }
 
 export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDay> {
   assertCan(user, 'worker.manage');
   const farmer = await db.farmers.get(input.farmerId);
   if (!farmer) throw new ValidationError(T('Choose who worked.'), 'farmerId');
-  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the farmer first.', { code: farmer.code }), 'farmerId');
+  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the worker first.', { code: farmer.code }), 'farmerId');
 
   const date = input.date || today();
   if (date > today()) throw new ValidationError(T('A work day cannot be in the future.'), 'date');
@@ -102,6 +104,18 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
     date,
   });
   day.transactionId = tx.id;
+
+  // Paid on the spot: record the payment straight away, so the day is not owed.
+  if (input.paidNow) {
+    const paid = await postSystem(user, {
+      farmerId: farmer.id,
+      type: 'payment',
+      amount,
+      description: T("Paid for the day's work"),
+      date,
+    });
+    day.paidTxId = paid.id;
+  }
   await db.workdays.put(day);
 
   await refreshFarmerStatus(farmer.id);
@@ -122,13 +136,18 @@ export async function removeDay(user: User, id: ID, reason: string): Promise<voi
   if (!before) return;
   const farmer = await db.farmers.get(before.farmerId);
 
+  // Undo the payment made at the time first, then the day's pay itself.
+  if (before.paidTxId) {
+    const paid = await db.transactions.get(before.paidTxId);
+    if (paid && !paid.voided) await voidTransaction(user, paid.id, `Work day removed: ${why}`);
+  }
   if (before.transactionId) {
     const tx = await db.transactions.get(before.transactionId);
     if (tx && !tx.voided) await voidTransaction(user, tx.id, `Work day removed: ${why}`);
   }
   await db.workdays.delete(id);
   await refreshFarmerStatus(before.farmerId);
-  await audit.record(user, 'workday', id, 'delete', `Removed ${farmer ? fullName(farmer) : 'farmer'} on ${before.date} (${before.amount} RWF): ${why}`, { before: { ...before, photo: undefined } });
+  await audit.record(user, 'workday', id, 'delete', `Removed ${farmer ? fullName(farmer) : 'worker'} on ${before.date} (${before.amount} RWF): ${why}`, { before: { ...before, photo: undefined } });
 }
 
 export async function daysBetween(from: ISODate, to: ISODate): Promise<WorkDay[]> {
@@ -247,12 +266,15 @@ export interface PersonTotal {
 export interface WorkTotals {
   thisWeek: number;
   thisMonth: number;
+  thisYear: number;
   allTime: number;
   daysWorked: number;
   /** Most recent first. */
   byWeek: PeriodTotal[];
   /** Most recent first. */
   byMonth: PeriodTotal[];
+  /** Most recent first. */
+  byYear: PeriodTotal[];
   /** Only people with at least one day, highest total first. */
   byPerson: PersonTotal[];
 }
@@ -268,6 +290,9 @@ export async function totals(asOf: ISODate = today()): Promise<WorkTotals> {
   type Bucket = { total: number; daysWorked: number; people: Set<ID> };
   const weeks = new Map<string, Bucket>();
   const months = new Map<string, Bucket>();
+  const years = new Map<string, Bucket>();
+  const currentYear = asOf.slice(0, 4);
+  let thisYear = 0;
   const perPerson = new Map<ID, PersonTotal>();
 
   let thisWeek = 0;
@@ -280,8 +305,9 @@ export async function totals(asOf: ISODate = today()): Promise<WorkTotals> {
     allTime += day.amount;
     if (wk === currentWeek) thisWeek += day.amount;
     if (mo === currentMonth) thisMonth += day.amount;
+    if (day.date.startsWith(currentYear)) thisYear += day.amount;
 
-    for (const [map, key] of [[weeks, wk], [months, mo]] as const) {
+    for (const [map, key] of [[weeks, wk], [months, mo], [years, day.date.slice(0, 4)]] as const) {
       const e = map.get(key) ?? { total: 0, daysWorked: 0, people: new Set<ID>() };
       e.total += day.amount;
       e.daysWorked += 1;
@@ -308,10 +334,12 @@ export async function totals(asOf: ISODate = today()): Promise<WorkTotals> {
   return {
     thisWeek,
     thisMonth,
+    thisYear,
     allTime,
     daysWorked: days.length,
     byWeek: flatten(weeks),
     byMonth: flatten(months),
+    byYear: flatten(years),
     byPerson: [...perPerson.values()].sort((a, b) => b.total - a.total || fullName(a.farmer).localeCompare(fullName(b.farmer))),
   };
 }

@@ -47,7 +47,7 @@ function FarmerLedgers({ search }: { search: string }) {
     () => [
       {
         key: 'farmer',
-        header: T('Farmer'),
+        header: T('Worker'),
         width: 210,
         mobile: 'title',
         sortValue: (r) => r.lastName,
@@ -61,7 +61,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: T('Farmer ID'),
+        header: T('Worker ID'),
         width: 96,
         mobile: 'subtitle',
         sortValue: (r) => r.code,
@@ -167,7 +167,7 @@ function FarmerLedgers({ search }: { search: string }) {
 
       {openId && (
         <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && setOpenId(null)}>
-          <div className="modal modal--wide" role="dialog" aria-label={T('Farmer ledger')}>
+          <div className="modal modal--wide" role="dialog" aria-label={T('Worker ledger')}>
             <div className="modal__head">
               <div className="grow">
                 <h2 className="modal__title">
@@ -185,7 +185,7 @@ function FarmerLedgers({ search }: { search: string }) {
             <div className="modal__foot">
               <span className="spacer" />
               <Button onClick={() => navigate(`/farmers/${openId}`)} iconRight="chevron-right">
-                {T('Open farmer profile')}
+                {T('Open worker profile')}
               </Button>
             </div>
           </div>
@@ -282,7 +282,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: T('Farmer'),
+        header: T('Worker'),
         width: 186,
         mobile: 'title',
         sortValue: (r) => r.farmer?.lastName ?? '',
@@ -405,7 +405,7 @@ function Transactions({ search }: { search: string }) {
         <div className="metric">
           <span className="metric__label">{t('led.totalCredits')}</span>
           <span className="metric__value num pos">{formatMoneyShort(totals.credit)}</span>
-          <span className="metric__foot">{T('RWF owed to farmers')}</span>
+          <span className="metric__foot">{T('RWF owed to workers')}</span>
         </div>
         <div className="metric">
           <span className="metric__label">{t('led.totalDebits')}</span>

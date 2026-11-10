@@ -74,7 +74,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'farmer',
-        header: tx('Farmer'),
+        header: tx('Worker'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => `${r.farmer?.lastName ?? ''}`,
@@ -84,7 +84,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'code',
-        header: tx('Farmer ID'),
+        header: tx('Worker ID'),
         width: 92,
         optional: true,
         sortValue: (r) => r.farmer?.code ?? '',
@@ -128,13 +128,13 @@ function Harvests({ search }: { search: string }) {
                   message: (
                     <>
                       <p>
-                        {txr('Changing {before} to {after} changes what this farmer is owed.', {
+                        {txr('Changing {before} to {after} changes what this worker is owed.', {
                           before: `${formatNumber(r.quantity)} ${r.unit}`,
                           after: <b>{formatNumber(Number(next))} {r.unit}</b>,
                         })}
                       </p>
                       <p className="muted" style={{ marginTop: 'var(--s-2)' }}>
-                        {tx('A balancing ledger entry is posted so the farmer can see exactly why their balance moved.')}
+                        {tx('A balancing ledger entry is posted so the worker can see exactly why their balance moved.')}
                       </p>
                     </>
                   ),
@@ -188,7 +188,7 @@ function Harvests({ search }: { search: string }) {
       },
       {
         key: 'net',
-        header: tx('Net to farmer'),
+        header: tx('Net to worker'),
         width: 140,
         align: 'right',
         mobile: 'cell',

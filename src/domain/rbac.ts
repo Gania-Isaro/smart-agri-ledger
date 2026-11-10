@@ -56,85 +56,50 @@ const ALL: Permission[] = [
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  // The owner sees and does everything, including people and settings.
+  // The owner sees every group and does everything, including people and settings.
   super_admin: ALL,
 
-  // Runs the field: farmers, field work, harvests and who worked each day.
-  // Sees the money but cannot move it.
-  manager: [
-    'farmer.view', 'farmer.create', 'farmer.edit', 'farmer.archive',
-    'activity.view', 'activity.create', 'activity.edit', 'activity.verify',
-    'harvest.view', 'harvest.create', 'harvest.edit', 'harvest.verify',
-    'worker.view', 'worker.manage',
-    'payment.view', 'batch.view', 'ledger.view',
-    'report.view', 'report.export', 'data.import',
-  ],
-
-  // Owns the money: payments, payment lists and the ledger. Sees the farmers
-  // and their work but does not record field activity.
-  accountant: [
-    'farmer.view',
-    'activity.view',
-    'harvest.view', 'harvest.verify',
-    'worker.view',
-    'payment.view', 'payment.create', 'payment.approve', 'payment.settle', 'payment.cancel',
-    'batch.view', 'batch.create', 'batch.approve',
-    'ledger.view', 'ledger.post', 'ledger.void',
-    'report.view', 'report.export', 'audit.view',
-  ],
+  // A group manager runs one group day to day: workers, field work, produce,
+  // daily work and payments. Cannot manage people or the cooperative settings.
+  manager: ALL.filter((p) => p !== 'user.manage' && p !== 'settings.manage'),
 };
 
-export const ROLES: Role[] = ['super_admin', 'manager', 'accountant'];
+export const ROLES: Role[] = ['super_admin', 'manager'];
 
 export const ROLE_LABELS: Record<Role, string> = {
   super_admin: 'Owner',
-  manager: 'Field manager',
-  accountant: 'Accountant',
+  manager: 'Group manager',
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  super_admin: 'The owner. Sees and does everything, and manages people and settings.',
-  manager: 'Runs the field: farmers, field work, harvests and daily work. Sees the money but cannot move it.',
-  accountant: 'Runs the money: payments, payment lists and the ledger. Sees the farmers but does not record field work.',
+  super_admin: 'The owner. Sees every group and every total, and manages people and settings.',
+  manager: 'Runs one group: records its workers, field work, produce, daily work and payments.',
 };
 
 /** What each role can and cannot do, in plain words for the Settings page. */
 export const ROLE_ACCESS: Record<Role, { can: string[]; cannot: string[] }> = {
   super_admin: {
     can: [
-      'Everything the field manager and the accountant can do',
-      'Add and remove people, and choose their role',
+      'See every group, every worker and every photo',
+      'See the money per day, week, month and year, for each group and in total',
+      'Download the totals to Excel at any time',
+      'Create groups and give each one its own manager code',
+      'Everything a group manager can do',
       'Change settings and delete the cooperative data',
-      'See the full audit trail of who did what',
     ],
     cannot: [],
   },
   manager: {
     can: [
-      'Register, edit, archive and delete farmers',
-      'Record field work, harvests and deliveries',
-      'Record daily work with a photo, and set the pay for the day',
-      'Verify harvests',
-      'See balances, payments, the ledger and reports',
+      'Add, edit, archive and delete workers in their group',
+      'Record who worked each day, with a photo and the pay',
+      'Mark pay as given or still owed, and pay what is owed',
+      'Record field activities and produce brought in',
+      'See their group’s totals and reports',
     ],
     cannot: [
-      'Create, approve or mark payments as paid',
-      'Post or void ledger entries',
-      'Change settings or manage people',
-    ],
-  },
-  accountant: {
-    can: [
-      'Create, approve and record payments, and build payment lists',
-      'Post and void ledger entries',
-      'Verify harvests',
-      'See farmers, daily work and reports, and export them',
-      'See the audit trail',
-    ],
-    cannot: [
-      'Register or edit farmers',
-      'Record field work, harvests or daily work',
-      'Change settings or manage people',
+      'See or change other groups',
+      'Manage people or change the cooperative settings',
     ],
   },
 };
@@ -160,7 +125,7 @@ const VERBS: Partial<Record<Permission, string>> = {
   'batch.approve': 'approve payment batches',
   'ledger.post': 'post ledger transactions',
   'ledger.void': 'void ledger transactions',
-  'farmer.create': 'register farmers',
+  'farmer.create': 'register workers',
   'harvest.create': 'record harvests',
   'harvest.verify': 'verify harvests',
   'user.manage': 'manage users',

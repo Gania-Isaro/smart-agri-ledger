@@ -59,7 +59,7 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
   assertCan(user, 'payment.create');
 
   const farmer = await db.farmers.get(draft.farmerId);
-  if (!farmer) throw new ValidationError(T('Select a farmer.'), 'farmerId');
+  if (!farmer) throw new ValidationError(T('Select a worker.'), 'farmerId');
   const amount = toPositiveMoney(draft.amount, 'Amount');
   if (!draft.reason?.trim()) throw new ValidationError(T('Say what this payment is for.'), 'reason');
 
@@ -312,7 +312,7 @@ export async function createBatch(
     .filter(([farmerId, due]) => due > 0 && (!input.farmerIds?.length || input.farmerIds.includes(farmerId)));
 
   if (candidates.length === 0) {
-    throw new ValidationError(T('No farmer in that selection is currently owed money.'));
+    throw new ValidationError(T('No worker in that selection is currently owed money.'));
   }
 
   const n = await nextCounter('batch');
@@ -349,7 +349,7 @@ export async function createBatch(
     await db.payments.bulkPut(payments);
   });
 
-  await audit.record(user, 'batch', batch.id, 'create', `Created ${batch.code} with ${payments.length} farmers, ${payments.reduce((s, p) => s + p.amount, 0)} RWF`, { after: batch });
+  await audit.record(user, 'batch', batch.id, 'create', `Created ${batch.code} with ${payments.length} workers, ${payments.reduce((s, p) => s + p.amount, 0)} RWF`, { after: batch });
   return { batch, payments };
 }
 

@@ -81,7 +81,7 @@ export async function postSystem(user: User, input: PostInput): Promise<LedgerTr
 
 async function write(user: User, input: PostInput): Promise<LedgerTransaction> {
   const farmer = await db.farmers.get(input.farmerId);
-  if (!farmer) throw new LedgerError(T('That farmer no longer exists.'));
+  if (!farmer) throw new LedgerError(T('That worker no longer exists.'));
 
   const amount = toPositiveMoney(input.amount, 'Amount');
   const description = input.description.trim();

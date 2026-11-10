@@ -3,7 +3,7 @@
  * amount. The sentence is translated whole, so Kinyarwanda can put the amount
  * wherever it reads naturally, then each {name} is swapped for its element.
  *
- *   txr('{amount} is still owed to this farmer.', { amount: <b>{formatMoney(x)}</b> })
+ *   txr('{amount} is still owed to this worker.', { amount: <b>{formatMoney(x)}</b> })
  */
 
 import { Fragment, type ReactNode } from 'react';

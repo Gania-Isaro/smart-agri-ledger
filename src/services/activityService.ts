@@ -234,8 +234,8 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
   assertCan(user, permissionFor(type));
 
   const farmer = await db.farmers.get(input.farmerId);
-  if (!farmer) throw new ValidationError(T('Select a farmer.'), 'farmerId');
-  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the farmer before recording activity.', { code: farmer.code }));
+  if (!farmer) throw new ValidationError(T('Select a worker.'), 'farmerId');
+  if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the worker before recording activity.', { code: farmer.code }));
 
   validateFields(type, input.data);
   const data = applyComputed(type, input.data);

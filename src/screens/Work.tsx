@@ -61,6 +61,7 @@ export function Work() {
           <Metric label={tx('Today')} value={formatMoneyShort(todayAmount)} foot={txn(todayCount, '{count} person recorded', '{count} people recorded')} />
           <Metric label={tx('Needed this week')} value={formatMoneyShort(t.thisWeek)} foot={tx('RWF, Monday to Sunday')} accent />
           <Metric label={tx('Needed this month')} value={formatMoneyShort(t.thisMonth)} foot={tx('RWF so far this month')} />
+          <Metric label={tx('This year')} value={formatMoneyShort(t.thisYear)} foot={tx('RWF so far this year')} />
           <Metric label={tx('All time')} value={formatMoneyShort(t.allTime)} foot={tx('RWF over {v} work days', { v: formatNumber(t.daysWorked) })} />
         </div>
       )}
@@ -144,7 +145,7 @@ function RecordTab() {
             <Field label={tx('Day')}>
               <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} />
             </Field>
-            <Field label={tx('Find a farmer')}>
+            <Field label={tx('Find a worker')}>
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('Name, ID or phone')} />
             </Field>
             {can('farmer.create') && (
@@ -176,9 +177,9 @@ function RecordTab() {
         ) : rows.length === 0 ? (
           <EmptyState
             icon="users"
-            title={search ? tx('No farmer matches that search') : tx('No farmers yet')}
-            message={search ? tx('Try part of the name or the farmer ID.') : tx('Register farmers first, then record the days they work.')}
-            action={!search ? <Button variant="primary" onClick={() => navigate('/farmers')}>{tx('Go to farmers')}</Button> : undefined}
+            title={search ? tx('No worker matches that search') : tx('No workers yet')}
+            message={search ? tx('Try part of the name or the worker ID.') : tx('Register workers first, then record the days they work.')}
+            action={!search ? <Button variant="primary" onClick={() => navigate('/farmers')}>{tx('Go to workers')}</Button> : undefined}
           />
         ) : (
           <ul className="worklist">
@@ -202,6 +203,7 @@ function RecordTab() {
                   {day ? (
                     <>
                       <span className="badge badge--green"><Icon name="check" size={12} /> {formatMoney(day.amount)}</span>
+                      <span className={`badge ${day.paidTxId ? 'badge--purple' : 'badge--orange'}`}>{day.paidTxId ? tx('Paid') : tx('Owed')}</span>
                       {allowed && (
                         <Button size="sm" variant="quiet-danger" icon="trash" onClick={() => remove(day, f)} aria-label={tx('Remove {v} on this day', { v: work.fullName(f) })} />
                       )}
@@ -276,6 +278,7 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
   const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
   const [amount, setAmount] = useState(String(rate));
   const [notes, setNotes] = useState('');
+  const [paidNow, setPaidNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -287,7 +290,7 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
     }
     setBusy(true);
     try {
-      await work.recordDay(user!, { farmerId: farmer.id, date, amount, photo: photo.dataUrl, photoTakenAt: photo.takenAt, notes });
+      await work.recordDay(user!, { farmerId: farmer.id, date, amount, photo: photo.dataUrl, photoTakenAt: photo.takenAt, notes, paidNow });
       refresh();
       toast({ tone: 'success', title: tx('{name} recorded', { name: work.fullName(farmer) }), message: `${formatDate(date)}, ${formatMoney(Number(amount))}` });
       onClose();
@@ -329,6 +332,16 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
             </Button>
           </div>
         </Field>
+        <Field label={tx('Was the pay given?')} required full>
+          <div className="row gap-2 wrap">
+            <Button type="button" variant={paidNow ? 'primary' : 'secondary'} icon="check" onClick={() => setPaidNow(true)}>
+              {tx('Paid now')}
+            </Button>
+            <Button type="button" variant={!paidNow ? 'primary' : 'secondary'} icon="clock" onClick={() => setPaidNow(false)}>
+              {tx('Owed, pay later')}
+            </Button>
+          </div>
+        </Field>
         <Field label={tx('Note')} help={tx('Optional, e.g. the job they did.')}>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </Field>
@@ -365,7 +378,7 @@ function WeekTab() {
   const doExport = () => {
     if (!w) return;
     exportCSV(`work-week-${w.start}.csv`, w.rows, [
-      { key: 'code', header: tx('Farmer ID'), value: (r) => r.farmer.code },
+      { key: 'code', header: tx('Worker ID'), value: (r) => r.farmer.code },
       { key: 'name', header: tx('Name'), value: (r) => work.fullName(r.farmer) },
       ...w.dates.map((d, i) => ({ key: d, header: `${WEEKDAY[i]} ${d}`, value: (r: work.WeekRow) => r.days[d]?.amount ?? '' })),
       { key: 'days', header: tx('Days worked'), value: (r) => r.daysWorked },
@@ -470,7 +483,7 @@ function TotalsTab({ totals }: { totals: work.WorkTotals | null }) {
 
   const exportPeople = () =>
     exportCSV(`work-totals-${today()}.csv`, totals.byPerson, [
-      { key: 'code', header: tx('Farmer ID'), value: (r) => r.farmer.code },
+      { key: 'code', header: tx('Worker ID'), value: (r) => r.farmer.code },
       { key: 'name', header: tx('Name'), value: (r) => work.fullName(r.farmer) },
       { key: 'week', header: tx('This week RWF'), value: (r) => r.thisWeek },
       { key: 'month', header: tx('This month RWF'), value: (r) => r.thisMonth },
@@ -531,6 +544,7 @@ function TotalsTab({ totals }: { totals: work.WorkTotals | null }) {
       <div className="chartgrid">
         <PeriodTable title={tx('By week')} rows={totals.byWeek.slice(0, 12)} label={(k) => tx('Week of {date}', { date: formatDateShort(k) })} onOpen={(k) => navigate(`/farmers/work/week?d=${k}`)} />
         <PeriodTable title={tx('By month')} rows={totals.byMonth} label={(k) => monthLabel(k)} />
+        <PeriodTable title={tx('By year')} rows={totals.byYear} label={(k) => k} />
       </div>
     </div>
   );

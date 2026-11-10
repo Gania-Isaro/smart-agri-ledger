@@ -21,6 +21,7 @@ import { formatDate, formatDateShort, formatDateTime, today } from '../lib/date'
 import { db } from '../db/db';
 import * as paymentService from '../services/paymentService';
 import * as farmerService from '../services/farmerService';
+import * as activityService from '../services/activityService';
 import { ActivityComposer } from '../components/ActivityComposer';
 import type { Farmer, Payment, PaymentStatus } from '../domain/types';
 import { usePrefs, useT } from '../i18n';
@@ -29,14 +30,15 @@ import { tx } from '../i18n/tx';
 import { txr } from '../i18n/rich';
 export function Payments({ search }: { search: string }) {
   const route = useRoute();
-  const sub = route.segments[1] ?? 'pending';
+  const sub = route.segments[1] ?? 'outstanding';
+  if (sub === 'paid' || sub === 'completed') return <PaidHistory search={search} />;
 
   if (sub === 'batches') {
     const batchId = route.segments[2];
     return batchId ? <BatchDetail batchId={batchId} /> : <Batches />;
   }
-  if (sub === 'outstanding') return <Outstanding search={search} />;
-  return <PaymentList search={search} mode={sub === 'completed' ? 'completed' : 'pending'} />;
+  if (sub === 'pending') return <PaymentList search={search} mode="pending" />;
+  return <Outstanding search={search} />;
 }
 
 /* ------------------------------------------------------------ list view */
@@ -143,7 +145,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       },
       {
         key: 'farmer',
-        header: tx('Farmer'),
+        header: tx('Worker'),
         width: 190,
         mobile: 'title',
         sortValue: (r) => r.farmer?.lastName ?? '',
@@ -312,6 +314,7 @@ function Outstanding({ search }: { search: string }) {
   const lookups = useLookups();
   const { t, tn } = usePrefs();
   const [composer, setComposer] = useState<{ open: boolean; farmerId?: string }>({ open: false });
+  const [paying, setPaying] = useState<farmerService.FarmerRow | null>(null);
 
   const query = useQuery(() => farmerService.listWithFinancials());
   const all = (query.data ?? []).filter((f) => f.financials.balance !== 0);
@@ -430,11 +433,29 @@ function Outstanding({ search }: { search: string }) {
         exportValue: (r) => lookups.coopName(r.cooperativeId),
         render: (r) => <span className="truncate">{lookups.coopName(r.cooperativeId)}</span>,
       },
+      ...(can('payment.create')
+        ? [
+            {
+              key: 'pay',
+              header: tx('Pay'),
+              width: 110,
+              mobile: 'cell' as const,
+              render: (r: farmerService.FarmerRow) =>
+                r.financials.balance > 0 ? (
+                  <span onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="primary" icon="coins" onClick={() => setPaying(r)}>
+                      {tx('Pay')}
+                    </Button>
+                  </span>
+                ) : null,
+            },
+          ]
+        : []),
     ],
-    [lookups, t],
+    [lookups, t, can],
   );
 
-  const bulkActions = can('batch.create')
+  const bulkActions = false
     ? [
         {
           label: tx('Create payment batch'),
@@ -451,7 +472,7 @@ function Outstanding({ search }: { search: string }) {
               message: (
                 <p>
                   {txr('{farmers}, {amount} in total. Amounts come straight from each ledger balance. Nothing is paid until the batch is approved and settled.', {
-                    farmers: <b>{tx('{count} farmers', { count: subset.length })}</b>,
+                    farmers: <b>{tx('{count} workers', { count: subset.length })}</b>,
                     amount: <b>{formatMoney(total)}</b>,
                   })}
                 </p>
@@ -468,7 +489,7 @@ function Outstanding({ search }: { search: string }) {
               toast({
                 tone: 'success',
                 title: tx('Batch created'),
-                message: tx('{code} · {length} farmers', { code: batch.code, length: subset.length }),
+                message: tx('{code} · {length} workers', { code: batch.code, length: subset.length }),
                 action: { label: tx('Open batch'), run: () => navigate(`/payments/batches/${batch.id}`) },
               });
             } catch (e) {
@@ -481,6 +502,7 @@ function Outstanding({ search }: { search: string }) {
 
   return (
     <>
+      <PaymentTabs />
       <div className="page-head">
         <div>
           <h1 className="page-title">{t('pay.outstandingTitle')}</h1>
@@ -538,7 +560,157 @@ function Outstanding({ search }: { search: string }) {
         farmerId={composer.farmerId}
         onClose={() => setComposer({ open: false })}
       />
+      {paying && <PayModal worker={paying} onClose={() => setPaying(null)} />}
     </>
+  );
+}
+
+/* ------------------------------------------------------------ pay a worker */
+
+/** Pay what a worker is owed in one step: amount (full balance by default) and how. */
+function PayModal({ worker, onClose }: { worker: farmerService.FarmerRow; onClose: () => void }) {
+  const { user, refresh, toast, fail } = useStore();
+  const [amount, setAmount] = useState(String(worker.financials.balance));
+  const [method, setMethod] = useState('cash');
+  const [busy, setBusy] = useState(false);
+  const name = `${worker.firstName} ${worker.lastName}`;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setBusy(true);
+    try {
+      await activityService.createActivity(user, {
+        typeId: 'farmer_payment',
+        farmerId: worker.id,
+        data: { amount: Number(amount), method, reason: tx('Payment of what is owed') },
+        confirmOverdraft: true,
+      });
+      refresh();
+      toast({ tone: 'success', title: tx('{name} paid', { name }), message: formatMoney(Number(amount)) });
+      onClose();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={tx('Pay {name}', { name })}
+      subtitle={tx('Owed now: {amount}', { amount: formatMoney(worker.financials.balance) })}
+      footer={
+        <>
+          <span className="spacer" />
+          <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
+          <Button variant="primary" type="submit" form="pay-worker" loading={busy} icon="check">{tx('Record the payment')}</Button>
+        </>
+      }
+    >
+      <form id="pay-worker" onSubmit={submit} className="formgrid">
+        <Field label={tx('Amount paid')} required>
+          <Input type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} className="input input--money num" />
+        </Field>
+        <Field label={tx('Payment method')} required>
+          <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
+            {Object.keys(PAYMENT_METHOD_LABEL).map((m) => (
+              <option key={m} value={m}>{PAYMENT_METHOD_LABEL[m]}</option>
+            ))}
+          </select>
+        </Field>
+      </form>
+    </Modal>
+  );
+}
+
+/* --------------------------------------------------------------- paid list */
+
+interface PaidRow {
+  id: string;
+  date: string;
+  farmer?: Farmer;
+  amount: number;
+  note: string;
+  by: string;
+}
+
+/** Every payment made, whichever way it was recorded, newest first. */
+function PaidHistory({ search }: { search: string }) {
+  const { fail } = useStore();
+  const lookups = useLookups();
+  const query = useQuery(async () => {
+    const [txs, farmers] = await Promise.all([db.transactions.toArray(), db.farmers.toArray()]);
+    const byId = new Map(farmers.map((f) => [f.id, f]));
+    return txs
+      .filter((t) => t.type === 'payment' && !t.voided && !t.reversesId)
+      .sort((a, b) => (a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1))
+      .map<PaidRow>((t) => ({ id: t.id, date: t.date, farmer: byId.get(t.farmerId), amount: t.amount, note: t.description, by: t.createdBy }));
+  });
+  const rows = query.data ?? [];
+  const total = rows.reduce((s, r) => s + r.amount, 0);
+  const columns: ColumnDef<PaidRow>[] = [
+    { key: 'date', header: tx('Date'), width: 120, mobile: 'subtitle', sortValue: (r) => r.date, exportValue: (r) => r.date, render: (r) => <span className="num">{formatDate(r.date)}</span> },
+    {
+      key: 'worker', header: tx('Worker'), width: 200, mobile: 'title',
+      sortValue: (r) => r.farmer?.lastName ?? '', searchValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''} ${r.farmer?.code ?? ''}`,
+      exportValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''}`.trim(),
+      render: (r) => <span className="truncate grid__link">{r.farmer ? `${r.farmer.firstName} ${r.farmer.lastName}` : '-'}</span>,
+    },
+    { key: 'amount', header: tx('Amount'), width: 130, align: 'right', mobile: 'cell', sortValue: (r) => r.amount, exportValue: (r) => r.amount, render: (r) => <span className="num strong">{formatMoney(r.amount)}</span> },
+    { key: 'note', header: tx('Description'), width: 320, searchValue: (r) => r.note, exportValue: (r) => r.note, render: (r) => <span className="truncate">{r.note}</span> },
+    { key: 'by', header: tx('By'), width: 150, optional: true, exportValue: (r) => lookups.userName(r.by), render: (r) => <span className="truncate">{lookups.userName(r.by)}</span> },
+  ];
+  return (
+    <>
+      <PaymentTabs />
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">{tx('Paid')}</h1>
+          <p className="page-sub">{tx('Every payment made to a worker, newest first.')}</p>
+        </div>
+      </div>
+      <div className="metrics" style={{ marginBottom: 'var(--s-4)' }}>
+        <div className="metric metric--accent">
+          <span className="metric__label">{tx('Total paid')}</span>
+          <span className="metric__value num">{formatMoneyShort(total)}</span>
+          <span className="metric__foot">{tx('RWF in {count} payments', { count: rows.length })}</span>
+        </div>
+      </div>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        rowId={(r) => r.id}
+        loading={query.loading}
+        search={search}
+        storageKey="paid-history"
+        exportName="payments-made"
+        onRowClick={(r) => r.farmer && navigate(`/farmers/${r.farmer.id}`)}
+        onError={fail}
+        emptyTitle={tx('No payments yet')}
+        emptyMessage={tx('Payments show up here once a worker has been paid.')}
+      />
+    </>
+  );
+}
+
+/** Owed and Paid side by side. */
+function PaymentTabs() {
+  const route = useRoute();
+  const tabs = [
+    { path: '/payments/outstanding', label: tx('Owed'), on: route.path === '/payments' || route.path.startsWith('/payments/outstanding') },
+    { path: '/payments/paid', label: tx('Paid'), on: route.path.startsWith('/payments/paid') || route.path.startsWith('/payments/completed') },
+  ];
+  return (
+    <div className="tabs tabs--wrap no-print" role="tablist" style={{ marginBottom: 'var(--s-4)' }}>
+      {tabs.map((x) => (
+        <button key={x.path} role="tab" aria-selected={x.on} className={`tab ${x.on ? 'tab--on' : ''}`} onClick={() => navigate(x.path)}>
+          {x.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -561,7 +733,7 @@ function Batches() {
       const { batch, payments } = await paymentService.createBatch(user, { name });
       refresh();
       setNewOpen(false);
-      toast({ tone: 'success', title: tx('{code} created', { code: batch.code }), message: tx('{length} farmers included', { length: payments.length }) });
+      toast({ tone: 'success', title: tx('{code} created', { code: batch.code }), message: tx('{length} workers included', { length: payments.length }) });
       navigate(`/payments/batches/${batch.id}`);
     } catch (e) {
       fail(e);
@@ -618,7 +790,7 @@ function Batches() {
               <div className="card__body">
                 <div className="rowcard__grid" style={{ borderTop: 'none', paddingTop: 0 }}>
                   <div className="rowcard__cell">
-                    <span>{tx('Farmers')}</span>
+                    <span>{tx('Workers')}</span>
                     <b>{formatNumber(b.farmers)}</b>
                   </div>
                   <div className="rowcard__cell">
@@ -651,7 +823,7 @@ function Batches() {
         open={newOpen}
         onClose={() => setNewOpen(false)}
         title={tx('New payment batch')}
-        subtitle={tx('Every farmer currently owed money is included automatically.')}
+        subtitle={tx('Every worker currently owed money is included automatically.')}
         size="narrow"
         footer={
           <>
@@ -670,7 +842,7 @@ function Batches() {
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Callout tone="info">
-            {tx('Amounts are taken from each farmer’s ledger balance at the moment the batch is created. Creating a batch does not pay anyone. It creates pending payments for review.')}
+            {tx('Amounts are taken from each worker’s ledger balance at the moment the batch is created. Creating a batch does not pay anyone. It creates pending payments for review.')}
           </Callout>
         </div>
       </Modal>
@@ -715,7 +887,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
       title: tx('Approve {code}?', { code: batch.code }),
       message: (
         <p>
-          {txr('Approving clears {amount} across {count} farmers for payout. Every pending payment in the batch becomes approved. Nothing posts to the ledger yet.', {
+          {txr('Approving clears {amount} across {count} workers for payout. Every pending payment in the batch becomes approved. Nothing posts to the ledger yet.', {
             amount: <b>{formatMoney(batch.total)}</b>,
             count: batch.farmers,
           })}
@@ -805,7 +977,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
 
       <div className="metrics" style={{ marginBottom: 'var(--s-4)' }}>
         <div className="metric">
-          <span className="metric__label">{tx('Farmers')}</span>
+          <span className="metric__label">{tx('Workers')}</span>
           <span className="metric__value num">{formatNumber(batch.farmers)}</span>
         </div>
         <div className="metric">
@@ -838,7 +1010,7 @@ function BatchDetail({ batchId }: { batchId: string }) {
 
       <div className="panel">
         <div className="gridtools">
-          <span className="eyebrow">{tx('Farmers in this batch')}</span>
+          <span className="eyebrow">{tx('Workers in this batch')}</span>
           <span className="spacer" />
           <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
             {tx('Review every amount before approving')}
@@ -848,8 +1020,8 @@ function BatchDetail({ batchId }: { batchId: string }) {
           <table className="grid" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th><span className="th">{tx('Farmer')}</span></th>
-                <th><span className="th">{tx('Farmer ID')}</span></th>
+                <th><span className="th">{tx('Worker')}</span></th>
+                <th><span className="th">{tx('Worker ID')}</span></th>
                 <th><span className="th">{tx('Reference')}</span></th>
                 <th className="num"><span className="th">{tx('Amount')}</span></th>
                 <th><span className="th">{tx('Method')}</span></th>

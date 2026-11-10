@@ -38,7 +38,7 @@ export const FARMER_STATUS: Record<FarmerStatus, StatusMeta> = translated(keyed(
   active: { label: 'Active', glyph: '●', tone: 'green', help: 'Registered and farming this season.' },
   in_progress: { label: 'In progress', glyph: '◐', tone: 'amber', help: 'Field work under way.' },
   harvested: { label: 'Harvested', glyph: '◆', tone: 'blue', help: 'Produce delivered, not yet invoiced.' },
-  awaiting_payment: { label: 'Awaiting payment', glyph: '◒', tone: 'orange', help: 'Money is owed to this farmer.' },
+  awaiting_payment: { label: 'Awaiting payment', glyph: '◒', tone: 'orange', help: 'Money is owed to this worker.' },
   paid: { label: 'Paid', glyph: '✓', tone: 'purple', help: 'Account settled in full.' },
   disputed: { label: 'Disputed', glyph: '!', tone: 'red', help: 'A record on this account is contested.' },
   inactive: { label: 'Inactive', glyph: '○', tone: 'slate', help: 'Not participating this season.' },
@@ -64,15 +64,15 @@ export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = translated(keye
   processing: { label: 'Processing', glyph: '◐', tone: 'amber', help: 'Being paid out right now.' },
   paid: { label: 'Paid', glyph: '✓', tone: 'green', help: 'Handed over, and recorded in the ledger.' },
   cancelled: { label: 'Cancelled', glyph: '✕', tone: 'slate', help: 'Withdrawn before payout.' },
-  disputed: { label: 'Disputed', glyph: '!', tone: 'red', help: 'Contested by the farmer.' },
+  disputed: { label: 'Disputed', glyph: '!', tone: 'red', help: 'Contested by the worker.' },
 }));
 
 export const BATCH_STATUS: Record<BatchStatus, StatusMeta> = translated(keyed({
   draft: { label: 'Draft', glyph: '○', tone: 'slate', help: 'Being assembled. Nothing has moved.' },
   pending_approval: { label: 'Pending approval', glyph: '◐', tone: 'amber', help: 'Waiting on an approver.' },
   approved: { label: 'Approved', glyph: '◆', tone: 'blue', help: 'Cleared to be paid.' },
-  partially_paid: { label: 'Partially paid', glyph: '◒', tone: 'orange', help: 'Some farmers still unpaid.' },
-  completed: { label: 'Completed', glyph: '✓', tone: 'green', help: 'Every farmer in the list has been paid and recorded.' },
+  partially_paid: { label: 'Partially paid', glyph: '◒', tone: 'orange', help: 'Some workers still unpaid.' },
+  completed: { label: 'Completed', glyph: '✓', tone: 'green', help: 'Every worker in the list has been paid and recorded.' },
   cancelled: { label: 'Cancelled', glyph: '✕', tone: 'slate' },
 }));
 

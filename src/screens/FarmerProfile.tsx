@@ -92,9 +92,9 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
     return (
       <EmptyState
         icon="user"
-        title={T('Farmer not found')}
-        message={T('This farmer may have been removed from the register.')}
-        action={<Button onClick={() => navigate('/farmers')}>{T('Back to farmers')}</Button>}
+        title={T('Worker not found')}
+        message={T('This worker may have been removed from the register.')}
+        action={<Button onClick={() => navigate('/farmers')}>{T('Back to workers')}</Button>}
       />
     );
   }
@@ -137,7 +137,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
             </h1>
             <p className="page-sub">
               <span className="grid__code">{farmer.code}</span> · {[farmer.village, farmer.district].filter(Boolean).join(', ')} ·{' '}
-              {T('{crop} farmer', { crop: lookups.cropName(farmer.primaryCropId) })}
+              {T('{crop} worker', { crop: lookups.cropName(farmer.primaryCropId) })}
             </p>
             <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-2)' }}>
               <Badge meta={FARMER_STATUS[farmer.status]} />
@@ -298,7 +298,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                 <div className="card__head">
                   <h2 className="section-title">{T('Record changes')}</h2>
                   <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-                    {T('Who changed what on this farmer')}
+                    {T('Who changed what on this worker')}
                   </span>
                 </div>
                 <div className="card__body">
@@ -330,7 +330,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                 <EmptyState
                   icon="list"
                   title={T('No activity recorded yet')}
-                  message={T('Use the + button to record what this farmer has been doing.')}
+                  message={T('Use the + button to record what this worker has been doing.')}
                   action={<Button variant="primary" icon="plus" onClick={() => setComposer(true)}>{T('Record activity')}</Button>}
                 />
               ) : (
@@ -343,7 +343,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
         {tab === 'Harvests' && (
           <section className="panel">
             {d.harvests.length === 0 ? (
-              <EmptyState icon="basket" title={T('No deliveries yet')} message={T('This farmer has not delivered any produce this season.')} />
+              <EmptyState icon="basket" title={T('No deliveries yet')} message={T('This worker has not delivered any produce this season.')} />
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table className="grid" style={{ width: '100%' }}>
@@ -380,15 +380,15 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
           <div className="stack gap-4">
             {financials.balance > 0 && can('payment.create') && (
               <Callout tone="info" icon="coins">
-                {txr('{amount} is still owed to this farmer. Use {action} to settle it. The amount is checked against this balance before it posts.', {
+                {txr('{amount} is still owed to this worker. Use {action} to settle it. The amount is checked against this balance before it posts.', {
                   amount: <b>{formatMoney(financials.balance)}</b>,
-                  action: <b>{T('Record activity → Farmer payment')}</b>,
+                  action: <b>{T('Record activity → Worker payment')}</b>,
                 })}
               </Callout>
             )}
             <section className="panel">
               {d.payments.length === 0 ? (
-                <EmptyState icon="coins" title={T('No payments yet')} message={T('Nothing has been paid to this farmer.')} />
+                <EmptyState icon="coins" title={T('No payments yet')} message={T('Nothing has been paid to this worker.')} />
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table className="grid" style={{ width: '100%' }}>

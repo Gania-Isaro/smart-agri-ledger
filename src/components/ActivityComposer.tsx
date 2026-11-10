@@ -311,7 +311,7 @@ function ActivityForm({
     if (!user) return;
 
     if (!selectedFarmer) {
-      setErrors({ farmerId: tx('Choose the farmer this belongs to.') });
+      setErrors({ farmerId: tx('Choose the worker this belongs to.') });
       return;
     }
 
@@ -502,7 +502,7 @@ function ActivityForm({
               </div>
             )}
             <div className="calc__row calc__total">
-              <span>{tx('Credited to farmer')}</span>
+              <span>{tx('Credited to worker')}</span>
               <b className="num pos">{formatMoney(gross - (deductions || 0))}</b>
             </div>
           </div>
@@ -527,7 +527,7 @@ function ActivityForm({
 
         {isMoney && projected !== null && projected < 0 && (
           <Callout tone="warn" icon="alert">
-            {txr('This leaves {amount} owing from the farmer. It will be recovered from their next delivery.', {
+            {txr('This leaves {amount} owing from the worker. It will be recovered from their next delivery.', {
               amount: <b>{formatMoney(Math.abs(projected))}</b>,
             })}
           </Callout>

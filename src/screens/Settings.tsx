@@ -31,13 +31,14 @@ const AUDIT_ACTION: Record<string, string> = {
   delete: 'Deleted',
 };
 const AUDIT_ENTITY: Record<string, string> = {
-  farmer: 'Farmer',
+  farmer: 'Worker',
   activity: 'Activity',
   harvest: 'Harvest',
   payment: 'Payment',
   batch: 'Payment batch',
   transaction: 'Ledger entry',
   workday: 'Work day',
+  group: 'Group',
   setting: 'Setting',
   activityType: 'Activity type',
   user: 'User',
@@ -99,8 +100,8 @@ function SettingsHome() {
         <>
           <p>
             {isDemo
-              ? tx('This deletes every farmer, activity, harvest, payment and ledger transaction in this account, then regenerates the demo cooperative.')
-              : tx('This deletes every farmer, activity, harvest, payment and ledger transaction in this account. Your account and sign-in stay as they are.')}
+              ? tx('This deletes every worker, activity, harvest, payment and ledger transaction in this account, then regenerates the demo cooperative.')
+              : tx('This deletes every worker, activity, harvest, payment and ledger transaction in this account. Your account and sign-in stay as they are.')}
           </p>
           <p style={{ marginTop: 'var(--s-2)' }} className="muted">
             {tx('There is no undo, and nothing is backed up anywhere else.')}
@@ -122,7 +123,7 @@ function SettingsHome() {
         toast({
           tone: 'success',
           title: tx('Demo rebuilt'),
-          message: tx('{farmers} farmers, {transactions} transactions regenerated.', { farmers: result.farmers, transactions: result.transactions }),
+          message: tx('{farmers} workers, {transactions} transactions regenerated.', { farmers: result.farmers, transactions: result.transactions }),
         });
       } else {
         await clearAccountData({
@@ -270,7 +271,7 @@ function SettingsHome() {
             {c && (
               <div className="metrics" style={{ marginTop: 'var(--s-4)' }}>
                 <div className="metric">
-                  <span className="metric__label">{tx('Farmers')}</span>
+                  <span className="metric__label">{tx('Workers')}</span>
                   <span className="metric__value metric__value--sm num">{c.farmers}</span>
                 </div>
                 <div className="metric">

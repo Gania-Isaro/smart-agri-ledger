@@ -12,16 +12,14 @@
 import { supabase } from './client';
 import { tx } from '../i18n/tx';
 
-export type CloudRole = 'owner' | 'manager' | 'accountant';
+export type CloudRole = 'owner' | 'manager';
 
 export interface Membership {
   coopId: string;
   coopName: string;
   role: CloudRole;
-  /** Code for the field manager. Only the owner sees it. */
-  inviteCode: string | null;
-  /** Code for the accountant. Only the owner sees it. */
-  accountantCode: string | null;
+  /** The group a manager runs; null for the owner, who sees every group. */
+  groupId: string | null;
   userId: string;
   userName: string;
   email: string;
@@ -54,13 +52,12 @@ async function membership(): Promise<Membership | null> {
   const { data, error } = await sb.rpc('my_coop');
   if (error) fail(error.message);
   if (!data) return null;
-  const d = data as { coop_id: string; name: string; invite_code: string | null; accountant_code: string | null; role: CloudRole; user_name: string };
+  const d = data as { coop_id: string; name: string; role: CloudRole; group_id: string | null; user_name: string };
   return {
     coopId: d.coop_id,
     coopName: d.name,
     role: d.role,
-    inviteCode: d.invite_code,
-    accountantCode: d.accountant_code,
+    groupId: d.role === 'owner' ? null : d.group_id,
     userId: user.id,
     userName: d.user_name || (user.user_metadata?.name as string) || user.email || '',
     email: user.email ?? '',
@@ -108,7 +105,7 @@ export async function createCooperative(input: { name: string; email: string; pa
   return { needsConfirmation: false, membership: await membership() };
 }
 
-/** Field manager or accountant: join with the code the owner gave them. */
+/** Group manager: join with the code of the group the owner gave them. */
 export async function joinCooperative(input: { name: string; email: string; password: string; code: string }): Promise<SignUpResult> {
   if (!input.name.trim()) throw new CloudError(tx('Enter your name.'));
   if (!input.code.trim()) throw new CloudError(tx('Enter the invite code from the owner.'));
@@ -155,10 +152,25 @@ export async function sendPasswordReset(email: string): Promise<void> {
   if (error) fail(error.message);
 }
 
-export async function members(coopId: string): Promise<{ userId: string; name: string; email: string; role: CloudRole }[]> {
-  const { data, error } = await supabase().from('members').select('user_id,name,email,role').eq('coop_id', coopId).order('created_at');
+export interface Member {
+  userId: string;
+  name: string;
+  email: string;
+  role: CloudRole;
+  groupId: string | null;
+}
+
+/** Everyone in the cooperative. Only the owner gets the full list. */
+export async function members(coopId: string): Promise<Member[]> {
+  const { data, error } = await supabase().from('members').select('user_id,name,email,role,group_id').eq('coop_id', coopId).order('created_at');
   if (error) fail(error.message);
-  return (data ?? []).map((m) => ({ userId: m.user_id as string, name: m.name as string, email: m.email as string, role: m.role as CloudRole }));
+  return (data ?? []).map((m) => ({
+    userId: m.user_id as string,
+    name: m.name as string,
+    email: m.email as string,
+    role: m.role as CloudRole,
+    groupId: (m.group_id as string | null) ?? null,
+  }));
 }
 
 export async function removeMember(coopId: string, userId: string): Promise<void> {
@@ -166,8 +178,16 @@ export async function removeMember(coopId: string, userId: string): Promise<void
   if (error) fail(error.message);
 }
 
-export async function newInviteCode(coopId: string, role: 'manager' | 'accountant'): Promise<string> {
-  const { data, error } = await supabase().rpc('new_coop_code', { p_coop: coopId, p_role: role });
+/** The manager code for one group (created the first time). Owner only. */
+export async function groupCode(coopId: string, groupId: string): Promise<string> {
+  const { data, error } = await supabase().rpc('group_code', { p_coop: coopId, p_group: groupId });
+  if (error) fail(error.message);
+  return data as string;
+}
+
+/** Replace a group's manager code, for example after a manager leaves. Owner only. */
+export async function newGroupCode(coopId: string, groupId: string): Promise<string> {
+  const { data, error } = await supabase().rpc('new_group_code', { p_coop: coopId, p_group: groupId });
   if (error) fail(error.message);
   return data as string;
 }

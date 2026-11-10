@@ -12,12 +12,11 @@ export type ISODateTime = string; // full ISO timestamp
 /* ------------------------------------------------------------------ users */
 
 /**
- * Three roles:
- *   super_admin  the owner: sees and does everything
- *   manager      the field manager: farmers, field work, harvests, daily work
- *   accountant   the money: payments, payment lists and the ledger
+ * Two roles:
+ *   super_admin  the owner: sees every group and does everything
+ *   manager      a group manager: runs one group's workers, work and pay
  */
-export type Role = 'super_admin' | 'manager' | 'accountant';
+export type Role = 'super_admin' | 'manager';
 
 export interface User {
   id: ID;
@@ -378,6 +377,8 @@ export interface WorkDay {
   notes?: string;
   /** The ledger credit this day posted. */
   transactionId?: ID;
+  /** Set when the pay was handed over at the time: the payment entry it posted. */
+  paidTxId?: ID;
   recordedBy: ID;
   recordedAt: ISODateTime;
 }

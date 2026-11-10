@@ -100,7 +100,7 @@ export function Login() {
             {mode === 'forgot' && <Forgot onBack={() => setMode('signin')} onIssued={setIssued} />}
             {cloudEnabled && (
               <Button variant="ghost" block onClick={() => setWhere('online')} style={{ marginTop: 'var(--s-4)' }}>
-                {tx('Use the online account (owner, field manager, accountant)')}
+                {tx('Use the online account (owner and group managers)')}
               </Button>
             )}
           </>

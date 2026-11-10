@@ -28,27 +28,27 @@ export const POSTING_RULES: Record<
   harvest: {
     direction: 'credit',
     label: 'Harvest delivery',
-    help: 'Produce received from the farmer increases what the cooperative owes.',
+    help: 'Produce received from the worker increases what the cooperative owes.',
   },
   work: {
     direction: 'credit',
     label: "Day's work",
-    help: 'A day of paid work, recorded with a photo, added to what the farmer is owed.',
+    help: 'A day of paid work, recorded with a photo, added to what the worker is owed.',
   },
   bonus: {
     direction: 'credit',
     label: 'Bonus',
-    help: 'Quality or loyalty bonus added to what the farmer is owed.',
+    help: 'Quality or loyalty bonus added to what the worker is owed.',
   },
   reimbursement: {
     direction: 'credit',
     label: 'Reimbursement',
-    help: 'Money the farmer spent on behalf of the cooperative, paid back.',
+    help: 'Money the worker spent on behalf of the cooperative, paid back.',
   },
   payment: {
     direction: 'debit',
     label: 'Payment',
-    help: 'Money paid out to the farmer, reducing the outstanding balance.',
+    help: 'Money paid out to the worker, reducing the outstanding balance.',
   },
   advance: {
     direction: 'debit',

@@ -44,7 +44,7 @@ function validate(draft: Partial<FarmerDraft>) {
     throw new ValidationError(tx('Number of plots must be a whole number.'), 'plots');
   }
   if (draft.code && !CODE_PATTERN.test(draft.code.trim())) {
-    throw new ValidationError(tx('A farmer ID must be 2 to 24 letters, digits, spaces or . _ - /'), 'code');
+    throw new ValidationError(tx('A worker ID must be 2 to 24 letters, digits, spaces or . _ - /'), 'code');
   }
 }
 
@@ -55,12 +55,19 @@ function validate(draft: Partial<FarmerDraft>) {
 async function assertCodeFree(code: string, exceptId?: ID) {
   const clash = await db.farmers.where('code').equals(code).first();
   if (clash && clash.id !== exceptId) {
-    throw new ValidationError(tx('Farmer ID {code} is already used by {firstName} {lastName}.', { code, firstName: clash.firstName, lastName: clash.lastName }), 'code');
+    throw new ValidationError(tx('Worker ID {code} is already used by {firstName} {lastName}.', { code, firstName: clash.firstName, lastName: clash.lastName }), 'code');
   }
+}
+
+/** A group manager always works inside their own group. */
+function ownGroup(user: User, groupId: string): string {
+  if (user.role === 'manager' && user.cooperativeId) return user.cooperativeId;
+  return groupId;
 }
 
 export async function create(user: User, draft: FarmerDraft): Promise<Farmer> {
   assertCan(user, 'farmer.create');
+  draft = { ...draft, cooperativeId: ownGroup(user, draft.cooperativeId) };
   validate(draft);
 
   const crops = draft.crops?.length ? draft.crops : [draft.primaryCropId];
@@ -96,9 +103,10 @@ export async function create(user: User, draft: FarmerDraft): Promise<Farmer> {
 export async function update(user: User, id: ID, patch: Partial<Farmer>): Promise<Farmer> {
   assertCan(user, 'farmer.edit');
   const before = await db.farmers.get(id);
-  if (!before) throw new ValidationError(tx('That farmer no longer exists.'));
+  if (!before) throw new ValidationError(tx('That worker no longer exists.'));
 
   const after: Farmer = { ...before, ...patch, id: before.id };
+  after.cooperativeId = ownGroup(user, after.cooperativeId);
   after.code = (patch.code?.trim() || before.code).trim();
   validate(after);
   if (after.code !== before.code) await assertCodeFree(after.code, before.id);
@@ -107,6 +115,13 @@ export async function update(user: User, id: ID, patch: Partial<Farmer>): Promis
   }
 
   await db.farmers.put(after);
+  if (after.cooperativeId !== before.cooperativeId) {
+    // Saving each related record again lets the sync re-tag it with the new group.
+    for (const t of [db.activities, db.harvests, db.payments, db.transactions, db.workdays, db.documents]) {
+      const rows = await (t as typeof db.activities).where('farmerId').equals(id).toArray();
+      if (rows.length) await (t as typeof db.activities).bulkPut(rows as never[]);
+    }
+  }
   const beforeRec = before as unknown as Record<string, unknown>;
   const afterRec = after as unknown as Record<string, unknown>;
   const changed = Object.keys(patch).filter((k) => beforeRec[k] !== afterRec[k]);
@@ -152,7 +167,7 @@ export async function remove(user: User, id: ID): Promise<void> {
 export async function archive(user: User, id: ID, archived: boolean): Promise<Farmer> {
   assertCan(user, 'farmer.archive');
   const before = await db.farmers.get(id);
-  if (!before) throw new ValidationError(tx('That farmer no longer exists.'));
+  if (!before) throw new ValidationError(tx('That worker no longer exists.'));
 
   const financials = (await financialsByFarmer()).get(id);
   if (archived && financials && financials.balance !== 0) {
@@ -172,7 +187,7 @@ export async function setStatus(user: User, ids: ID[], status: FarmerStatus): Pr
   const rows = await db.farmers.bulkGet(ids);
   const updated = rows.filter(Boolean).map((f) => ({ ...(f as Farmer), status }));
   await db.farmers.bulkPut(updated);
-  await audit.record(user, 'farmer', ids.join(','), 'update', `Set status "${status}" on ${updated.length} farmer(s)`);
+  await audit.record(user, 'farmer', ids.join(','), 'update', `Set status "${status}" on ${updated.length} worker(s)`);
   return updated.length;
 }
 
@@ -224,6 +239,6 @@ export async function importFarmers(user: User, drafts: FarmerDraft[]): Promise<
   }));
 
   await db.farmers.bulkPut(farmers);
-  await audit.record(user, 'farmer', 'import', 'import', `Imported ${farmers.length} farmers`, { after: { count: farmers.length, at: nowStamp() } });
+  await audit.record(user, 'farmer', 'import', 'import', `Imported ${farmers.length} workers`, { after: { count: farmers.length, at: nowStamp() } });
   return farmers;
 }

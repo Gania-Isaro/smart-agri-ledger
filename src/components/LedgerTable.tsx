@@ -80,7 +80,7 @@ export function LedgerTable({
             <tr>
               <th><span className="th">{T('Date')}</span></th>
               <th><span className="th">{T('Reference')}</span></th>
-              {showFarmer && <th><span className="th">{T('Farmer')}</span></th>}
+              {showFarmer && <th><span className="th">{T('Worker')}</span></th>}
               <th><span className="th">{T('Description')}</span></th>
               <th className="num"><span className="th">{T('Debit')}</span></th>
               <th className="num"><span className="th">{T('Credit')}</span></th>
