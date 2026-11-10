@@ -34,7 +34,7 @@ export function MoneyTotals() {
 
   const download = () => {
     if (!t) return;
-    const head = [tx('Group'), tx('Worker ID'), tx('Worker'), tx('Days worked'), tx('Work pay'), tx('Produce'), tx('Other credits'), tx('Deductions'), tx('Total'), tx('Paid'), tx('Advances'), tx('Owed now')];
+    const head = [tx('Group'), tx('Worker ID'), tx('Worker'), tx('Days worked'), tx('Work pay'), tx('Produce'), tx('Other money added'), tx('Deductions'), tx('Total'), tx('Paid'), tx('Advances'), tx('Owed now')];
     const line = (g: string, id: string, n: string, m: totalsService.Money): (string | number)[] => [
       g, id, n, m.days, m.workPay, m.produce, m.other, m.deductions, totalsService.totalCost(m), m.paid, m.advances, m.owedNow,
     ];
@@ -59,9 +59,11 @@ export function MoneyTotals() {
   return (
     <section className="card" style={{ marginBottom: 'var(--s-4)' }}>
       <div className="card__head">
-        <div className="row gap-2">
-          <Icon name="coins" size={17} />
-          <h2 className="section-title">{tx('Money')}</h2>
+        <div className="stack">
+          <div className="row gap-2">
+            <Icon name="coins" size={17} />
+            <h2 className="section-title">{tx('Money')}</h2>
+          </div>
           <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>{rangeText}</span>
         </div>
         <span className="spacer" />
@@ -105,7 +107,7 @@ export function MoneyTotals() {
                   ) : (
                     t.groups.map((g) => (
                       <tr key={g.groupId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/farmers?coop=${g.groupId}`)}>
-                        <td><span className="cell strong">{g.name}</span></td>
+                        <td style={{ minWidth: 150 }}><span className="cell strong" style={{ whiteSpace: 'normal', height: 'auto', lineHeight: 1.3, paddingTop: 6, paddingBottom: 6 }}>{g.name}</span></td>
                         <td className="num"><span className="cell num">{g.workers}</span></td>
                         <td className="num"><span className="cell num">{g.days}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(g.workPay)}</span></td>

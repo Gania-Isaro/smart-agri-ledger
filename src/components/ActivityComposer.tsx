@@ -540,7 +540,7 @@ function ActivityForm({
         {type.postsLedger && (
           <p className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
             <Icon name="shield" size={12} style={{ display: 'inline', verticalAlign: -2 }} />{' '}
-            {tx('This creates a ledger transaction recorded by {user}. It can be voided later, never deleted.', { user: lookups.userName(user?.id) })}
+            {tx('This is saved in the worker’s account by {user}. It can be cancelled later, never deleted.', { user: lookups.userName(user?.id) })}
           </p>
         )}
       </form>

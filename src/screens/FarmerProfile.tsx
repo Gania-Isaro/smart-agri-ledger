@@ -380,7 +380,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
           <div className="stack gap-4">
             {financials.balance > 0 && can('payment.create') && (
               <Callout tone="info" icon="coins">
-                {txr('{amount} is still owed to this worker. Use {action} to settle it. The amount is checked against this balance before it posts.', {
+                {txr('{amount} is still owed to this worker. Use {action} to pay it.', {
                   amount: <b>{formatMoney(financials.balance)}</b>,
                   action: <b>{T('Record activity → Worker payment')}</b>,
                 })}
@@ -447,7 +447,7 @@ export function FarmerProfile({ farmerId }: { farmerId: string }) {
                     try {
                       await ledgerService.voidTransaction(user, tx.id, answer.reason ?? '');
                       refresh();
-                      toast({ tone: 'success', title: T('{code} voided', { code: tx.code }), message: T('A reversing entry was added to the ledger.') });
+                      toast({ tone: 'success', title: T('{code} voided', { code: tx.code }), message: T('It was cancelled on the worker’s account and no longer counts.') });
                     } catch (e) {
                       fail(e);
                     }

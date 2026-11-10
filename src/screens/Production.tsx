@@ -134,7 +134,7 @@ function Harvests({ search }: { search: string }) {
                         })}
                       </p>
                       <p className="muted" style={{ marginTop: 'var(--s-2)' }}>
-                        {tx('A balancing ledger entry is posted so the worker can see exactly why their balance moved.')}
+                        {tx('The difference is added to or taken off what the worker is owed, so they can see exactly why it changed.')}
                       </p>
                     </>
                   ),
@@ -144,7 +144,7 @@ function Harvests({ search }: { search: string }) {
                 if (!answer.ok) return;
                 await harvestService.correct(user, r.id, { quantity: Number(next) }, answer.reason ?? '');
                 refresh();
-                toast({ tone: 'success', title: tx('Harvest corrected'), message: tx('A balancing entry was posted to the ledger.') });
+                toast({ tone: 'success', title: tx('Harvest corrected'), message: tx('The difference was added to or taken off what the worker is owed.') });
               },
             }
           : undefined,
@@ -244,7 +244,7 @@ function Harvests({ search }: { search: string }) {
           run: async (ids: string[]) => {
             const answer = await confirm({
               title: tx('Reject {length} harvest records?', { length: ids.length }),
-              message: tx('Rejecting produce that was already credited reverses that credit with a ledger entry. The original record stays visible.'),
+              message: tx('Rejecting produce takes its value back off what the worker is owed. The original record stays visible.'),
               confirmLabel: tx('Reject and reverse'),
               tone: 'danger',
             });
@@ -252,7 +252,7 @@ function Harvests({ search }: { search: string }) {
             try {
               const n = await harvestService.setStatus(user, ids, 'rejected');
               refresh();
-              toast({ tone: 'success', title: tx('{n} records rejected', { n }), message: tx('Credits were reversed in the ledger.') });
+              toast({ tone: 'success', title: tx('{n} records rejected', { n }), message: tx('Their value was taken back off what the workers are owed.') });
             } catch (e) {
               fail(e);
             }

@@ -246,7 +246,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
       run: async (ids: string[]) => {
         const answer = await confirm({
           title: tx('Cancel {length} payments?', { length: ids.length }),
-          message: tx('Cancelled payments stay on record. Any that had already posted to the ledger are reversed with a balancing entry.'),
+          message: tx('Cancelled payments stay on record. If a payment was already counted, it is added back to what the worker is owed.'),
           confirmLabel: tx('Cancel payments'),
           tone: 'danger',
           reasonLabel: tx('Reason for cancelling'),
@@ -842,7 +842,7 @@ function Batches() {
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Callout tone="info">
-            {tx('Amounts are taken from each worker’s ledger balance at the moment the batch is created. Creating a batch does not pay anyone. It creates pending payments for review.')}
+            {tx('Each amount is what the worker is owed when the list is made. Making the list does not pay anyone. It prepares payments to check first.')}
           </Callout>
         </div>
       </Modal>

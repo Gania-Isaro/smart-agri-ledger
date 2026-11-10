@@ -31,10 +31,10 @@ export function CloudLogin({ onUseDevice }: { onUseDevice: () => void }) {
 
   return (
     <>
-      <div className="tabs" style={{ marginBottom: 'var(--s-5)' }} role="tablist">
+      <div className="tabs tabs--wrap" style={{ marginBottom: 'var(--s-5)' }} role="tablist">
         {([
           ['signin', tx('Sign in')],
-          ['create', tx('New cooperative')],
+          ['create', tx('New owner account')],
           ['join', tx('Join with a code')],
         ] as [Mode, string][]).map(([m, label]) => (
           <button

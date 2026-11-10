@@ -100,8 +100,8 @@ function SettingsHome() {
         <>
           <p>
             {isDemo
-              ? tx('This deletes every worker, activity, harvest, payment and ledger transaction in this account, then regenerates the demo cooperative.')
-              : tx('This deletes every worker, activity, harvest, payment and ledger transaction in this account. Your account and sign-in stay as they are.')}
+              ? tx('This deletes every worker, activity, harvest, payment and money record in this account, then makes the demo cooperative again.')
+              : tx('This deletes every worker, activity, harvest, payment and money record in this account. Your account and sign-in stay as they are.')}
           </p>
           <p style={{ marginTop: 'var(--s-2)' }} className="muted">
             {tx('There is no undo, and nothing is backed up anywhere else.')}

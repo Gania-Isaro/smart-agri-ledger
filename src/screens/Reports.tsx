@@ -492,15 +492,15 @@ async function build(
       const scoped = txs.filter((t) => within(t.date)).sort((a, b) => (a.date < b.date ? -1 : 1));
       let running = 0;
       return {
-        title: tx('Worker ledger report'),
+        title: tx('Worker account history'),
         columns: [
           { key: 'date', header: tx('Date') },
-          { key: 'code', header: tx('Transaction') },
+          { key: 'code', header: tx('Entry') },
           { key: 'farmer', header: tx('Worker') },
           { key: 'type', header: tx('Type') },
           { key: 'description', header: tx('Description') },
-          { key: 'debit', header: tx('Debit'), num: true },
-          { key: 'credit', header: tx('Credit'), num: true },
+          { key: 'debit', header: tx('Taken off'), num: true },
+          { key: 'credit', header: tx('Added'), num: true },
           { key: 'by', header: tx('Created by') },
         ],
         rows: scoped.map((t) => {
@@ -594,8 +594,8 @@ async function build(
           { key: 'value', header: tx('Amount'), num: true },
         ],
         rows: [
-          { item: tx('Total earned by workers (credits)'), value: formatMoney(position.totalEarned) },
-          { item: tx('Total paid to workers (debits)'), value: formatMoney(position.totalPaid) },
+          { item: tx('Total earned by workers'), value: formatMoney(position.totalEarned) },
+          { item: tx('Total paid to workers'), value: formatMoney(position.totalPaid) },
           { item: tx('Advances and loans issued'), value: formatMoney(position.totalAdvances) },
           { item: tx('Deductions applied'), value: formatMoney(position.totalDeductions) },
           { item: tx('Owed to workers'), value: formatMoney(position.outstanding) },

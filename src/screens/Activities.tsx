@@ -183,14 +183,14 @@ export function Activities({ search }: { search: string }) {
       },
       {
         key: 'posted',
-        header: tx('Ledger'),
+        header: tx('Account'),
         width: 100,
         sortValue: (r) => (r.transactionId ? 1 : 0),
         searchValue: (r) => (r.transactionId ? 'posted' : ''),
         exportValue: (r) => (r.transactionId ? 'posted' : ''),
         render: (r) =>
           r.transactionId ? (
-            <span className="badge badge--purple" title={tx('This activity posted a ledger transaction')}>
+            <span className="badge badge--purple" title={tx('This activity changed what is owed')}>
               <span className="badge__glyph">₣</span>
               {tx('Posted')}
             </span>

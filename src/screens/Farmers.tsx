@@ -491,7 +491,7 @@ export function Farmers({ search }: { search: string }) {
                   })}
                 </p>
                 <p style={{ marginTop: 'var(--s-2)' }} className="muted">
-                  {tx('Each amount comes from that worker’s ledger balance. Nothing is paid until the batch is approved and settled.')}
+                  {tx('Each amount is what that worker is owed now. Nobody is paid until the list is approved and marked paid.')}
                 </p>
               </>
             ),
@@ -705,7 +705,7 @@ export function useRemoveFarmer() {
       }
       const r = await confirm({
         title: tx('Archive {name}?', { name }),
-        message: tx('{name} already has records in the books ({count}: harvests, payments, work days or ledger entries), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
+        message: tx('{name} already has records ({count}: harvests, payments, work days or other money records), so they cannot be deleted without breaking the totals. Archiving hides them from every list and keeps their history. You can restore them later.', { name, count: history }),
         confirmLabel: tx('Archive worker'),
         tone: 'danger',
       });

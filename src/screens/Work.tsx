@@ -122,7 +122,7 @@ function RecordTab() {
   const remove = async (day: WorkDay, farmer: Farmer) => {
     const r = await confirm({
       title: tx('Remove {v} on {date}?', { v: work.fullName(farmer), date: formatDate(day.date) }),
-      message: tx('The {amount} credit is voided on their ledger. The reason is kept in the audit trail.', { amount: formatMoney(day.amount) }),
+      message: tx('The {amount} is taken back off their account. The reason is kept in the audit trail.', { amount: formatMoney(day.amount) }),
       confirmLabel: tx('Remove day'),
       tone: 'danger',
       reasonLabel: tx('Why is this day being removed?'),

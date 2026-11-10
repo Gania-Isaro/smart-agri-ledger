@@ -82,7 +82,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'credits',
-        header: T('Total credits'),
+        header: T('Total added'),
         width: 138,
         align: 'right',
         mobile: 'cell',
@@ -93,7 +93,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'debits',
-        header: T('Total debits'),
+        header: T('Total taken off'),
         width: 138,
         align: 'right',
         mobile: 'cell',
@@ -167,7 +167,7 @@ function FarmerLedgers({ search }: { search: string }) {
 
       {openId && (
         <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && setOpenId(null)}>
-          <div className="modal modal--wide" role="dialog" aria-label={T('Worker ledger')}>
+          <div className="modal modal--wide" role="dialog" aria-label={T('Worker account')}>
             <div className="modal__head">
               <div className="grow">
                 <h2 className="modal__title">
@@ -232,7 +232,7 @@ function Transactions({ search }: { search: string }) {
       message: (
         <>
           <p>
-            {tx.description}, <b>{formatMoney(tx.amount)}</b> ({tx.direction === 'credit' ? T('credit') : T('debit')}).
+            {tx.description}, <b>{formatMoney(tx.amount)}</b> ({tx.direction === 'credit' ? T('added') : T('taken off')}).
           </p>
           <p style={{ marginTop: 'var(--s-2)' }}>
             {T('The entry is not deleted. It stays on the account marked voided, with a matching reversal next to it. Neither counts toward the balance, so it goes back to what it was before this entry.')}
@@ -257,7 +257,7 @@ function Transactions({ search }: { search: string }) {
     () => [
       {
         key: 'code',
-        header: T('Transaction'),
+        header: T('Entry'),
         width: 152,
         mobile: 'subtitle',
         sortValue: (r) => r.code,
@@ -311,7 +311,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'debit',
-        header: T('Debit'),
+        header: T('Taken off'),
         width: 128,
         align: 'right',
         mobile: 'cell',
@@ -322,7 +322,7 @@ function Transactions({ search }: { search: string }) {
       },
       {
         key: 'credit',
-        header: T('Credit'),
+        header: T('Added'),
         width: 128,
         align: 'right',
         mobile: 'cell',
@@ -367,7 +367,7 @@ function Transactions({ search }: { search: string }) {
         width: 54,
         render: (r) =>
           can('ledger.void') && !r.voided && !r.reversesId ? (
-            <button className="iconbtn" style={{ width: 26, height: 26 }} onClick={(e) => { e.stopPropagation(); void doVoid(r); }} aria-label={T('Void {code}', { code: r.code })} title={T('Void this transaction')}>
+            <button className="iconbtn" style={{ width: 26, height: 26 }} onClick={(e) => { e.stopPropagation(); void doVoid(r); }} aria-label={T('Void {code}', { code: r.code })} title={T('Cancel this entry')}>
               <Icon name="undo" size={14} />
             </button>
           ) : null,
@@ -436,7 +436,7 @@ function Transactions({ search }: { search: string }) {
           <FilterBar
             specs={[
               { key: 'type', label: T('Type'), type: 'multi', options: Object.entries(LEDGER_TYPE_LABEL).map(([value, label]) => ({ value, label })) },
-              { key: 'direction', label: T('Direction'), type: 'select', options: [{ value: 'credit', label: T('Credit') }, { value: 'debit', label: T('Debit') }] },
+              { key: 'direction', label: T('Direction'), type: 'select', options: [{ value: 'credit', label: T('Added') }, { value: 'debit', label: T('Taken off') }] },
               { key: 'date', label: T('Date'), type: 'daterange' },
               { key: 'amount', label: T('Amount'), type: 'numrange' },
             ]}

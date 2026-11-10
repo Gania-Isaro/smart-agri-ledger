@@ -384,7 +384,7 @@ export async function updateActivity(user: User, id: ID, patch: Partial<Activity
 
   if (before.transactionId) {
     throw new ValidationError(
-      T('This activity has already posted to the ledger. Void the transaction and record a corrected activity instead of editing it.'),
+      T('This activity already changed what the worker is owed. Cancel that entry on the worker’s Account tab and record it again instead of editing it.'),
     );
   }
 

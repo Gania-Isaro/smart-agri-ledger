@@ -23,7 +23,7 @@ export function LedgerTable({
   showFarmer = true,
   farmerNames,
   onVoid,
-  emptyMessage = T('No transactions on this account yet.'),
+  emptyMessage = T('Nothing recorded for this worker yet.'),
 }: {
   lines: LedgerLine[];
   showFarmer?: boolean;
@@ -46,11 +46,11 @@ export function LedgerTable({
       lines,
       [
         { key: 'date', header: T('Date'), value: (l) => l.date },
-        { key: 'code', header: T('Transaction'), value: (l) => l.code },
+        { key: 'code', header: T('Entry'), value: (l) => l.code },
         { key: 'type', header: T('Type'), value: (l) => LEDGER_TYPE_LABEL[l.type] ?? l.type },
         { key: 'description', header: T('Description'), value: (l) => l.description },
-        { key: 'debit', header: T('Debit'), value: (l) => (l.direction === 'debit' && counts(l) ? l.amount : '') },
-        { key: 'credit', header: T('Credit'), value: (l) => (l.direction === 'credit' && counts(l) ? l.amount : '') },
+        { key: 'debit', header: T('Taken off'), value: (l) => (l.direction === 'debit' && counts(l) ? l.amount : '') },
+        { key: 'credit', header: T('Added'), value: (l) => (l.direction === 'credit' && counts(l) ? l.amount : '') },
         { key: 'balance', header: T('Balance'), value: (l) => l.balanceAfter },
         { key: 'voided', header: T('Voided'), value: (l) => (l.voided ? 'yes' : l.reversesId ? 'reversal' : '') },
         { key: 'by', header: T('Created by'), value: (l) => lookups.userName(l.createdBy) },
@@ -60,7 +60,7 @@ export function LedgerTable({
   return (
     <div className="panel">
       <div className="gridtools">
-        <span className="eyebrow">{T('Ledger')}</span>
+        <span className="eyebrow">{T('Account')}</span>
         <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
           {T('{count} entries · oldest first', { count: lines.length })}
         </span>
@@ -82,8 +82,8 @@ export function LedgerTable({
               <th><span className="th">{T('Reference')}</span></th>
               {showFarmer && <th><span className="th">{T('Worker')}</span></th>}
               <th><span className="th">{T('Description')}</span></th>
-              <th className="num"><span className="th">{T('Debit')}</span></th>
-              <th className="num"><span className="th">{T('Credit')}</span></th>
+              <th className="num"><span className="th">{T('Taken off')}</span></th>
+              <th className="num"><span className="th">{T('Added')}</span></th>
               <th className="num"><span className="th">{T('Balance')}</span></th>
               <th><span className="th">{T('By')}</span></th>
               {onVoid && <th aria-label={T('Actions')}><span className="th" /></th>}
@@ -137,7 +137,7 @@ export function LedgerTable({
                           style={{ width: 26, height: 26 }}
                           onClick={() => onVoid(l)}
                           aria-label={T('Void {code}', { code: l.code })}
-                          title={T('Void this transaction')}
+                          title={T('Cancel this entry')}
                         >
                           <Icon name="undo" size={14} />
                         </button>
