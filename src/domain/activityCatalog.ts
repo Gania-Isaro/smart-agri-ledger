@@ -367,7 +367,7 @@ export const BUILT_IN_ACTIVITY_TYPES: ActivityType[] = [
 
   /* ---- Financial ---- */
   type('farmer_payment', 'Worker payment', 'financial', 'coins', [
-    amount('Amount paid', 'Checked against the worker outstanding balance before posting.'),
+    amount('Amount paid', 'Checked against what the worker is owed before saving.'),
     { key: 'method', label: 'Payment method', type: 'select', required: true, options: PAYMENT_METHOD_OPTIONS, half: true },
     reference,
     reason('What this payment settles, e.g. August maize delivery.'),

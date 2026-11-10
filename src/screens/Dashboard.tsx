@@ -151,7 +151,7 @@ export function Dashboard() {
             <ProgressPair
               paid={o.totalPaid}
               /* Paid plus what is still owed after advances and deductions, so
-                 "Still owed" matches the Outstanding figure above it. */
+                 "Still owed" matches the Owed figure above it. */
               total={o.totalPaid + o.outstanding}
               paidLabel={t('dash.paidToFarmers')}
               remainingLabel={t('dash.stillOwed')}

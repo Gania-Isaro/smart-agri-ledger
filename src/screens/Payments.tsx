@@ -38,7 +38,7 @@ export function Payments({ search }: { search: string }) {
     return batchId ? <BatchDetail batchId={batchId} /> : <Batches />;
   }
   if (sub === 'pending') return <PaymentList search={search} mode="pending" />;
-  return <Outstanding search={search} />;
+  return <Owed search={search} />;
 }
 
 /* ------------------------------------------------------------ list view */
@@ -287,9 +287,9 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
         emptyMessage={
           mode === 'completed'
             ? tx('Payments appear here once they are marked as paid.')
-            : tx('Every payment has been settled. Build a new batch from the outstanding list when produce comes in.')
+            : tx('Every payment has been settled. Workers show up here again when they are owed money.')
         }
-        emptyAction={<Button onClick={() => navigate('/payments/outstanding')}>{tx('See outstanding balances')}</Button>}
+        emptyAction={<Button onClick={() => navigate('/payments/outstanding')}>{tx('See who is owed')}</Button>}
         toolbar={
           <FilterBar
             specs={[
@@ -309,7 +309,7 @@ function PaymentList({ search, mode }: { search: string; mode: 'pending' | 'comp
 
 /* ---------------------------------------------------------- outstanding */
 
-function Outstanding({ search }: { search: string }) {
+function Owed({ search }: { search: string }) {
   const { user, can, refresh, toast, fail, confirm } = useStore();
   const lookups = useLookups();
   const { t, tn } = usePrefs();

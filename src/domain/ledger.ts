@@ -48,7 +48,7 @@ export const POSTING_RULES: Record<
   payment: {
     direction: 'debit',
     label: 'Payment',
-    help: 'Money paid out to the worker, reducing the outstanding balance.',
+    help: 'Money paid out to the worker, reducing what they are owed.',
   },
   advance: {
     direction: 'debit',

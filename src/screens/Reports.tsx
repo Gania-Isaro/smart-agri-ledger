@@ -41,7 +41,7 @@ const REPORTS: { id: ReportId; name: string; description: string; icon: IconName
   { id: 'harvest', name: 'Harvest report', description: 'Delivery-by-delivery detail: quantity, price and net value.', icon: 'basket' },
   { id: 'crop_production', name: 'Crop production report', description: 'Quantity and value produced per crop, with each crop’s share.', icon: 'sprout' },
   { id: 'payments', name: 'Payment report', description: 'All payments with status, method, reference and approver.', icon: 'coins' },
-  { id: 'outstanding', name: 'Outstanding balances', description: 'Who is still owed, how much, and what has already been paid.', icon: 'wallet' },
+  { id: 'outstanding', name: 'Money owed', description: 'Who is still owed, how much, and what has already been paid.', icon: 'wallet' },
   { id: 'farmer_ledger', name: 'Worker ledger report', description: 'The full transaction journal with running balances.', icon: 'book' },
   { id: 'cooperative', name: 'Cooperative report', description: 'Members, production and financial position for each cooperative.', icon: 'layers' },
   { id: 'seasonal', name: 'Seasonal report', description: 'Production and payments month by month across the season.', icon: 'calendar' },
@@ -456,7 +456,7 @@ async function build(
     case 'outstanding': {
       const rows = (await analytics.farmerReport()).filter((r) => r.balance !== 0);
       return {
-        title: tx('Outstanding balances'),
+        title: tx('Money owed'),
         columns: [
           { key: 'code', header: tx('Worker ID') },
           { key: 'name', header: tx('Worker') },
@@ -598,7 +598,7 @@ async function build(
           { item: tx('Total paid to workers (debits)'), value: formatMoney(position.totalPaid) },
           { item: tx('Advances and loans issued'), value: formatMoney(position.totalAdvances) },
           { item: tx('Deductions applied'), value: formatMoney(position.totalDeductions) },
-          { item: tx('Outstanding to workers'), value: formatMoney(position.outstanding) },
+          { item: tx('Owed to workers'), value: formatMoney(position.outstanding) },
           { item: tx('Advances still to recover'), value: formatMoney(position.inAdvance) },
           { item: tx('Workers currently owed'), value: formatNumber(position.farmersOwed) },
           { item: tx('Workers on the register'), value: formatNumber(o.totalFarmers) },
@@ -608,7 +608,7 @@ async function build(
         cards: [
           { label: tx('Earned'), value: formatMoney(position.totalEarned) },
           { label: tx('Paid'), value: formatMoney(position.totalPaid) },
-          { label: tx('Outstanding'), value: formatMoney(position.outstanding) },
+          { label: tx('Owed'), value: formatMoney(position.outstanding) },
         ],
       };
     }

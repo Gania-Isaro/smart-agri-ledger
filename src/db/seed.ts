@@ -506,7 +506,7 @@ export async function seedDatabase(): Promise<SeedResult> {
   const pendingPay = payments.filter((p) => p.status === 'pending').length;
 
   const notifications: AppNotification[] = [
-    { id: uid('ntf'), kind: 'financial', title: `${awaiting} workers are awaiting payment`, body: 'Open the outstanding list to build a payment batch.', at: nowStamp(), read: false, link: '#/payments/outstanding' },
+    { id: uid('ntf'), kind: 'financial', title: `${awaiting} workers are awaiting payment`, body: 'Open Payments, Owed, to pay them.', at: nowStamp(), read: false, link: '#/payments/outstanding' },
     { id: uid('ntf'), kind: 'financial', title: 'Payment batch requires approval', body: `${batch.name} has ${pendingPay} payments still pending approval.`, at: addStamp(-2), read: false, link: '#/payments/batches' },
     { id: uid('ntf'), kind: 'operational', title: `${unverified} harvest records need verification`, body: 'Field entries are waiting for their weight to be checked.', at: addStamp(-5), read: false, link: '#/production/harvests' },
     { id: uid('ntf'), kind: 'financial', title: `Balance adjusted for ${disputedFarmer.code}`, body: 'A 12,000 RWF debit adjustment was posted and is under dispute.', at: addStamp(-26), read: false, link: '#/ledger/transactions' },
