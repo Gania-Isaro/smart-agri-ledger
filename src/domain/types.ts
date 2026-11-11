@@ -374,6 +374,10 @@ export interface WorkDay {
   photo: string;
   /** When the photo was taken, from the device clock. */
   photoTakenAt: ISODateTime;
+  /** What the person did that day, e.g. weeding. */
+  task?: string;
+  /** Where they worked: a site, field or plot. */
+  site?: string;
   notes?: string;
   /** The ledger credit this day posted. */
   transactionId?: ID;

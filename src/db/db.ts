@@ -138,9 +138,10 @@ export function openAccountDatabase(accountId: string, opts: { cloud?: boolean }
 }
 
 /** Release the current account's database on sign-out. */
-export function closeAccountDatabase(): void {
+export function closeAccountDatabase(opts: { keepOpen?: boolean } = {}): void {
   if (db.name === 'smart_agri_data_none') return;
-  db.close();
+  // keepOpen: the caller still holds the handle for a last upload and closes it itself.
+  if (!opts.keepOpen) db.close();
   db = new AgriLedgerDB('smart_agri_data_none');
 }
 

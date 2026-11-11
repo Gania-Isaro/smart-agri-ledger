@@ -1,15 +1,17 @@
 # Smart Agri-Ledger
 
-Offline-first record keeping for an agricultural cooperative: farmers, field
-activities, harvests, and the money owed against them. Runs on a phone in a field
-with no signal, and on a laptop in the office as a full spreadsheet.
+Record keeping for a farm or cooperative that pays people for their work: one list
+of workers in groups, who worked each day (with a photo taken on the spot), the
+produce they bring in, and the money owed against it. It works on a phone in a field
+with no signal and on a laptop in the office, and syncs between phones when there is
+internet.
 
-**It is a ledger, not a payment app.** You pay farmers the way you always have, in
+**It is a ledger, not a payment app.** You pay workers the way you always have, in
 cash or by mobile money, in person. This records what was paid so every balance
 stays correct, and tells you who is still owed. Nothing here talks to a bank, and no
 button in it sends money to anyone.
 
-**English and Kinyarwanda. Light and dark. One shared owner/manager account.**
+**English and Kinyarwanda. Light and dark. One owner, and a manager for each group.**
 
 **Live:** https://gania-isaro.github.io/smart-agri-ledger/
 
@@ -19,25 +21,30 @@ npm run dev      # http://localhost:5173
 npm run build    # production bundle in dist/
 ```
 
-## Two ways in
+## Three ways in
 
-**Look around first.** The demo cooperative, already full of data:
+**Look around first.** On the sign-in page choose *Use without an online account*,
+then *Open the demo cooperative*: 26 workers in three groups, two weeks of daily
+work, produce, payments and a complete ledger. A banner across the top says plainly
+that the figures are generated, so nobody mistakes them for their own.
 
-```
-owner@agriledger.rw   PIN 1234
-```
+**Online, for a real cooperative.** The owner creates the account once (*New owner
+account*), makes a group for each site or team, and sends each group's manager code
+to the person who runs it. A manager joins with that code and from then on sees and
+records only that group. The owner sees every group, the totals per day, week, month
+and year, and can remove a manager at any time. Accounts and the shared copy live in
+Supabase (`supabase/schema.sql`, then `supabase/groups.sql`, then
+`supabase/phone.sql`, all safe to run again). The rules about who can read and write what are enforced there with row
+level security, not only in the app.
 
-26 farmers, real harvests, payments and a complete ledger. A banner across the top
-says plainly that the figures are generated, so nobody mistakes them for their own.
+**On one phone only.** An account with an email and a PIN that never leaves the
+device, for someone who does not want anything online. No managers in this mode.
 
-**Or create an account.** It starts completely empty: no farmers, no harvests, no
-money, and nothing to delete before it is yours. You get the crop price list and the
-activity catalog, because a cooperative with zero crops can register a farmer but
-can never record a harvest against them, which is empty in the unhelpful sense.
-
-Each account gets **its own database** (`smart_agri_data_<id>`). Tagging rows with an
-owner id would mean one missed `where` clause leaks another cooperative's farmers and
-balances into your screens; a separate database cannot leak by omission.
+Every person gets **their own local database** (`smart_agri_data_<id>`; for an online
+cooperative the id includes the person, not only the cooperative). Tagging rows with
+an owner id would mean one missed `where` clause leaks another group's workers into
+your screens; a separate database cannot leak by omission, including when two people
+share a phone.
 
 ---
 
@@ -130,31 +137,32 @@ itself would not need rewriting.
 
 ## Signing in
 
-PINs are never stored. Each account keeps a PBKDF2-SHA256 hash at 150,000 iterations
-with a per-account salt, so a four-digit PIN is slow to brute-force off a stolen
-device rather than instant. Sign-in failures say the same thing whether the email or
-the PIN was wrong, since naming which half failed tells whoever is holding the phone
-which addresses are real.
+**Online accounts** sign in with a phone number and a password; an email address
+is optional. Not every manager has an email, and SMS costs money, so the app turns
+the phone number into a private sign-in name on Supabase's email sign-in (set
+`VITE_PHONE_LOGIN_DOMAIN` to a domain you own; "Confirm email" must be off). Nothing
+is ever sent to it. A forgotten password is set again inside the app with a code: a
+manager uses their group's manager code, the owner uses a recovery code shown once at
+sign-up (`supabase/phone.sql`). Accounts created with an email before this still sign
+in with that email. The app never stores the password. A signed-in phone opens straight into its own copy with no signal, and
+checks its membership with the server when it can: a manager the owner removed is
+signed out and their copy is deleted from the phone.
 
-**Forgotten PIN.** Emailing a reset link needs a server to send the mail and verify
-the token, and this build has neither: it runs entirely on the device. So recovery
-uses a code issued once at sign-up, and the screen says exactly that rather than
-showing a "check your email" that no email would ever follow. Using a code spends it
-and issues a new one, so an old screenshot cannot be replayed. Connect this to a mail
-server and the same flow sends that code to the address on the account.
+**Phone-only accounts** use a PIN. PINs are never stored. Each account keeps a
+PBKDF2-SHA256 hash at 150,000 iterations with a per-account salt, so a four-digit PIN
+is slow to brute-force off a stolen device rather than instant. Sign-in failures say
+the same thing whether the email or the PIN was wrong. Recovery uses a code issued
+once at sign-up; using a code spends it and issues a new one.
 
 ## Known limits
 
-- **Single device.** There is no server, so data does not sync between phones. The
-  architecture is ready for one; the sync itself is not built.
-- **Authentication is local.** PINs are hashed properly, but verification happens on
-  the device, so anyone with the device and the PIN is in. Real multi-device
-  deployment swaps `screens/Login.tsx` and `db/accounts.ts` for an identity provider;
-  nothing behind them changes.
-- **No password reset by email**, for the reason above. Recovery is by a saved code.
-- **The demo PIN is published** in this README on purpose. It is the only account
-  allowed to use `1234`; the sign-up form rejects that PIN for everyone else.
-- **Kinyarwanda covers the interface**, not user-entered data: farmer names,
+- **Work-day photos travel inside the records.** They are kept small (about 50 KB),
+  but a manager's first sync on a new phone downloads all of them. Moving photos to
+  Supabase Storage and syncing a link is the next step if this gets heavy.
+- **One cooperative per person.** Joining a second cooperative with another code is
+  not supported; the app opens the first one.
+- **Phone-only accounts do not sync**, and anyone with the device and the PIN is in.
+- **Kinyarwanda covers the interface**, not user-entered data: worker names,
   villages and notes stay exactly as typed, and CSV exports keep English column
   headers so a file shared between two users still reconciles.
 - The bundle is a single ~180 KB gzipped chunk; code-splitting by route would help

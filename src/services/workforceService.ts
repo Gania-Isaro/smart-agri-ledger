@@ -45,7 +45,9 @@ export async function dailyRate(): Promise<number> {
 }
 
 export async function setDailyRate(user: User, value: number | string): Promise<number> {
-  assertCan(user, 'worker.manage');
+  // One figure for the whole cooperative, so only the owner changes it. A
+  // manager can still type any amount for a day.
+  assertCan(user, 'settings.manage');
   const rate = toPositiveMoney(value, 'Daily pay');
   await setSetting(RATE_KEY, rate);
   await audit.record(user, 'setting', RATE_KEY, 'update', `Usual daily pay set to ${rate} RWF`);
@@ -60,6 +62,9 @@ export interface WorkDayInput {
   amount: number | string;
   photo: string;
   photoTakenAt: string;
+  /** What the person did, and where. Both optional. */
+  task?: string;
+  site?: string;
   notes?: string;
   /** True when the pay was handed over at the time; otherwise it is owed. */
   paidNow?: boolean;
@@ -88,6 +93,8 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
     amount,
     photo: input.photo,
     photoTakenAt: input.photoTakenAt || nowStamp(),
+    task: input.task?.trim() || undefined,
+    site: input.site?.trim() || undefined,
     notes: input.notes?.trim() || undefined,
     recordedBy: user.id,
     recordedAt: nowStamp(),
@@ -100,7 +107,7 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
     farmerId: farmer.id,
     type: 'work',
     amount,
-    description: day.notes ? T("Day's work, {note}", { note: day.notes }) : T("Day's work"),
+    description: day.task || day.notes ? T("Day's work, {note}", { note: day.task || day.notes || '' }) : T("Day's work"),
     date,
   });
   day.transactionId = tx.id;

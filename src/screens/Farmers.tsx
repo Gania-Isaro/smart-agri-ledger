@@ -10,7 +10,7 @@
  * to change it is to record a transaction, which the "+" button does.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useLookups, useStore } from '../state/store';
 import { navigate, useRoute } from '../state/router';
 import { DataGrid, type ColumnDef } from '../components/grid/DataGrid';
@@ -192,6 +192,8 @@ export function Farmers({ search }: { search: string }) {
         key: 'activity',
         header: t('field.activity'),
         width: 140,
+        // Hidden until chosen from the column picker, so the money columns fit a laptop screen.
+        optional: true,
         mobile: 'cell',
         sortValue: (r) => activityLabel(r),
         searchValue: (r) => activityLabel(r),
@@ -205,6 +207,8 @@ export function Farmers({ search }: { search: string }) {
         key: 'crop',
         header: t('field.crop'),
         width: 120,
+        // Hidden until chosen from the column picker, so the money columns fit a laptop screen.
+        optional: true,
         mobile: 'cell',
         sortValue: (r) => tCrop(r.primaryCropId, lookups.cropName(r.primaryCropId)),
         searchValue: (r) => r.crops.map((c) => `${lookups.cropName(c)} ${tCrop(c, '')}`).join(' '),
@@ -242,6 +246,8 @@ export function Farmers({ search }: { search: string }) {
         key: 'quantity',
         header: t('field.quantity'),
         width: 104,
+        // Hidden until chosen from the column picker, so the money columns fit a laptop screen.
+        optional: true,
         align: 'right',
         mobile: 'cell',
         sortValue: (r) => r.totalQuantity,
@@ -346,6 +352,8 @@ export function Farmers({ search }: { search: string }) {
         key: 'payment',
         header: t('field.paymentStatus'),
         width: 148,
+        // Hidden until chosen from the column picker, so the money columns fit a laptop screen.
+        optional: true,
         sortValue: (r) => t(paymentLabel(r).labelKey),
         searchValue: (r) => t(paymentLabel(r).labelKey),
         exportValue: (r) => t(paymentLabel(r).labelKey),
@@ -599,7 +607,7 @@ export function Farmers({ search }: { search: string }) {
               { key: 'status', label: tx('Status'), type: 'multi', options: Object.entries(FARMER_STATUS).map(([value, m]) => ({ value, label: m.label })) },
               { key: 'crop', label: tx('Crop'), type: 'multi', options: crops.map((c) => ({ value: c.id, label: cropLabel(c) })) },
               { key: 'district', label: tx('District'), type: 'multi', options: uniq(all.map((r) => r.district)).map((d) => ({ value: d, label: d })) },
-              { key: 'cooperative', label: tx('Cooperative'), type: 'select', options: cooperatives.map((c) => ({ value: c.id, label: c.name })) },
+              { key: 'cooperative', label: tx('Group'), type: 'select', options: cooperatives.map((c) => ({ value: c.id, label: c.name })) },
               { key: 'activity', label: tx('Activity type'), type: 'multi', options: [
                 { value: 'farming', label: tx('Farming') },
                 { value: 'harvest', label: tx('Harvest') },
@@ -940,7 +948,7 @@ export function FarmerFormModal({
         <Field label={tx('Village')}>
           <Input value={form.village} onChange={(e) => set('village', e.target.value)} />
         </Field>
-        <Field label={tx('Cooperative')} required error={errors.cooperativeId}>
+        <Field label={tx('Group')} required error={errors.cooperativeId}>
           <Select options={cooperatives.map((c) => ({ value: c.id, label: c.name }))} value={form.cooperativeId} onChange={(e) => set('cooperativeId', e.target.value)} />
         </Field>
         <Field label={tx('Primary crop')} required error={errors.primaryCropId}>
@@ -1104,14 +1112,32 @@ function ImportFarmersModal({ onClose }: { onClose: () => void }) {
 function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
   const { cooperatives, can, membership, cloudEnabled } = useStore();
   const { t } = usePrefs();
-  const [editing, setEditing] = useState<{ id?: string; name: string; district: string } | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; name: string; district: string; canDelete?: boolean } | null>(null);
   const isOwner = can('settings.manage');
   const online = Boolean(cloudEnabled && membership);
 
+  // The owner sees who manages each group, and can remove them.
+  const [people, setPeople] = useState<cloud.Member[]>([]);
+  const coopId = membership?.coopId;
+  const loadPeople = useCallback(async () => {
+    if (!isOwner || !online || !coopId || !navigator.onLine) return;
+    try {
+      setPeople(await cloud.members(coopId));
+    } catch {
+      /* no signal: the list shows again next time */
+    }
+  }, [isOwner, online, coopId]);
+  useEffect(() => {
+    void loadPeople();
+  }, [loadPeople]);
+
+  // Archived workers still belong to their group, so they block deleting it.
+  const allWorkers = useQuery(() => db.farmers.toArray()).data ?? [];
   const groups = cooperatives.map((c) => {
     const members = rows.filter((r) => r.cooperativeId === c.id);
     return {
       coop: c,
+      total: allWorkers.filter((f) => f.cooperativeId === c.id).length,
       members: members.length,
       owed: members.reduce((s, r) => s + Math.max(r.financials.balance, 0), 0),
       earned: members.reduce((s, r) => s + r.financials.earned, 0),
@@ -1160,7 +1186,9 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
                   label={tx('Edit {name}', { name: g.coop.name })}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditing({ id: g.coop.id, name: g.coop.name, district: g.coop.district });
+                    // Only an empty group with no manager can be deleted.
+                    const managed = people.some((m) => m.role === 'manager' && m.groupId === g.coop.id);
+                    setEditing({ id: g.coop.id, name: g.coop.name, district: g.coop.district, canDelete: g.total === 0 && !managed && cooperatives.length > 1 });
                   }}
                 />
               )}
@@ -1182,7 +1210,15 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
                 <b className={g.owed > 0 ? 'pos' : ''}>{formatMoney(g.owed)}</b>
               </div>
             </div>
-            {isOwner && online && membership && <ManagerCode coopId={membership.coopId} groupId={g.coop.id} />}
+            {isOwner && online && membership && (
+              <GroupManagers
+                coopId={membership.coopId}
+                groupId={g.coop.id}
+                groupName={g.coop.name}
+                managers={people.filter((m) => m.role === 'manager' && m.groupId === g.coop.id)}
+                onChanged={loadPeople}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -1192,11 +1228,48 @@ function FarmerGroups({ rows }: { rows: farmerService.FarmerRow[] }) {
   );
 }
 
-/** The code a group's manager joins with. Shown to the owner only. */
-function ManagerCode({ coopId, groupId }: { coopId: string; groupId: string }) {
+/** Who manages a group, and the code a new manager joins with. Shown to the owner only. */
+function GroupManagers({
+  coopId,
+  groupId,
+  groupName,
+  managers,
+  onChanged,
+}: {
+  coopId: string;
+  groupId: string;
+  groupName: string;
+  managers: cloud.Member[];
+  onChanged: () => Promise<void>;
+}) {
   const { toast, fail, confirm } = useStore();
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const remove = async (m: cloud.Member) => {
+    const who = m.name || m.email;
+    const r = await confirm({
+      title: tx('Remove {name}?', { name: who }),
+      message: tx('{name} will no longer see or change anything in {group}. What they already recorded stays. The group also gets a new manager code, so the old one cannot be used again.', { name: who, group: groupName }),
+      confirmLabel: tx('Remove'),
+      tone: 'danger',
+    });
+    if (!r.ok) return;
+    setRemoving(m.userId);
+    try {
+      await cloud.removeMember(coopId, m.userId);
+      const fresh = await cloud.newGroupCode(coopId, groupId);
+      setCode((c) => (c ? fresh : c));
+      await onChanged();
+      toast({ tone: 'success', title: tx('{name} was removed', { name: who }), message: tx('The group has a new manager code.') });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   const show = async (renew = false) => {
     setBusy(true);
     try {
@@ -1208,7 +1281,26 @@ function ManagerCode({ coopId, groupId }: { coopId: string; groupId: string }) {
     }
   };
   return (
-    <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-3)' }} onClick={(e) => e.stopPropagation()}>
+    <div className="stack gap-2" style={{ marginTop: 'var(--s-3)' }} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <div className="stack gap-1">
+        <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
+          {managers.length ? tx('Managers') : tx('No manager has joined this group yet.')}
+        </span>
+        {managers.map((m) => (
+          <div key={m.userId} className="row gap-2">
+            <Icon name="user" size={14} />
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <b>{m.name || m.email}</b>
+              {m.name && m.email ? <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}> · {m.email}</span> : null}
+            </span>
+            <span className="spacer" />
+            <Button size="sm" variant="ghost" loading={removing === m.userId} onClick={() => void remove(m)}>
+              {tx('Remove')}
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="row gap-2 wrap">
       {code ? (
         <>
           <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>{tx('Manager code')}</span>
@@ -1230,7 +1322,7 @@ function ManagerCode({ coopId, groupId }: { coopId: string; groupId: string }) {
             onClick={async () => {
               const r = await confirm({
                 title: tx('Make a new code?'),
-                message: tx('The old code stops working for new sign-ups. Managers already in the group stay in it.'),
+                message: tx('The old code stops working for new sign-ups. Managers already in the group stay in it. To take a manager out, use Remove next to their name.'),
                 confirmLabel: tx('New code'),
               });
               if (r.ok) await show(true);
@@ -1244,12 +1336,31 @@ function ManagerCode({ coopId, groupId }: { coopId: string; groupId: string }) {
           {tx('Show manager code')}
         </Button>
       )}
+      </div>
     </div>
   );
 }
 
-function GroupModal({ value, onClose }: { value: { id?: string; name: string; district: string }; onClose: () => void }) {
-  const { user, refresh, toast, fail } = useStore();
+function GroupModal({ value, onClose }: { value: { id?: string; name: string; district: string; canDelete?: boolean }; onClose: () => void }) {
+  const { user, refresh, toast, fail, confirm } = useStore();
+  const remove = async () => {
+    if (!user || !value.id) return;
+    const r = await confirm({
+      title: tx('Delete {name}?', { name: value.name }),
+      message: tx('The group has no workers, so nothing else is lost.'),
+      confirmLabel: tx('Delete group'),
+      tone: 'danger',
+    });
+    if (!r.ok) return;
+    try {
+      await groupService.deleteGroup(user, value.id);
+      refresh();
+      toast({ tone: 'success', title: tx('Group deleted'), message: value.name });
+      onClose();
+    } catch (err) {
+      fail(err);
+    }
+  };
   const [name, setName] = useState(value.name);
   const [district, setDistrict] = useState(value.district);
   const [busy, setBusy] = useState(false);
@@ -1276,6 +1387,9 @@ function GroupModal({ value, onClose }: { value: { id?: string; name: string; di
       title={value.id ? tx('Edit {name}', { name: value.name }) : tx('New group')}
       footer={
         <>
+          {value.id && value.canDelete && (
+            <Button variant="quiet-danger" icon="trash" onClick={() => void remove()}>{tx('Delete group')}</Button>
+          )}
           <span className="spacer" />
           <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
           <Button variant="primary" type="submit" form="group-form" loading={busy} icon="check">{tx('Save')}</Button>

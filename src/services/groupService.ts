@@ -39,3 +39,17 @@ export async function updateGroup(user: User, id: ID, input: { name: string; dis
   await audit.record(user, 'group', id, 'update', `Renamed group ${before.name} to ${after.name}`, { before, after });
   return after;
 }
+
+/** Remove a group that has no workers. A group with workers keeps their history, so it stays. */
+export async function deleteGroup(user: User, id: ID): Promise<void> {
+  assertCan(user, 'settings.manage');
+  const before = await db.cooperatives.get(id);
+  if (!before) throw new ValidationError(tx('That group no longer exists.'));
+  const workers = await db.farmers.where('cooperativeId').equals(id).count();
+  if (workers > 0) {
+    throw new ValidationError(tx('{name} still has {count} workers (archived ones count too). Move them to another group first.', { name: before.name, count: workers }));
+  }
+  if ((await db.cooperatives.count()) <= 1) throw new ValidationError(tx('Keep at least one group.'));
+  await db.cooperatives.delete(id);
+  await audit.record(user, 'group', id, 'delete', `Deleted group ${before.name}`, { before });
+}

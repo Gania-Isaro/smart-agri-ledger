@@ -89,10 +89,26 @@ export function Work() {
 
 /* ---------------------------------------------------------------- record */
 
+const LAST_WORK_KEY = 'agri.work.last';
+
+/** The job and place typed for the previous person, to start the next form with. */
+function lastWork(): { task: string; site: string } {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_WORK_KEY) ?? '{}') as { task?: string; site?: string };
+    return { task: v.task ?? '', site: v.site ?? '' };
+  } catch {
+    return { task: '', site: '' };
+  }
+}
+
 function RecordTab() {
-  const { user, can, toast, fail, refresh, confirm } = useStore();
+  const { user, can, toast, fail, refresh, confirm, cooperatives } = useStore();
   const [date, setDate] = useState(today());
   const [search, setSearch] = useState('');
+  // The owner sees every group, so can narrow the list to one.
+  const [group, setGroup] = useState('');
+  const groupName = useMemo(() => new Map(cooperatives.map((c) => [c.id, c.name])), [cooperatives]);
+  const manyGroups = cooperatives.length > 1;
   const [recording, setRecording] = useState<Farmer | null>(null);
   const [adding, setAdding] = useState(false);
   const [viewing, setViewing] = useState<{ day: WorkDay; farmer: Farmer } | null>(null);
@@ -105,7 +121,7 @@ function RecordTab() {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = (data.data?.farmers ?? []).filter(
-      (f) => !q || `${f.firstName} ${f.lastName} ${f.code} ${f.phone}`.toLowerCase().includes(q),
+      (f) => (!group || f.cooperativeId === group) && (!q || `${f.firstName} ${f.lastName} ${f.code} ${f.phone}`.toLowerCase().includes(q)),
     );
     // People already recorded go to the top, so the manager sees the day at a glance.
     return list.sort((a, b) => {
@@ -113,10 +129,13 @@ function RecordTab() {
       const rb = data.data?.recorded.has(b.id) ? 0 : 1;
       return ra - rb || work.fullName(a).localeCompare(work.fullName(b));
     });
-  }, [data.data, search]);
+  }, [data.data, search, group]);
 
   const recorded = data.data?.recorded;
-  const dayTotal = [...(recorded?.values() ?? [])].reduce((s, d) => s + d.amount, 0);
+  // The count and total follow the chosen group.
+  const inGroup = new Set((data.data?.farmers ?? []).filter((f) => !group || f.cooperativeId === group).map((f) => f.id));
+  const recordedHere = [...(recorded?.values() ?? [])].filter((d) => inGroup.has(d.farmerId));
+  const dayTotal = recordedHere.reduce((s, d) => s + d.amount, 0);
   const allowed = can('worker.manage');
 
   const remove = async (day: WorkDay, farmer: Farmer) => {
@@ -145,6 +164,16 @@ function RecordTab() {
             <Field label={tx('Day')}>
               <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} />
             </Field>
+            {manyGroups && (
+              <Field label={tx('Group')}>
+                <select className="input" value={group} onChange={(e) => setGroup(e.target.value)}>
+                  <option value="">{tx('All groups')}</option>
+                  {cooperatives.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label={tx('Find a worker')}>
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('Name, ID or phone')} />
             </Field>
@@ -156,7 +185,7 @@ function RecordTab() {
             <span className="spacer" />
             <div className="stack">
               <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-                {tx('{count} worked on {date}', { count: recorded?.size ?? 0, date: formatDate(date) })}
+                {tx('{count} worked on {date}', { count: recordedHere.length, date: formatDate(date) })}
               </span>
               <b className="num" style={{ fontSize: 'var(--fs-lg)' }}>{formatMoney(dayTotal)}</b>
             </div>
@@ -197,8 +226,13 @@ function RecordTab() {
                   <div className="stack" style={{ minWidth: 0, flex: 1 }}>
                     <span className="strong">{work.fullName(f)}</span>
                     <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
-                      {f.code}{f.phone ? ` · ${f.phone}` : ''}
+                      {[f.code, manyGroups ? groupName.get(f.cooperativeId) : '', f.phone].filter(Boolean).join(' · ')}
                     </span>
+                    {day && (day.task || day.site) && (
+                      <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
+                        {[day.task, day.site].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
                   </div>
                   {day ? (
                     <>
@@ -240,14 +274,16 @@ function RecordTab() {
 }
 
 function RateSetting({ rate }: { rate: number }) {
-  const { user, toast, fail, refresh } = useStore();
+  const { user, toast, fail, refresh, can } = useStore();
   const [value, setValue] = useState(String(rate));
   const [editing, setEditing] = useState(false);
   if (!editing) {
     return (
       <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-3)' }}>
         {txr('Usual pay for a day: {amount}.', { amount: <b className="num">{formatMoney(rate)}</b> })}{' '}
-        <button className="linkbtn" onClick={() => { setValue(String(rate)); setEditing(true); }}>{tx('Change')}</button>
+        {can('settings.manage') && (
+          <button className="linkbtn" onClick={() => { setValue(String(rate)); setEditing(true); }}>{tx('Change')}</button>
+        )}
       </p>
     );
   }
@@ -281,6 +317,14 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
   const [paidNow, setPaidNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { activityTypes } = useStore();
+  const last = lastWork();
+  const [task, setTask] = useState(last.task);
+  const [site, setSite] = useState(last.site);
+  const taskChoices = useMemo(
+    () => [...new Set(activityTypes.filter((a) => a.category === 'farming' || a.category === 'harvest').map((a) => tx(a.label)))],
+    [activityTypes],
+  );
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -290,7 +334,13 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
     }
     setBusy(true);
     try {
-      await work.recordDay(user!, { farmerId: farmer.id, date, amount, photo: photo.dataUrl, photoTakenAt: photo.takenAt, notes, paidNow });
+      await work.recordDay(user!, { farmerId: farmer.id, date, amount, photo: photo.dataUrl, photoTakenAt: photo.takenAt, task, site, notes, paidNow });
+      // A team mostly does the same job in the same place, so the next person starts with these.
+      try {
+        localStorage.setItem(LAST_WORK_KEY, JSON.stringify({ task: task.trim(), site: site.trim() }));
+      } catch {
+        /* the next form simply starts empty */
+      }
       refresh();
       toast({ tone: 'success', title: tx('{name} recorded', { name: work.fullName(farmer) }), message: `${formatDate(date)}, ${formatMoney(Number(amount))}` });
       onClose();
@@ -311,7 +361,7 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
         <>
           <span className="spacer" />
           <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
-          <Button variant="primary" type="submit" form="record-day" loading={busy} icon="check" disabled={!photo}>
+          <Button variant="primary" type="submit" form="record-day" loading={busy} icon="check">
             {tx('Save day')}
           </Button>
         </>
@@ -320,6 +370,11 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
       <form id="record-day" onSubmit={submit} className="formgrid">
         <Field label={tx('Photo')} required full error={error ?? undefined}>
           <CameraCapture label={work.fullName(farmer)} value={photo} onChange={(p) => { setPhoto(p); setError(null); }} />
+          {!photo && (
+            <span className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-2)', display: 'block' }}>
+              {tx('The day cannot be saved without a photo: it is the proof the person was there. No camera on this computer? Record the day from a phone.')}
+            </span>
+          )}
         </Field>
         <Field label={tx('Pay for this day')} required>
           <MoneyInput value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -342,7 +397,18 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
             </Button>
           </div>
         </Field>
-        <Field label={tx('Note')} help={tx('Optional, e.g. the job they did.')}>
+        <Field label={tx('What they did')} help={tx('For example weeding, planting or harvesting.')}>
+          <Input value={task} onChange={(e) => setTask(e.target.value)} list="work-tasks" maxLength={60} />
+          <datalist id="work-tasks">
+            {taskChoices.map((label) => (
+              <option key={label} value={label} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label={tx('Where they worked')} help={tx('The site, field or plot.')}>
+          <Input value={site} onChange={(e) => setSite(e.target.value)} maxLength={60} />
+        </Field>
+        <Field label={tx('Note')} help={tx('Optional.')} full>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </Field>
       </form>
@@ -357,6 +423,8 @@ function PhotoModal({ day, farmer, onClose }: { day: WorkDay; farmer: Farmer; on
       <img src={day.photo} alt={tx('Photo of {v} on {date}', { v: work.fullName(farmer), date: formatDate(day.date) })} style={{ width: '100%', borderRadius: 'var(--r-md)' }} />
       <dl className="deflist" style={{ marginTop: 'var(--s-3)' }}>
         <div><dt>{tx('Pay')}</dt><dd className="num">{formatMoney(day.amount)}</dd></div>
+        {day.task && <div><dt>{tx('What they did')}</dt><dd>{day.task}</dd></div>}
+        {day.site && <div><dt>{tx('Where they worked')}</dt><dd>{day.site}</dd></div>}
         <div><dt>{tx('Photo taken')}</dt><dd>{formatDateTime(day.photoTakenAt)}</dd></div>
         <div><dt>{tx('Recorded by')}</dt><dd>{lookups.userName(day.recordedBy)}</dd></div>
         {day.notes && <div><dt>{tx('Note')}</dt><dd>{day.notes}</dd></div>}

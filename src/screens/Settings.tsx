@@ -17,6 +17,7 @@ import { LANGUAGES } from '../i18n/strings';
 import * as activityService from '../services/activityService';
 
 import { tx } from '../i18n/tx';
+import { newRecoveryCode } from '../cloud/account';
 import { txr } from '../i18n/rich';
 /* Plain words for the codes stored in the audit trail. */
 const AUDIT_ACTION: Record<string, string> = {
@@ -51,7 +52,7 @@ export function Settings() {
 }
 
 function SettingsHome() {
-  const { user, account, isDemo, users, cooperatives, crops, online, can, refresh, toast, fail, confirm } = useStore();
+  const { user, account, isDemo, users, cooperatives, crops, online, can, refresh, toast, fail, confirm, membership } = useStore();
   const { t, lang, setLang, theme, setTheme } = usePrefs();
   const [busy, setBusy] = useState(false);
 
@@ -399,7 +400,39 @@ function SettingsHome() {
           </div>
         </section>
 
-        {/* ---- danger zone ---- */}
+        {/* ---- recovery code, for online accounts ---- */}
+        {membership && (
+          <section className="card">
+            <div className="card__head">
+              <div className="row gap-2">
+                <Icon name="lock" size={17} />
+                <h2 className="section-title">{tx('Recovery code')}</h2>
+              </div>
+            </div>
+            <div className="card__body">
+              <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
+                {tx('A code that lets you set a new password if you forget yours. Making a new code cancels the old one. Do this while you are online.')}
+              </p>
+              <Button
+                icon="refresh"
+                disabled={!online}
+                onClick={async () => {
+                  if (!(await newRecoveryCode())) {
+                    toast({ tone: 'error', title: tx('Could not make a code'), message: tx('Check your connection and try again.') });
+                  }
+                }}
+              >
+                {tx('Make a new recovery code')}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {/* ---- danger zone ----
+            Not offered on an online cooperative: clearing one phone would
+            leave the online copy and every manager's phone untouched, so the
+            data would only look deleted. */}
+        {!membership && (
         <section className="card" style={{ borderColor: '#EFD4D1' }}>
           <div className="card__head">
             <div className="row gap-2">
@@ -418,6 +451,7 @@ function SettingsHome() {
             </Button>
           </div>
         </section>
+        )}
       </div>
     </>
   );

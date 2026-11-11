@@ -93,17 +93,17 @@ export function MoneyTotals() {
             </div>
 
             <div style={{ overflowX: 'auto', marginTop: 'var(--s-4)' }}>
-              <table className="grid" style={{ width: '100%', minWidth: 620 }}>
+              <table className="grid" style={{ width: '100%', minWidth: 780 }}>
                 <thead>
                   <tr>
-                    {[tx('Group'), tx('Workers'), tx('Days worked'), tx('Work pay'), tx('Produce'), tx('Total'), tx('Paid'), tx('Owed now')].map((h, i) => (
+                    {[tx('Group'), tx('Workers'), tx('Days worked'), tx('Work pay'), tx('Produce'), tx('Other money added'), tx('Deductions'), tx('Total'), tx('Paid'), tx('Owed now')].map((h, i) => (
                       <th key={h} className={i ? 'num' : ''}><span className="th">{h}</span></th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {t.groups.length === 0 ? (
-                    <tr><td colSpan={8}><span className="cell muted">{tx('Nothing recorded in this period.')}</span></td></tr>
+                    <tr><td colSpan={10}><span className="cell muted">{tx('Nothing recorded in this period.')}</span></td></tr>
                   ) : (
                     t.groups.map((g) => (
                       <tr key={g.groupId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/farmers?coop=${g.groupId}`)}>
@@ -112,6 +112,8 @@ export function MoneyTotals() {
                         <td className="num"><span className="cell num">{g.days}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(g.workPay)}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(g.produce)}</span></td>
+                        <td className="num"><span className="cell num">{formatMoney(g.other)}</span></td>
+                        <td className="num"><span className="cell num">{g.deductions ? `-${formatMoney(g.deductions)}` : formatMoney(0)}</span></td>
                         <td className="num"><span className="cell num strong">{formatMoney(totalsService.totalCost(g))}</span></td>
                         <td className="num"><span className="cell num">{formatMoney(g.paid)}</span></td>
                         <td className="num"><span className={`cell num ${g.owedNow > 0 ? 'pos' : ''}`}>{formatMoney(g.owedNow)}</span></td>
@@ -127,6 +129,8 @@ export function MoneyTotals() {
                       <td className="num"><span className="cell num strong">{t.all.days}</span></td>
                       <td className="num"><span className="cell num strong">{formatMoney(t.all.workPay)}</span></td>
                       <td className="num"><span className="cell num strong">{formatMoney(t.all.produce)}</span></td>
+                      <td className="num"><span className="cell num strong">{formatMoney(t.all.other)}</span></td>
+                      <td className="num"><span className="cell num strong">{t.all.deductions ? `-${formatMoney(t.all.deductions)}` : formatMoney(0)}</span></td>
                       <td className="num"><span className="cell num strong">{formatMoney(totalsService.totalCost(t.all))}</span></td>
                       <td className="num"><span className="cell num strong">{formatMoney(t.all.paid)}</span></td>
                       <td className="num"><span className="cell num strong">{formatMoney(t.all.owedNow)}</span></td>
@@ -135,6 +139,9 @@ export function MoneyTotals() {
                 )}
               </table>
             </div>
+            <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-2)' }}>
+              {tx('Total = work pay + produce + other money added − deductions.')}
+            </p>
           </>
         )}
       </div>

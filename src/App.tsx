@@ -30,6 +30,8 @@ import { db } from './db/db';
 import { useQuery } from './state/store';
 import { usePrefs } from './i18n';
 import { tx } from './i18n/tx';
+import { clearRefused } from './cloud/sync';
+import { RecoveryNotice } from './components/RecoveryNotice';
 
 /* Page titles in the top bar, by first path segment. */
 const TITLES: Record<string, string> = {
@@ -45,7 +47,7 @@ const TITLES: Record<string, string> = {
 };
 
 export function App() {
-  const { ready, user, isDemo, can } = useStore();
+  const { ready, user, isDemo, can, sync } = useStore();
   const { t, lang } = usePrefs();
   const route = useRoute();
   const [search, setSearch] = useState('');
@@ -116,6 +118,18 @@ export function App() {
               <div>{t('auth.demoBanner')}</div>
             </div>
           )}
+          {/* A change the online copy refused exists on this phone only.
+              Saying so beats letting it vanish quietly. */}
+          {sync && sync.refused > 0 && (
+            <div className="callout callout--warn no-print" role="alert" style={{ marginBottom: 'var(--s-4)' }}>
+              <Icon name="alert" size={17} />
+              <div style={{ flex: 1 }}>
+                <b>{tx('{count} changes were not saved online.', { count: sync.refused })}</b>{' '}
+                {tx('They are on this phone only, because your account is not allowed to make them. Ask the owner to make the change, or check that you are still in the group.')}
+              </div>
+              <button className="linkbtn" onClick={() => clearRefused()}>{tx('OK')}</button>
+            </div>
+          )}
           {/* Remount on language change so every screen, including memoised
               table columns, redraws in the new language. */}
           <Screen key={lang} section={section} route={route} search={search} />
@@ -125,7 +139,13 @@ export function App() {
       <TabBar />
 
       {can('activity.create') || can('payment.create') || can('ledger.post') ? (
-        <button className="fab" onClick={() => setComposerOpen(true)} aria-label={t('action.recordActivity')}>
+        <button
+          // Overview and a worker's page already have this button at the top;
+          // on a wide screen the second, floating one only gets in the way.
+          className={`fab ${section === 'overview' || (section === 'farmers' && route.segments[1] && !['groups', 'work'].includes(route.segments[1])) ? 'fab--dup' : ''}`}
+          onClick={() => setComposerOpen(true)}
+          aria-label={t('action.recordActivity')}
+        >
           <Icon name="plus" size={21} strokeWidth={2.2} />
           <span>{t('action.recordActivity')}</span>
         </button>
@@ -133,6 +153,7 @@ export function App() {
 
       <ActivityComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
       {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+      <RecoveryNotice />
       <Toaster />
       <ConfirmDialog />
     </div>

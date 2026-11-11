@@ -233,14 +233,16 @@ svg {
   }
   .app__content {
     padding: var(--s-4);
-    padding-bottom: calc(var(--tabbar-h) + var(--s-6) + env(safe-area-inset-bottom));
+    /* room for the tab bar and the round + button, so it never covers the last row */
+    padding-bottom: calc(var(--tabbar-h) + 54px + var(--s-6) + env(safe-area-inset-bottom));
   }
 }
 
 @media (max-width: 560px) {
   .app__content {
     padding: var(--s-3);
-    padding-bottom: calc(var(--tabbar-h) + var(--s-6) + env(safe-area-inset-bottom));
+    /* room for the tab bar and the round + button, so it never covers the last row */
+    padding-bottom: calc(var(--tabbar-h) + 54px + var(--s-6) + env(safe-area-inset-bottom));
   }
   .page-title {
     font-size: 1.125rem;

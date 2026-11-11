@@ -530,7 +530,7 @@ async function build(
       return {
         title: tx('Cooperative report'),
         columns: [
-          { key: 'name', header: tx('Cooperative') },
+          { key: 'name', header: tx('Group') },
           { key: 'district', header: tx('District') },
           { key: 'members', header: tx('Members'), num: true },
           { key: 'quantity', header: tx('Quantity (KG)'), num: true },

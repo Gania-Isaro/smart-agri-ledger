@@ -319,6 +319,10 @@ function Owed({ search }: { search: string }) {
   const query = useQuery(() => farmerService.listWithFinancials());
   const all = (query.data ?? []).filter((f) => f.financials.balance !== 0);
   const owed = all.filter((f) => f.financials.balance > 0);
+  // Workers paid more than they earned owe the difference back. They are a
+  // separate list, so "Money owed" only ever shows people you still have to pay.
+  const inAdvance = all.filter((f) => f.financials.balance < 0);
+  const [view, setView] = useState<'owed' | 'advance'>('owed');
   const totalOwed = owed.reduce((s, f) => s + f.financials.balance, 0);
 
   const columns = useMemo<ColumnDef<farmerService.FarmerRow>[]>(
@@ -403,15 +407,15 @@ function Owed({ search }: { search: string }) {
       },
       {
         key: 'balance',
-        header: t('field.balance'),
+        header: view === 'owed' ? t('field.balance') : tx('Advance to recover'),
         width: 148,
         align: 'right',
         mobile: 'cell',
-        sortValue: (r) => r.financials.balance,
-        searchValue: (r) => String(r.financials.balance),
-        exportValue: (r) => r.financials.balance,
+        sortValue: (r) => Math.abs(r.financials.balance),
+        searchValue: (r) => String(Math.abs(r.financials.balance)),
+        exportValue: (r) => Math.abs(r.financials.balance),
         render: (r) => (
-          <span className={`num strong ${r.financials.balance > 0 ? 'pos' : 'neg'}`}>{formatMoney(r.financials.balance)}</span>
+          <span className={`num strong ${r.financials.balance > 0 ? 'pos' : ''}`}>{formatMoney(Math.abs(r.financials.balance))}</span>
         ),
       },
       {
@@ -452,7 +456,7 @@ function Owed({ search }: { search: string }) {
           ]
         : []),
     ],
-    [lookups, t, can],
+    [lookups, t, can, view],
   );
 
   const bulkActions = false
@@ -534,19 +538,34 @@ function Owed({ search }: { search: string }) {
         </div>
         <div className="metric">
           <span className="metric__label">{t('pay.inAdvanceCount')}</span>
-          <span className="metric__value num">{formatNumber(all.filter((f) => f.financials.balance < 0).length)}</span>
+          <span className="metric__value num">{formatNumber(inAdvance.length)}</span>
           <span className="metric__foot">{t('pay.inAdvanceFoot')}</span>
         </div>
       </div>
 
+      <div className="tabs tabs--wrap" role="tablist" style={{ marginBottom: 'var(--s-3)' }}>
+        <button role="tab" aria-selected={view === 'owed'} className={`tab ${view === 'owed' ? 'tab--on' : ''}`} onClick={() => setView('owed')}>
+          {tx('Still to pay ({count})', { count: owed.length })}
+        </button>
+        <button role="tab" aria-selected={view === 'advance'} className={`tab ${view === 'advance' ? 'tab--on' : ''}`} onClick={() => setView('advance')}>
+          {tx('Paid in advance ({count})', { count: inAdvance.length })}
+        </button>
+      </div>
+      {view === 'advance' && (
+        <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
+          {tx('These workers were given more than they have earned so far. The amount comes off their next pay by itself.')}
+        </p>
+      )}
+
       <DataGrid
-        rows={all}
+        key={view}
+        rows={view === 'owed' ? owed : inAdvance}
         columns={columns}
         rowId={(r) => r.id}
         loading={query.loading}
         search={search}
         storageKey="outstanding"
-        exportName="outstanding-balances"
+        exportName={view === 'owed' ? 'money-owed' : 'paid-in-advance'}
         onRowClick={(r) => navigate(`/farmers/${r.id}`)}
         onError={fail}
         bulkActions={bulkActions}
@@ -569,15 +588,30 @@ function Owed({ search }: { search: string }) {
 
 /** Pay what a worker is owed in one step: amount (full balance by default) and how. */
 function PayModal({ worker, onClose }: { worker: farmerService.FarmerRow; onClose: () => void }) {
-  const { user, refresh, toast, fail } = useStore();
+  const { user, refresh, toast, fail, confirm } = useStore();
   const [amount, setAmount] = useState(String(worker.financials.balance));
   const [method, setMethod] = useState('cash');
   const [busy, setBusy] = useState(false);
   const name = `${worker.firstName} ${worker.lastName}`;
+  const owedNow = Math.max(worker.financials.balance, 0);
+  const extra = Math.max(Math.round(Number(amount) || 0) - owedNow, 0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (extra > 0) {
+      const answer = await confirm({
+        title: tx('Pay more than is owed?'),
+        message: tx('{name} is owed {owed}. Paying {amount} is {extra} more. The extra becomes an advance that comes off their next pay.', {
+          name,
+          owed: formatMoney(owedNow),
+          amount: formatMoney(Number(amount)),
+          extra: formatMoney(extra),
+        }),
+        confirmLabel: tx('Pay {amount}', { amount: formatMoney(Number(amount)) }),
+      });
+      if (!answer.ok) return;
+    }
     setBusy(true);
     try {
       await activityService.createActivity(user, {
@@ -611,7 +645,11 @@ function PayModal({ worker, onClose }: { worker: farmerService.FarmerRow; onClos
       }
     >
       <form id="pay-worker" onSubmit={submit} className="formgrid">
-        <Field label={tx('Amount paid')} required>
+        <Field
+          label={tx('Amount paid')}
+          required
+          help={extra > 0 ? tx('This is {extra} more than is owed. The extra becomes an advance.', { extra: formatMoney(extra) }) : undefined}
+        >
           <Input type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} className="input input--money num" />
         </Field>
         <Field label={tx('Payment method')} required>

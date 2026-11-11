@@ -1,36 +1,44 @@
 /**
  * Online sign-in: the owner creates the cooperative, the manager joins it with
- * the owner's invite code, and both sign in with email and password. Records
- * then sync between their phones.
+ * their group's code, and both sign in with a phone number and password.
+ * Records then sync between their phones.
  */
 
 import { useState, type FormEvent } from 'react';
 import { Button, Callout, Field, Input } from '../components/ui/primitives';
-import { useStore } from '../state/store';
+import { NOTICE_KEY, useStore } from '../state/store';
 import { tx } from '../i18n/tx';
 import * as cloud from '../cloud/account';
 
 type Mode = 'signin' | 'create' | 'join' | 'forgot';
 
+/** Why the app signed this phone out, said once on the sign-in page. */
+function takeNotice(): string | null {
+  try {
+    const why = sessionStorage.getItem(NOTICE_KEY);
+    sessionStorage.removeItem(NOTICE_KEY);
+    return why;
+  } catch {
+    return null;
+  }
+}
+
 export function CloudLogin({ onUseDevice }: { onUseDevice: () => void }) {
   const [mode, setMode] = useState<Mode>('signin');
-  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
-
-  if (confirmEmail) {
-    return (
-      <div className="stack gap-4">
-        <Callout tone="info" icon="info">
-          {tx('We sent a confirmation link to {email}. Open it, then come back and sign in. Your cooperative is set up the first time you sign in.', { email: confirmEmail })}
-        </Callout>
-        <Button variant="primary" block onClick={() => { setConfirmEmail(null); setMode('signin'); }}>
-          {tx('Go to sign in')}
-        </Button>
-      </div>
-    );
-  }
-
+  const [notice] = useState(takeNotice);
   return (
     <>
+      {notice && (
+        <div style={{ marginBottom: 'var(--s-4)' }}>
+          <Callout tone="warn" icon="info">
+            {notice === 'removed'
+              ? tx('The owner removed you from the cooperative, so this phone was signed out.')
+              : notice === 'changed'
+                ? tx('Your group or role changed. Sign in again to open it.')
+                : tx('Your sign-in ran out. Sign in again; your records on this phone are kept.')}
+          </Callout>
+        </div>
+      )}
       <div className="tabs tabs--wrap" style={{ marginBottom: 'var(--s-5)' }} role="tablist">
         {([
           ['signin', tx('Sign in')],
@@ -50,8 +58,8 @@ export function CloudLogin({ onUseDevice }: { onUseDevice: () => void }) {
       </div>
 
       {mode === 'signin' && <SignInForm onForgot={() => setMode('forgot')} />}
-      {mode === 'create' && <CreateForm onConfirm={setConfirmEmail} />}
-      {mode === 'join' && <JoinForm onConfirm={setConfirmEmail} />}
+      {mode === 'create' && <CreateForm />}
+      {mode === 'join' && <JoinForm />}
       {mode === 'forgot' && <ForgotForm onBack={() => setMode('signin')} />}
 
       <div className="login__demo" style={{ marginTop: 'var(--s-5)' }}>
@@ -84,28 +92,32 @@ function useSubmit() {
   return { error, setError, busy, run };
 }
 
-function EmailPassword({
+/** Phone number (the sign-in name), an optional email, and a new password. */
+function NewPersonFields({
+  phone,
   email,
   password,
+  onPhone,
   onEmail,
   onPassword,
-  newPassword,
-  invalid,
 }: {
+  phone: string;
   email: string;
   password: string;
+  onPhone: (v: string) => void;
   onEmail: (v: string) => void;
   onPassword: (v: string) => void;
-  newPassword?: boolean;
-  invalid?: boolean;
 }) {
   return (
     <>
-      <Field label={tx('Email')} required>
-        <Input type="email" inputMode="email" autoComplete="username" value={email} onChange={(e) => onEmail(e.target.value)} placeholder={tx('you@cooperative.rw')} invalid={invalid} />
+      <Field label={tx('Phone number')} required help={tx('You will sign in with this number.')}>
+        <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => onPhone(e.target.value)} placeholder="0788 123 456" />
       </Field>
-      <Field label={tx('Password')} required help={newPassword ? tx('At least 6 characters.') : undefined}>
-        <Input type="password" autoComplete={newPassword ? 'new-password' : 'current-password'} value={password} onChange={(e) => onPassword(e.target.value)} invalid={invalid} />
+      <Field label={tx('Email')} help={tx('Optional. Leave it empty if you have none.')}>
+        <Input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => onEmail(e.target.value)} placeholder={tx('you@cooperative.rw')} />
+      </Field>
+      <Field label={tx('Password')} required help={tx('At least 6 characters.')}>
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => onPassword(e.target.value)} />
       </Field>
     </>
   );
@@ -114,7 +126,7 @@ function EmailPassword({
 function SignInForm({ onForgot }: { onForgot: () => void }) {
   const { cloudSignIn, toast } = useStore();
   const { error, setError, busy, run } = useSubmit();
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
 
   return (
@@ -122,12 +134,17 @@ function SignInForm({ onForgot }: { onForgot: () => void }) {
       className="stack gap-4"
       onSubmit={(e) =>
         run(e, async () => {
-          await cloudSignIn(email, password);
+          await cloudSignIn(login, password);
           toast({ tone: 'success', title: tx('Signed in') });
         })
       }
     >
-      <EmailPassword email={email} password={password} onEmail={(v) => { setEmail(v); setError(''); }} onPassword={(v) => { setPassword(v); setError(''); }} invalid={Boolean(error)} />
+      <Field label={tx('Phone number')} required help={tx('If you signed up with an email before, type that email here.')}>
+        <Input autoComplete="username" value={login} onChange={(e) => { setLogin(e.target.value); setError(''); }} placeholder="0788 123 456" invalid={Boolean(error)} />
+      </Field>
+      <Field label={tx('Password')} required>
+        <Input type="password" autoComplete="current-password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} invalid={Boolean(error)} />
+      </Field>
       {error && <Callout tone="danger" icon="alert">{error}</Callout>}
       <Button variant="primary" type="submit" block loading={busy}>
         {tx('Sign in')}
@@ -139,11 +156,12 @@ function SignInForm({ onForgot }: { onForgot: () => void }) {
   );
 }
 
-function CreateForm({ onConfirm }: { onConfirm: (email: string) => void }) {
+function CreateForm() {
   const { cloudCreate, toast } = useStore();
   const { error, busy, run } = useSubmit();
   const [name, setName] = useState('');
   const [coop, setCoop] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -152,9 +170,8 @@ function CreateForm({ onConfirm }: { onConfirm: (email: string) => void }) {
       className="stack gap-4"
       onSubmit={(e) =>
         run(e, async () => {
-          const r = await cloudCreate({ name, email, password, cooperativeName: coop });
-          if (r.needsConfirmation) onConfirm(email.trim());
-          else if (r.membership) {
+          const r = await cloudCreate({ name, phone, email, password, cooperativeName: coop });
+          if (r.membership) {
             toast({
               tone: 'success',
               title: tx('Cooperative created'),
@@ -174,7 +191,7 @@ function CreateForm({ onConfirm }: { onConfirm: (email: string) => void }) {
       <Field label={tx('Cooperative name')} required>
         <Input value={coop} onChange={(e) => setCoop(e.target.value)} />
       </Field>
-      <EmailPassword email={email} password={password} onEmail={setEmail} onPassword={setPassword} newPassword />
+      <NewPersonFields phone={phone} email={email} password={password} onPhone={setPhone} onEmail={setEmail} onPassword={setPassword} />
       {error && <Callout tone="danger" icon="alert">{error}</Callout>}
       <Button variant="primary" type="submit" block loading={busy}>
         {tx('Create the cooperative')}
@@ -183,11 +200,12 @@ function CreateForm({ onConfirm }: { onConfirm: (email: string) => void }) {
   );
 }
 
-function JoinForm({ onConfirm }: { onConfirm: (email: string) => void }) {
+function JoinForm() {
   const { cloudJoin, toast } = useStore();
   const { error, busy, run } = useSubmit();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -196,9 +214,8 @@ function JoinForm({ onConfirm }: { onConfirm: (email: string) => void }) {
       className="stack gap-4"
       onSubmit={(e) =>
         run(e, async () => {
-          const r = await cloudJoin({ name, email, password, code });
-          if (r.needsConfirmation) onConfirm(email.trim());
-          else toast({ tone: 'success', title: tx('You joined {name}', { name: r.membership?.coopName ?? '' }) });
+          const r = await cloudJoin({ name, phone, email, password, code });
+          toast({ tone: 'success', title: tx('You joined {name}', { name: r.membership?.coopName ?? '' }) });
         })
       }
     >
@@ -211,7 +228,7 @@ function JoinForm({ onConfirm }: { onConfirm: (email: string) => void }) {
       <Field label={tx('Your name')} required>
         <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       </Field>
-      <EmailPassword email={email} password={password} onEmail={setEmail} onPassword={setPassword} newPassword />
+      <NewPersonFields phone={phone} email={email} password={password} onPhone={setPhone} onEmail={setEmail} onPassword={setPassword} />
       {error && <Callout tone="danger" icon="alert">{error}</Callout>}
       <Button variant="primary" type="submit" block loading={busy}>
         {tx('Join the cooperative')}
@@ -220,16 +237,27 @@ function JoinForm({ onConfirm }: { onConfirm: (email: string) => void }) {
   );
 }
 
+/**
+ * A forgotten password. Phone accounts have no mailbox, so the password is
+ * set again here with a code: a manager uses their group's code (the owner
+ * reads it out), the owner uses the recovery code from when they signed up.
+ * Accounts made with an email can still ask for a link.
+ */
 function ForgotForm({ onBack }: { onBack: () => void }) {
-  const { error, busy, run } = useSubmit();
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const { error, setError, busy, run } = useSubmit();
+  const [login, setLogin] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [done, setDone] = useState<'reset' | 'sent' | null>(null);
+  const byEmail = login.includes('@');
 
-  if (sent) {
+  if (done) {
     return (
       <div className="stack gap-4">
         <Callout tone="info" icon="info">
-          {tx('If an account exists for {email}, a link to set a new password is on its way. Open it on this phone.', { email })}
+          {done === 'reset'
+            ? tx('Your new password is saved. Sign in with it now.')
+            : tx('If an account exists for {email}, a link to set a new password is on its way. Open it on this phone.', { email: login.trim() })}
         </Callout>
         <Button variant="primary" block onClick={onBack}>
           {tx('Back to sign in')}
@@ -239,14 +267,42 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <form className="stack gap-4" onSubmit={(e) => run(e, async () => { await cloud.sendPasswordReset(email); setSent(true); })}>
-      <Field label={tx('Email')} required>
-        <Input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={tx('you@cooperative.rw')} />
+    <form
+      className="stack gap-4"
+      onSubmit={(e) =>
+        run(e, async () => {
+          await cloud.resetWithCode(login, code, password);
+          setDone('reset');
+        })
+      }
+    >
+      <Field label={tx('Phone number')} required>
+        <Input autoComplete="username" value={login} onChange={(e) => { setLogin(e.target.value); setError(''); }} placeholder="0788 123 456" />
+      </Field>
+      <Field
+        label={tx('Code')}
+        required
+        help={tx('Group manager: ask the owner for your group’s manager code. Owner: the recovery code you wrote down when you created the account.')}
+      >
+        <Input value={code} onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(''); }} autoCapitalize="characters" autoComplete="off" />
+      </Field>
+      <Field label={tx('New password')} required help={tx('At least 6 characters.')}>
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
       {error && <Callout tone="danger" icon="alert">{error}</Callout>}
       <Button variant="primary" type="submit" block loading={busy}>
-        {tx('Send me a reset link')}
+        {tx('Save the new password')}
       </Button>
+      {byEmail && (
+        <Button
+          variant="secondary"
+          type="button"
+          block
+          onClick={(e) => run(e as unknown as FormEvent, async () => { await cloud.sendPasswordReset(login); setDone('sent'); })}
+        >
+          {tx('No code? Email me a reset link')}
+        </Button>
+      )}
       <Button variant="ghost" type="button" onClick={onBack}>
         {tx('Back to sign in')}
       </Button>

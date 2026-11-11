@@ -404,6 +404,13 @@ kbd {
   transform: translateY(0) scale(0.98);
 }
 
+/* Pages that already have a Record activity button at the top. */
+@media (min-width: 1025px) {
+  .fab--dup {
+    display: none;
+  }
+}
+
 @media (max-width: 1024px) {
   .fab {
     bottom: calc(var(--tabbar-h) + var(--s-4) + env(safe-area-inset-bottom));
@@ -1548,6 +1555,13 @@ table.grid {
 .callout--info { background: var(--c-green-050); border-color: var(--c-green-200); color: var(--c-green-900); }
 .callout--warn { background: var(--c-amber-100); border-color: #EBDCB0; color: #6B4E0C; }
 .callout--danger { background: var(--c-red-100); border-color: #F0CCC8; color: #7E241E; }
+/* Dark theme: the tints above turn dark, so the text must turn light. */
+:root[data-theme='dark'] .callout--info,
+:root[data-theme='system'].theme-dark .callout--info { color: #CFE8D9; border-color: #2E5A3D; }
+:root[data-theme='dark'] .callout--warn,
+:root[data-theme='system'].theme-dark .callout--warn { color: #F3DFA8; border-color: #6B5320; }
+:root[data-theme='dark'] .callout--danger,
+:root[data-theme='system'].theme-dark .callout--danger { color: #F6C9C4; border-color: #7A3630; }
 
 .callout b { font-weight: 650; }
 

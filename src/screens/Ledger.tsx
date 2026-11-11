@@ -129,7 +129,7 @@ function FarmerLedgers({ search }: { search: string }) {
       },
       {
         key: 'coop',
-        header: T('Cooperative'),
+        header: T('Group'),
         width: 200,
         optional: true,
         sortValue: (r) => lookups.coopName(r.cooperativeId),

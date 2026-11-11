@@ -51,17 +51,32 @@ language sql stable security definer set search_path = public as $$
       or (public.is_member(c) and (g is null or g = public.my_group(c)));
 $$;
 
+-- May the signed-in person write this record?
+-- The owner writes anything. A manager writes only their own group's records.
+-- Records shared by the whole cooperative (crop prices, settings, activity
+-- types, the groups themselves) are written by the owner alone, with two
+-- exceptions the app cannot work without: the counters that hand out worker
+-- and entry numbers, and the manager's own person record.
+create or replace function public.can_write(c uuid, g text, t text, i text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_owner(c)
+      or (public.is_member(c) and (
+            (g is not null and g = public.my_group(c) and t <> 'cooperatives')
+         or (g is null and t = 'counters')
+         or (g is null and t = 'users' and i = auth.uid()::text)));
+$$;
+
 -- ------------------------------------------------------------------ records
 
 drop policy if exists records_read on public.records;
 create policy records_read on public.records for select using (public.can_reach(coop_id, group_id));
 
 drop policy if exists records_insert on public.records;
-create policy records_insert on public.records for insert with check (public.can_reach(coop_id, group_id));
+create policy records_insert on public.records for insert with check (public.can_write(coop_id, group_id, tbl, id));
 
 drop policy if exists records_update on public.records;
 create policy records_update on public.records for update
-  using (public.can_reach(coop_id, group_id)) with check (public.can_reach(coop_id, group_id));
+  using (public.can_write(coop_id, group_id, tbl, id)) with check (public.can_write(coop_id, group_id, tbl, id));
 
 -- -------------------------------------------------------------- functions
 
@@ -140,6 +155,11 @@ $$;
 drop policy if exists members_read on public.members;
 create policy members_read on public.members for select
   using (public.is_owner(coop_id) or user_id = auth.uid());
+
+-- The owner can remove a manager, who then can no longer read or write anything.
+drop policy if exists members_owner_remove on public.members;
+create policy members_owner_remove on public.members for delete
+  using (public.is_owner(coop_id) and role <> 'owner');
 
 grant execute on function public.group_code(uuid, text) to authenticated;
 grant execute on function public.new_group_code(uuid, text) to authenticated;

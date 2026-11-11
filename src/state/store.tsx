@@ -18,7 +18,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { closeAccountDatabase, db, openAccountDatabase } from '../db/db';
+import Dexie from 'dexie';
+import { AgriLedgerDB, closeAccountDatabase, db, openAccountDatabase } from '../db/db';
 import { prepareAccount } from '../db/seed';
 import * as auth from '../db/accounts';
 import type { Account } from '../db/accounts';
@@ -34,7 +35,7 @@ import { can, type Permission } from '../domain/rbac';
 import { catalog } from '../services/activityService';
 import { cloudEnabled } from '../cloud/client';
 import * as cloud from '../cloud/account';
-import { onSyncStatus, startSync, stopSync, syncNow, type SyncStatus } from '../cloud/sync';
+import { forgetDevice, onSyncStatus, renameDevice, startSync, stopSync, syncNow, syncStatus, type SyncStatus } from '../cloud/sync';
 
 import { cropLabel, tx } from '../i18n/tx';
 /* ---------------------------------------------------------------- toasts */
@@ -95,8 +96,8 @@ interface Store {
   membership: cloud.Membership | null;
   sync: SyncStatus | null;
   cloudSignIn: (email: string, password: string) => Promise<void>;
-  cloudCreate: (input: { name: string; email: string; password: string; cooperativeName: string }) => Promise<cloud.SignUpResult>;
-  cloudJoin: (input: { name: string; email: string; password: string; code: string }) => Promise<cloud.SignUpResult>;
+  cloudCreate: (input: cloud.NewPerson & { cooperativeName: string }) => Promise<cloud.SignUpResult>;
+  cloudJoin: (input: cloud.NewPerson & { code: string }) => Promise<cloud.SignUpResult>;
   syncNow: () => Promise<void>;
   /** Updates the cached membership, for example after a new invite code. */
   setMembership: (m: cloud.Membership) => void;
@@ -149,10 +150,50 @@ function writeMembership(m: cloud.Membership | null): void {
   }
 }
 
+/**
+ * Each person keeps their own copy of the cooperative on a phone. A manager
+ * who signs in after the owner on the same phone must never open the owner's
+ * copy, which holds every group.
+ */
+const cloudDbId = (m: cloud.Membership) => `cloud_${m.coopId}_${m.userId}`;
+/** Names this person's sync position on this phone. */
+const deviceKey = (m: cloud.Membership) => `${m.coopId}.${m.userId}`;
+
+/** Shown once on the sign-in page after the app had to sign someone out. */
+export const NOTICE_KEY = 'agri.notice';
+
+/** Sign-ins wait for a sign-out that is still uploading its last changes. */
+let leaving: Promise<void> = Promise.resolve();
+
+/**
+ * Earlier versions kept one copy per cooperative, shared by whoever signed
+ * in. When the same person is still signed in it becomes their own copy;
+ * otherwise it is removed, since nobody can say whose it was.
+ */
+async function adoptOldCopy(m: cloud.Membership, samePerson: boolean): Promise<void> {
+  const oldName = auth.dataDbName(`cloud_${m.coopId}`);
+  const newName = auth.dataDbName(cloudDbId(m));
+  if (!(await Dexie.exists(oldName))) return;
+  if (samePerson && !(await Dexie.exists(newName))) {
+    const from = new AgriLedgerDB(oldName);
+    const to = new AgriLedgerDB(newName);
+    for (const t of from.tables) {
+      const rows = await t.toArray();
+      if (rows.length) await to.table(t.name).bulkPut(rows);
+    }
+    from.close();
+    to.close();
+    renameDevice(m.coopId, deviceKey(m));
+  } else {
+    forgetDevice(m.coopId);
+  }
+  await Dexie.delete(oldName);
+}
+
 /** A local account record standing in for an online cooperative. */
 function cloudAccount(m: cloud.Membership): Account {
   return {
-    id: `cloud_${m.coopId}`,
+    id: cloudDbId(m),
     name: m.userName,
     email: m.email,
     cooperativeName: m.coopName,
@@ -226,13 +267,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // no signal, then confirm the membership in the background.
         const cached = readMembership();
         if (cached) {
+          await adoptOldCopy(cached, true);
           await activateCloud(cached);
-          void cloud.restore().then((fresh) => {
-            if (fresh) {
-              writeMembership(fresh);
-              setMembershipState(fresh);
-            }
-          });
+          void checkStanding();
         }
       } else {
         const restored = sessionId ? await auth.accountsDb.accounts.get(sessionId) : undefined;
@@ -256,14 +293,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * prepared, then load the reference data the screens need. Everything after
    * this reads through the `db` binding, which now refers to this account.
    */
-  const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean; groupId?: string | null }) => {
+  const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean; groupId?: string | null; seed?: boolean }) => {
     openAccountDatabase(acc.id, { cloud: person?.cloud });
-    await prepareAccount(acc.id, {
-      cooperativeName: acc.cooperativeName,
-      ownerId: person?.id ?? acc.id,
-      ownerName: acc.name,
-      ownerEmail: acc.email,
-    });
+    if (person?.seed !== false) {
+      await prepareAccount(acc.id, {
+        cooperativeName: acc.cooperativeName,
+        ownerId: person?.id ?? acc.id,
+        ownerName: acc.name,
+        ownerEmail: acc.email,
+      });
+    }
     if (person) {
       // Each person on an online cooperative has their own user record, with
       // the role the cooperative gave them.
@@ -321,12 +360,91 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setCooperatives(co);
           setRevision((r) => r + 1);
         });
-      }, { isOwner, myGroup: isOwner ? null : m.groupId });
+      }, { isOwner, myGroup: isOwner ? null : m.groupId, key: deviceKey(m), onRefused: () => void checkStanding() });
+      // The starting records (crop list, first group) are written only by the
+      // owner, and only once the online copy is known to be empty. A phone
+      // that could not download must not upload defaults over real data.
+      const prepared = Boolean(await db.settings.get('seeded'));
+      const downloaded = navigator.onLine && !syncStatus()?.error;
+      if (!prepared && !downloaded) {
+        stopSync();
+        closeAccountDatabase();
+        setMembershipState(null);
+        throw new cloud.CloudError(tx('Connect to the internet to finish setting up this phone, then sign in again.'));
+      }
       const role: User['role'] = isOwner ? 'super_admin' : 'manager';
-      await activate(acc, { id: m.userId, role, cloud: true, groupId: isOwner ? null : m.groupId });
+      await activate(acc, { id: m.userId, role, cloud: true, groupId: isOwner ? null : m.groupId, seed: isOwner && !prepared });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activate],
   );
+
+  /**
+   * Sign this phone out because the online copy says so. `wipe` also removes
+   * the local copy, for someone the owner removed or moved to another group.
+   */
+  const forceOut = useCallback(async (m: cloud.Membership, notice: string, wipe: boolean) => {
+    stopSync();
+    closeAccountDatabase();
+    if (wipe) {
+      forgetDevice(deviceKey(m));
+      try {
+        await Dexie.delete(auth.dataDbName(cloudDbId(m)));
+      } catch {
+        /* removed on the next sign-in instead */
+      }
+    }
+    writeMembership(null);
+    writeSession(null);
+    try {
+      sessionStorage.setItem(NOTICE_KEY, notice);
+    } catch {
+      /* the sign-in page simply shows no note */
+    }
+    try {
+      await cloud.signOut();
+    } catch {
+      /* already signed out */
+    }
+    window.location.hash = '#/overview';
+    window.location.reload();
+  }, []);
+
+  /** Ask the online copy whether this person is still in the cooperative, and in which group. */
+  const checking = useRef(false);
+  const checkStanding = useCallback(async () => {
+    const cached = readMembership();
+    if (!cached || checking.current) return;
+    checking.current = true;
+    try {
+      const st = await cloud.standing();
+      if (st.state === 'unknown') return;
+      if (st.state === 'expired') return void (await forceOut(cached, 'expired', false));
+      if (st.state === 'removed') return void (await forceOut(cached, 'removed', true));
+      const fresh = st.membership;
+      if (fresh.coopId !== cached.coopId || fresh.role !== cached.role || fresh.groupId !== cached.groupId) {
+        return void (await forceOut(cached, 'changed', true));
+      }
+      if (fresh.userName !== cached.userName || fresh.coopName !== cached.coopName) {
+        writeMembership(fresh);
+        setMembershipState(fresh);
+      }
+    } finally {
+      checking.current = false;
+    }
+  }, [forceOut]);
+
+  /* A removed manager is signed out soon after, not only at the next start. */
+  useEffect(() => {
+    if (!membership) return;
+    const check = () => void checkStanding();
+    const timer = window.setInterval(check, 5 * 60_000);
+    window.addEventListener('online', check);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('online', check);
+    };
+  }, [membership, checkStanding]);
 
   useEffect(() => (membership ? onSyncStatus(setSync) : undefined), [membership]);
 
@@ -414,6 +532,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback<Store['signIn']>(
     async (email, pin) => {
+      await leaving;
       const acc = await auth.verifyPin(email, pin);
       writeSession(acc.id);
       await activate(acc);
@@ -436,15 +555,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const enterCloud = useCallback(
     async (m: cloud.Membership) => {
+      await adoptOldCopy(m, false);
+      await activateCloud(m);
       writeMembership(m);
       writeSession(CLOUD_SESSION);
-      await activateCloud(m);
     },
     [activateCloud],
   );
 
   const cloudSignIn = useCallback<Store['cloudSignIn']>(
     async (email, password) => {
+      await leaving;
       await enterCloud(await cloud.signIn(email, password));
     },
     [enterCloud],
@@ -452,6 +573,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const cloudCreate = useCallback<Store['cloudCreate']>(
     async (input) => {
+      await leaving;
       const r = await cloud.createCooperative(input);
       if (r.membership) await enterCloud(r.membership);
       return r;
@@ -461,6 +583,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const cloudJoin = useCallback<Store['cloudJoin']>(
     async (input) => {
+      await leaving;
       const r = await cloud.joinCooperative(input);
       if (r.membership) await enterCloud(r.membership);
       return r;
@@ -475,10 +598,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     if (membership) {
-      // Upload anything still waiting before leaving, then end the online session.
-      void syncNow().finally(() => {
+      // Upload anything still waiting before leaving (for a few seconds at
+      // most), then end the online session and release this person's copy.
+      const mine = db;
+      const wait = new Promise<void>((resolve) => window.setTimeout(resolve, 6000));
+      leaving = Promise.race([syncNow().catch(() => undefined), wait]).then(async () => {
         stopSync();
-        void cloud.signOut();
+        mine.close();
+        try {
+          await cloud.signOut();
+        } catch {
+          /* no signal: the saved sign-in is cleared on this phone anyway */
+        }
       });
       writeMembership(null);
       setMembershipState(null);
@@ -491,8 +622,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCrops([]);
     setCooperatives([]);
     setNotifications([]);
-    // Release the handle so the next account opens a clean connection.
-    closeAccountDatabase();
+    // Release the handle so the next account opens a clean connection. An
+    // online account keeps it for the last upload and closes it afterwards.
+    if (membership) closeAccountDatabase({ keepOpen: true });
+    else closeAccountDatabase();
     window.location.hash = '#/overview';
   }, [membership]);
 

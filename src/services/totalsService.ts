@@ -159,5 +159,14 @@ export async function totals(range: Range): Promise<Totals> {
     add(g, w);
     add(all, w);
   }
+  // "Workers" is everyone on the group's list, the same number every other
+  // screen shows, not only those with something recorded in the period. A
+  // group with nothing recorded yet still gets its row.
+  const active = farmers.filter((f) => !f.archived);
+  for (const g of groups) {
+    if (!perGroup.has(g.id)) perGroup.set(g.id, { ...empty(), groupId: g.id, name: g.name, workers: 0 });
+  }
+  for (const g of perGroup.values()) g.workers = active.filter((f) => f.cooperativeId === g.groupId).length;
+  all.workers = active.length;
   return { range, workers, groups: [...perGroup.values()].sort((a, b) => a.name.localeCompare(b.name)), all };
 }

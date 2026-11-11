@@ -32,6 +32,7 @@ import type {
   PaymentMethod,
   Unit,
   User,
+  WorkDay,
 } from '../domain/types';
 
 /* --------------------------------------------------------------- helpers */
@@ -476,6 +477,40 @@ export async function seedDatabase(): Promise<SeedResult> {
   post(disputedFarmer.id, 'adjustment', 12000, 'Weight correction disputed by worker', dDate, { direction: 'debit' }, 'acc_demo');
   log('transaction', 'adjustment', 'update', `Balance adjusted for ${disputedFarmer.code}, under review`, 'acc_demo', `${dDate}T10:00:00.000Z`);
 
+  /* ---- daily work: the last two weeks, a few people from each group ----
+     The demo has to show the main job of the app, so each working day has
+     people recorded with a (drawn) photo, some paid on the day, some owed. */
+  const workdays: WorkDay[] = [];
+  const TASKS = ['Weeding', 'Planting', 'Harvesting', 'Land preparation', 'Spraying'];
+  const crew = COOPERATIVES.flatMap((c) => farmers.filter((f) => f.cooperativeId === c.id).slice(0, 4));
+  for (let back = 13; back >= 0; back--) {
+    const date = addDays(anchor, -back);
+    if (new Date(`${date}T12:00:00`).getDay() === 0) continue; // no work on Sunday
+    crew.forEach((farmer, i) => {
+      if ((i + back) % 4 === 3) return; // not everyone works every day
+      const amount = (i + back) % 5 === 0 ? 1500 : 3000;
+      const paidNow = (i + back) % 2 === 0;
+      const task = TASKS[(back + Math.floor(i / 4)) % TASKS.length]!;
+      const site = COOPERATIVES.find((c) => c.id === farmer.cooperativeId)?.district ?? '';
+      const earned = post(farmer.id, 'work', amount, `Day's work, ${task}`, date);
+      const paid = paidNow ? post(farmer.id, 'payment', amount, "Paid for the day's work", date) : undefined;
+      workdays.push({
+        id: uid('wdy'),
+        farmerId: farmer.id,
+        date,
+        amount,
+        photo: demoPhoto(`${farmer.firstName} ${farmer.lastName}`, date, i),
+        photoTakenAt: `${date}T07:${String(10 + (i % 40)).padStart(2, '0')}:00.000Z`,
+        task,
+        site,
+        transactionId: earned.id,
+        paidTxId: paid?.id,
+        recordedBy: 'acc_demo',
+        recordedAt: `${date}T07:${String(12 + (i % 40)).padStart(2, '0')}:00.000Z`,
+      });
+    });
+  }
+
   /* ---- derive farmer status from what actually happened ---- */
   const byFarmer = new Map<string, LedgerTransaction[]>();
   for (const tx of transactions) {
@@ -492,7 +527,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
     let status: FarmerStatus;
     if (farmer.id === disputedFarmer.id) status = 'disputed';
-    else if (balance > 0 && hasHarvest) status = 'awaiting_payment';
+    else if (balance > 0 && (hasHarvest || workdays.some((d) => d.farmerId === farmer.id))) status = 'awaiting_payment';
     else if (hasPaid && balance <= 0) status = 'paid';
     else if (hasHarvest) status = 'harvested';
     else if (activities.some((a) => a.farmerId === farmer.id && a.category === 'farming')) status = 'in_progress';
@@ -523,7 +558,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
   await db.transaction(
     'rw',
-    [db.users, db.cooperatives, db.crops, db.farmers, db.activityTypes, db.activities, db.harvests, db.payments, db.batches, db.transactions, db.audit, db.notifications, db.counters, db.settings],
+    [db.users, db.cooperatives, db.crops, db.farmers, db.activityTypes, db.activities, db.harvests, db.payments, db.batches, db.transactions, db.workdays, db.audit, db.notifications, db.counters, db.settings],
     async () => {
       // Last line of defence against a concurrent seed: if another run already
       // committed, abandon this one rather than writing duplicate codes.
@@ -539,6 +574,7 @@ export async function seedDatabase(): Promise<SeedResult> {
         db.payments.bulkPut(payments),
         db.batches.bulkPut(batches),
         db.transactions.bulkPut(transactions),
+        db.workdays.bulkPut(workdays),
         db.audit.bulkPut(audit),
         db.notifications.bulkPut(notifications),
         db.counters.bulkPut(counters),
@@ -554,6 +590,20 @@ export async function seedDatabase(): Promise<SeedResult> {
     payments: payments.length,
     transactions: transactions.length,
   };
+}
+
+/** A small drawn picture standing in for a work-day photo in the demo. */
+function demoPhoto(name: string, date: string, i: number): string {
+  const shirts = ['#7aa874', '#c9a26b', '#6f8fb0', '#b07a6f', '#8f7ab0', '#6fb0a6'];
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240">` +
+    `<rect width="320" height="240" fill="#cfe0c4"/>` +
+    `<ellipse cx="160" cy="250" rx="100" ry="90" fill="${shirts[i % shirts.length]}"/>` +
+    `<circle cx="160" cy="105" r="46" fill="#6b4a35"/>` +
+    `<rect y="212" width="320" height="28" fill="#000" fill-opacity=".55"/>` +
+    `<text x="8" y="231" font-family="Arial" font-size="13" fill="#fff">${name.replace(/[<&>]/g, '')} · ${date} · demo</text>` +
+    `</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 function addStamp(hoursAgo: number): string {
