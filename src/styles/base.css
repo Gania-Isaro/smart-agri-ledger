@@ -176,6 +176,9 @@ svg {
 
 .app__content {
   flex: 1;
+  /* Positioned, so hidden screen-reader labels inside a long list stay inside
+     this scrolling area instead of stretching the whole page. */
+  position: relative;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--s-6);
