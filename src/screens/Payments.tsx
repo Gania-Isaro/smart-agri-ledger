@@ -319,9 +319,6 @@ function Owed({ search }: { search: string }) {
   const query = useQuery(() => farmerService.listWithFinancials());
   const all = (query.data ?? []).filter((f) => f.financials.balance !== 0);
   const owed = all.filter((f) => f.financials.balance > 0);
-  // Workers paid more than they earned are counted in the card above the
-  // list, but not listed: "Money owed" shows only people still to be paid.
-  const inAdvance = all.filter((f) => f.financials.balance < 0);
   const totalOwed = owed.reduce((s, f) => s + f.financials.balance, 0);
 
   const columns = useMemo<ColumnDef<farmerService.FarmerRow>[]>(
@@ -534,11 +531,6 @@ function Owed({ search }: { search: string }) {
           <span className="metric__label">{t('pay.largestBalance')}</span>
           <span className="metric__value num">{formatMoneyShort(Math.max(...owed.map((f) => f.financials.balance), 0))}</span>
           <span className="metric__foot">{t('pay.largestBalanceFoot')}</span>
-        </div>
-        <div className="metric">
-          <span className="metric__label">{t('pay.inAdvanceCount')}</span>
-          <span className="metric__value num">{formatNumber(inAdvance.length)}</span>
-          <span className="metric__foot">{t('pay.inAdvanceFoot')}</span>
         </div>
       </div>
 
