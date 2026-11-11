@@ -481,7 +481,7 @@ export async function seedDatabase(): Promise<SeedResult> {
      The demo has to show the main job of the app, so each working day has
      people recorded with a (drawn) photo, some paid on the day, some owed. */
   const workdays: WorkDay[] = [];
-  const TASKS = ['Weeding', 'Planting', 'Harvesting', 'Land preparation', 'Spraying'];
+  const TASKS = ['Weeding', 'Planting', 'Harvesting', 'Digging', 'Spraying'];
   const crew = COOPERATIVES.flatMap((c) => farmers.filter((f) => f.cooperativeId === c.id).slice(0, 4));
   for (let back = 13; back >= 0; back--) {
     const date = addDays(anchor, -back);

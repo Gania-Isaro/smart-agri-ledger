@@ -54,6 +54,57 @@ export async function setDailyRate(user: User, value: number | string): Promise<
   return rate;
 }
 
+/* ------------------------------------------------------------ activities */
+
+/**
+ * The jobs people are paid for by the day (digging, weeding, planting...),
+ * each with its own usual pay. The owner keeps the list; a manager picks from
+ * it when recording a day and the pay fills in.
+ */
+export interface WorkTask {
+  id: string;
+  name: string;
+  /** Usual pay for a full day of this job, in whole RWF. */
+  rate: number;
+}
+
+const TASKS_KEY = 'work.tasks';
+
+/** The starting list, until the owner changes it. Names follow the language in use. */
+function defaultTasks(rate: number): WorkTask[] {
+  return [
+    { id: 'digging', name: T('Digging'), rate },
+    { id: 'weeding', name: T('Weeding'), rate },
+    { id: 'planting', name: T('Planting'), rate },
+    { id: 'harvesting', name: T('Harvesting'), rate },
+    { id: 'spraying', name: T('Spraying'), rate },
+    { id: 'other', name: T('Other work'), rate },
+  ];
+}
+
+export async function workTasks(): Promise<WorkTask[]> {
+  const saved = await getSetting<WorkTask[] | null>(TASKS_KEY, null);
+  if (saved?.length) return saved;
+  return defaultTasks(await dailyRate());
+}
+
+export async function saveWorkTasks(user: User, list: { id?: string; name: string; rate: number | string }[]): Promise<WorkTask[]> {
+  assertCan(user, 'settings.manage');
+  const seen = new Set<string>();
+  const tasks: WorkTask[] = [];
+  for (const item of list) {
+    const name = item.name.trim().replace(/\s+/g, ' ');
+    if (!name) throw new ValidationError(T('Give every activity a name.'));
+    if (seen.has(name.toLowerCase())) throw new ValidationError(T('{name} is on the list twice.', { name }));
+    seen.add(name.toLowerCase());
+    tasks.push({ id: item.id || uid('tsk'), name, rate: toPositiveMoney(item.rate, 'Pay for the day') });
+  }
+  if (!tasks.length) throw new ValidationError(T('Keep at least one activity.'));
+  await setSetting(TASKS_KEY, tasks);
+  await audit.record(user, 'setting', TASKS_KEY, 'update', `Activities and pay set: ${tasks.map((t) => `${t.name} ${t.rate}`).join(', ')}`);
+  return tasks;
+}
+
 /* -------------------------------------------------------------- work days */
 
 export interface WorkDayInput {

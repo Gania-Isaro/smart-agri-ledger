@@ -25,7 +25,6 @@ import { FarmerFormModal, FarmersTabs } from './Farmers';
 import type { Farmer, WorkDay } from '../domain/types';
 
 import { translated, tx, txn } from '../i18n/tx';
-import { txr } from '../i18n/rich';
 type Tab = 'record' | 'week' | 'totals';
 const TABS: { id: Tab; label: string }[] = translated([
   { id: 'record', label: 'Record a day' },
@@ -114,8 +113,8 @@ function RecordTab() {
   const [viewing, setViewing] = useState<{ day: WorkDay; farmer: Farmer } | null>(null);
 
   const data = useQuery(async () => {
-    const [farmers, recorded, rate] = await Promise.all([db.farmers.toArray(), work.recordedOn(date), work.dailyRate()]);
-    return { farmers: farmers.filter((f) => !f.archived), recorded, rate };
+    const [farmers, recorded, tasks] = await Promise.all([db.farmers.toArray(), work.recordedOn(date), work.workTasks()]);
+    return { farmers: farmers.filter((f) => !f.archived), recorded, tasks };
   }, [date]);
 
   const rows = useMemo(() => {
@@ -190,7 +189,7 @@ function RecordTab() {
               <b className="num" style={{ fontSize: 'var(--fs-lg)' }}>{formatMoney(dayTotal)}</b>
             </div>
           </div>
-          {data.data && allowed && <RateSetting rate={data.data.rate} />}
+          {data.data && allowed && <TaskSetting tasks={data.data.tasks} />}
         </div>
       </section>
 
@@ -264,7 +263,7 @@ function RecordTab() {
         <RecordModal
           farmer={recording}
           date={date}
-          rate={data.data.rate}
+          tasks={data.data.tasks}
           onClose={() => setRecording(null)}
         />
       )}
@@ -273,58 +272,112 @@ function RecordTab() {
   );
 }
 
-function RateSetting({ rate }: { rate: number }) {
-  const { user, toast, fail, refresh, can } = useStore();
-  const [value, setValue] = useState(String(rate));
+/** The activities and what each pays for a day. Everyone sees them; the owner changes them. */
+function TaskSetting({ tasks }: { tasks: work.WorkTask[] }) {
+  const { can } = useStore();
   const [editing, setEditing] = useState(false);
-  if (!editing) {
-    return (
+  return (
+    <>
       <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-3)' }}>
-        {txr('Usual pay for a day: {amount}.', { amount: <b className="num">{formatMoney(rate)}</b> })}{' '}
+        {tx('Usual pay for a day:')}{' '}
+        {tasks.map((t, i) => (
+          <span key={t.id}>
+            {i > 0 && ' · '}
+            {t.name} <b className="num">{formatMoney(t.rate)}</b>
+          </span>
+        ))}
+        {'. '}
         {can('settings.manage') && (
-          <button className="linkbtn" onClick={() => { setValue(String(rate)); setEditing(true); }}>{tx('Change')}</button>
+          <button className="linkbtn" onClick={() => setEditing(true)}>{tx('Change')}</button>
         )}
       </p>
-    );
-  }
-  const save = async (e: FormEvent) => {
-    e.preventDefault();
-    try {
-      await work.setDailyRate(user!, value);
-      setEditing(false);
-      refresh();
-      toast({ tone: 'success', title: tx('Usual daily pay updated') });
-    } catch (err) {
-      fail(err);
-    }
-  };
-  return (
-    <form onSubmit={save} className="row gap-2 wrap" style={{ marginTop: 'var(--s-3)', alignItems: 'flex-end' }}>
-      <Field label={tx('Usual pay for a day')} suffix="RWF">
-        <MoneyInput value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
-      </Field>
-      <Button type="submit" variant="primary" size="sm">{tx('Save')}</Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>{tx('Cancel')}</Button>
-    </form>
+      {editing && <TasksModal tasks={tasks} onClose={() => setEditing(false)} />}
+    </>
   );
 }
 
-function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: string; rate: number; onClose: () => void }) {
+function TasksModal({ tasks, onClose }: { tasks: work.WorkTask[]; onClose: () => void }) {
+  const { user, toast, fail, refresh } = useStore();
+  const [rows, setRows] = useState(tasks.map((t) => ({ id: t.id as string | undefined, name: t.name, rate: String(t.rate) })));
+  const [busy, setBusy] = useState(false);
+  const change = (i: number, patch: Partial<{ name: string; rate: string }>) => setRows((list) => list.map((row, k) => (k === i ? { ...row, ...patch } : row)));
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await work.saveWorkTasks(user!, rows);
+      refresh();
+      toast({ tone: 'success', title: tx('Activities and pay saved') });
+      onClose();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={tx('Activities and pay')}
+      subtitle={tx('Each activity has its own usual pay for a full day. Managers choose the activity when they record a day, and can still type another amount.')}
+      footer={
+        <>
+          <Button icon="plus" onClick={() => setRows((list) => [...list, { id: undefined, name: '', rate: '' }])}>{tx('Add activity')}</Button>
+          <span className="spacer" />
+          <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
+          <Button variant="primary" type="submit" form="work-tasks-form" loading={busy} icon="check">{tx('Save')}</Button>
+        </>
+      }
+    >
+      <form id="work-tasks-form" onSubmit={save} className="stack gap-3">
+        {rows.map((row, i) => (
+          <div key={row.id ?? `new-${i}`} className="row gap-2" style={{ alignItems: 'flex-end' }}>
+            <div style={{ flex: 2, minWidth: 0 }}>
+              <Field label={tx('Activity')}>
+                <Input value={row.name} onChange={(e) => change(i, { name: e.target.value })} maxLength={40} aria-label={tx('Activity')} />
+              </Field>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Field label={tx('Pay for a day')}>
+                <MoneyInput value={row.rate} onChange={(e) => change(i, { rate: e.target.value })} aria-label={tx('Pay for a day')} />
+              </Field>
+            </div>
+            <Button
+              type="button"
+              variant="quiet-danger"
+              icon="trash"
+              disabled={rows.length <= 1}
+              onClick={() => setRows((list) => list.filter((_, k) => k !== i))}
+              aria-label={tx('Remove {name}', { name: row.name || tx('Activity') })}
+            />
+          </div>
+        ))}
+      </form>
+    </Modal>
+  );
+}
+
+function RecordModal({ farmer, date, tasks, onClose }: { farmer: Farmer; date: string; tasks: work.WorkTask[]; onClose: () => void }) {
   const { user, toast, fail, refresh } = useStore();
   const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
+  const last = lastWork();
+  // Start on the activity recorded for the previous person: a team mostly does one job a day.
+  const [task, setTask] = useState((tasks.find((t) => t.name === last.task) ?? tasks[0]!).name);
+  const rate = tasks.find((t) => t.name === task)?.rate ?? tasks[0]!.rate;
   const [amount, setAmount] = useState(String(rate));
+  const chooseTask = (name: string) => {
+    setTask(name);
+    // The pay follows the activity, full day by default.
+    setAmount(String(tasks.find((t) => t.name === name)?.rate ?? rate));
+  };
   const [notes, setNotes] = useState('');
   const [paidNow, setPaidNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { activityTypes } = useStore();
-  const last = lastWork();
-  const [task, setTask] = useState(last.task);
   const [site, setSite] = useState(last.site);
-  const taskChoices = useMemo(
-    () => [...new Set(activityTypes.filter((a) => a.category === 'farming' || a.category === 'harvest').map((a) => tx(a.label)))],
-    [activityTypes],
-  );
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -376,6 +429,15 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
             </span>
           )}
         </Field>
+        <Field label={tx('What they did')} required full>
+          <div className="row gap-2 wrap">
+            {tasks.map((t) => (
+              <Button key={t.id} type="button" size="sm" variant={task === t.name ? 'primary' : 'secondary'} onClick={() => chooseTask(t.name)}>
+                {t.name}
+              </Button>
+            ))}
+          </div>
+        </Field>
         <Field label={tx('Pay for this day')} required>
           <MoneyInput value={amount} onChange={(e) => setAmount(e.target.value)} />
           <div className="row gap-2 wrap" style={{ marginTop: 'var(--s-2)' }}>
@@ -396,14 +458,6 @@ function RecordModal({ farmer, date, rate, onClose }: { farmer: Farmer; date: st
               {tx('Owed, pay later')}
             </Button>
           </div>
-        </Field>
-        <Field label={tx('What they did')} help={tx('For example weeding, planting or harvesting.')}>
-          <Input value={task} onChange={(e) => setTask(e.target.value)} list="work-tasks" maxLength={60} />
-          <datalist id="work-tasks">
-            {taskChoices.map((label) => (
-              <option key={label} value={label} />
-            ))}
-          </datalist>
         </Field>
         <Field label={tx('Where they worked')} help={tx('The site, field or plot.')}>
           <Input value={site} onChange={(e) => setSite(e.target.value)} maxLength={60} />
