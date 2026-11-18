@@ -18,6 +18,7 @@ import * as activityService from '../services/activityService';
 
 import { cropLabel, tx } from '../i18n/tx';
 import * as cropService from '../services/cropService';
+import * as backup from '../services/backupService';
 import { Modal } from '../components/ui/Modal';
 import { Field, Input, MoneyInput } from '../components/ui/primitives';
 import { formatMoney } from '../domain/money';
@@ -96,8 +97,28 @@ function SettingsHome() {
   const storage = useQuery(async () => {
     if (!navigator.storage?.estimate) return null;
     const est = await navigator.storage.estimate();
-    return { usage: est.usage ?? 0, quota: est.quota ?? 0 };
+    return { usage: est.usage ?? 0, quota: est.quota ?? 0, kept: await backup.protectStorage() };
   });
+  const lastBackup = useQuery(() => backup.lastBackup());
+  const [backingUp, setBackingUp] = useState(false);
+  const downloadBackup = async () => {
+    if (!user || !account) return;
+    setBackingUp(true);
+    try {
+      const r = await backup.makeBackup(user, account.cooperativeName);
+      refresh();
+      toast({
+        tone: 'success',
+        title: tx('Backup downloaded'),
+        message: tx('{name}, {size} MB. Keep it somewhere safe, away from this phone.', { name: r.name, size: (r.bytes / 1024 / 1024).toFixed(1) }),
+        duration: 9000,
+      });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBackingUp(false);
+    }
+  };
 
   const [cropEdit, setCropEdit] = useState<{ id?: string; name: string; unit: Unit; price: string } | null>(null);
   const removeCrop = async (c: Crop) => {
@@ -322,6 +343,13 @@ function SettingsHome() {
               </div>
             )}
 
+            {storage.data && (
+              <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-3)' }}>
+                {storage.data.kept
+                  ? tx('This phone keeps the app’s data even when it runs low on space.')
+                  : tx('This browser did not agree to keep the app’s data for good. Install the app on the home screen, and download backups regularly.')}
+              </p>
+            )}
             {storage.data && storage.data.quota > 0 && (
               <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-3)' }}>
                 {tx('Using {used} MB of roughly {quota} MB available to this app on this device.', {
@@ -333,6 +361,35 @@ function SettingsHome() {
           </div>
         </section>
 
+        {/* ---- backup, owner only ---- */}
+        {can('settings.manage') && (
+          <section className="card">
+            <div className="card__head">
+              <div className="row gap-2">
+                <Icon name="download" size={17} />
+                <h2 className="section-title">{tx('Backup')}</h2>
+              </div>
+            </div>
+            <div className="card__body">
+              <p style={{ marginBottom: 'var(--s-3)' }}>
+                {tx('Download every record (workers, work days with photos, produce, payments and the full money history) into one file. Keep it on a computer, a flash disk or Google Drive. If anything ever happens to the phones or the online copy, this file still has everything.')}
+              </p>
+              <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
+                {(() => {
+                  const days = backup.daysSince(lastBackup.data ?? null);
+                  if (days === null) return tx('No backup has been downloaded yet.');
+                  if (days === 0) return tx('Last backup: today.');
+                  return tx('Last backup: {count} days ago.', { count: days });
+                })()}{' '}
+                {tx('Do it at least once a week.')}
+              </p>
+              <Button variant="primary" icon="download" loading={backingUp} onClick={() => void downloadBackup()}>
+                {tx('Download full backup')}
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* ---- roles ---- */}
         <section className="card">
           <div className="card__head">
@@ -343,7 +400,7 @@ function SettingsHome() {
           </div>
           <div className="card__body">
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-4)' }}>
-              {tx('Three roles. Each person sees every screen, but only does the work of their role. The app checks this on every save, not just by hiding buttons.')}
+              {tx('Two roles. The owner sees every group; a group manager sees only their own group. The app and the online database both check this on every save, not just by hiding buttons.')}
             </p>
             <div className="rolegrid">
               {ROLES.map((role) => {

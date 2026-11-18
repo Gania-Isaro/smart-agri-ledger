@@ -19,6 +19,8 @@ import * as analytics from '../services/analyticsService';
 import * as paymentService from '../services/paymentService';
 import { ActivityComposer } from '../components/ActivityComposer';
 import { MoneyTotals } from '../components/MoneyTotals';
+import * as backup from '../services/backupService';
+import { db } from '../db/db';
 import { usePrefs } from '../i18n';
 
 import { tx } from '../i18n/tx';
@@ -75,6 +77,8 @@ export function Dashboard() {
           </Button>
         </div>
       </div>
+
+      <BackupReminder />
 
       {/* ---- the owner's money: per day, week, month, year, per group ---- */}
       <MoneyTotals />
@@ -310,4 +314,49 @@ function statusColour(status: string): string {
     slate: 'var(--c-slate-600)',
   };
   return map[tone] ?? 'var(--c-slate-600)';
+}
+
+/**
+ * Reminds the owner to download a backup when the last one is a week old, or
+ * there has never been one. Not shown in the demo, which has nothing real to lose.
+ */
+function BackupReminder() {
+  const { can, isDemo, user, account, toast, fail, refresh } = useStore();
+  const [busy, setBusy] = useState(false);
+  const q = useQuery(async () => {
+    const [last, workers] = await Promise.all([backup.lastBackup(), db.farmers.count()]);
+    return { days: backup.daysSince(last), workers };
+  });
+  if (isDemo || !can('settings.manage') || !q.data || q.data.workers === 0) return null;
+  const { days } = q.data;
+  if (days !== null && days < backup.REMIND_AFTER_DAYS) return null;
+  return (
+    <div className="callout callout--warn no-print" role="status" style={{ marginBottom: 'var(--s-4)' }}>
+      <Icon name="download" size={17} />
+      <div style={{ flex: 1 }}>
+        <b>{days === null ? tx('You have not downloaded a backup yet.') : tx('Your last backup was {count} days ago.', { count: days })}</b>{' '}
+        {tx('Download one now and keep it somewhere safe, away from this phone.')}
+      </div>
+      <Button
+        size="sm"
+        icon="download"
+        loading={busy}
+        onClick={async () => {
+          if (!user || !account) return;
+          setBusy(true);
+          try {
+            const r = await backup.makeBackup(user, account.cooperativeName);
+            refresh();
+            toast({ tone: 'success', title: tx('Backup downloaded'), message: tx('{name}, {size} MB. Keep it somewhere safe, away from this phone.', { name: r.name, size: (r.bytes / 1024 / 1024).toFixed(1) }), duration: 9000 });
+          } catch (e) {
+            fail(e);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {tx('Download backup')}
+      </Button>
+    </div>
+  );
 }

@@ -33,6 +33,7 @@ import type {
 } from '../domain/types';
 import { can, type Permission } from '../domain/rbac';
 import { catalog } from '../services/activityService';
+import { protectStorage } from '../services/backupService';
 import { cloudEnabled } from '../cloud/client';
 import * as cloud from '../cloud/account';
 import { forgetDevice, onSyncStatus, renameDevice, startSync, stopSync, syncNow, syncStatus, type SyncStatus } from '../cloud/sync';
@@ -295,6 +296,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    */
   const activate = useCallback(async (acc: Account, person?: { id: string; role: User['role']; cloud: boolean; groupId?: string | null; seed?: boolean }) => {
     openAccountDatabase(acc.id, { cloud: person?.cloud });
+    // Ask the phone not to clear this app's records when it runs low on space.
+    void protectStorage();
     if (person?.seed !== false) {
       await prepareAccount(acc.id, {
         cooperativeName: acc.cooperativeName,
