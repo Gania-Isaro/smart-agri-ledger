@@ -129,6 +129,7 @@ const VERBS: Partial<Record<Permission, string>> = {
   'harvest.create': 'record harvests',
   'harvest.verify': 'verify harvests',
   'user.manage': 'manage users',
+  'settings.manage': 'change prices, groups or settings. Ask the owner',
   'data.import': 'import data',
   'worker.manage': 'record work days',
 };

@@ -2055,6 +2055,14 @@ table.grid {
   font-size: 1.125rem;
   font-weight: 680;
   letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* Keep the app name on one line on a narrow phone. */
+@media (max-width: 420px) {
+  .login__title {
+    font-size: 1rem;
+  }
 }
 
 .login__tag {

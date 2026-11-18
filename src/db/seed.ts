@@ -481,16 +481,26 @@ export async function seedDatabase(): Promise<SeedResult> {
      The demo has to show the main job of the app, so each working day has
      people recorded with a (drawn) photo, some paid on the day, some owed. */
   const workdays: WorkDay[] = [];
-  const TASKS = ['Weeding', 'Planting', 'Harvesting', 'Digging', 'Spraying'];
+  // Each activity pays its own amount, as the owner would set it.
+  const DEMO_TASKS = [
+    { id: 'digging', name: 'Digging', rate: 3000 },
+    { id: 'weeding', name: 'Weeding', rate: 2500 },
+    { id: 'planting', name: 'Planting', rate: 2500 },
+    { id: 'harvesting', name: 'Harvesting', rate: 3500 },
+    { id: 'spraying', name: 'Spraying', rate: 4000 },
+    { id: 'other', name: 'Other work', rate: 3000 },
+  ];
   const crew = COOPERATIVES.flatMap((c) => farmers.filter((f) => f.cooperativeId === c.id).slice(0, 4));
   for (let back = 13; back >= 0; back--) {
     const date = addDays(anchor, -back);
     if (new Date(`${date}T12:00:00`).getDay() === 0) continue; // no work on Sunday
     crew.forEach((farmer, i) => {
       if ((i + back) % 4 === 3) return; // not everyone works every day
-      const amount = (i + back) % 5 === 0 ? 1500 : 3000;
+      const job = DEMO_TASKS[(back + Math.floor(i / 4)) % 5]!;
+      const task = job.name;
+      // mostly full days, now and then a half day
+      const amount = (i + back) % 5 === 0 ? Math.round(job.rate / 2) : job.rate;
       const paidNow = (i + back) % 2 === 0;
-      const task = TASKS[(back + Math.floor(i / 4)) % TASKS.length]!;
       const site = COOPERATIVES.find((c) => c.id === farmer.cooperativeId)?.district ?? '';
       const earned = post(farmer.id, 'work', amount, `Day's work, ${task}`, date);
       const paid = paidNow ? post(farmer.id, 'payment', amount, "Paid for the day's work", date) : undefined;
@@ -575,6 +585,8 @@ export async function seedDatabase(): Promise<SeedResult> {
         db.batches.bulkPut(batches),
         db.transactions.bulkPut(transactions),
         db.workdays.bulkPut(workdays),
+        db.settings.put({ key: 'work.tasks', value: DEMO_TASKS }),
+        db.settings.put({ key: 'demoVersion', value: DEMO_VERSION }),
         db.audit.bulkPut(audit),
         db.notifications.bulkPut(notifications),
         db.counters.bulkPut(counters),
@@ -618,6 +630,9 @@ function addStamp(hoursAgo: number): string {
  * re-checked inside the write transaction so a second caller cannot slip past.
  */
 let seeding: Promise<boolean> | null = null;
+
+/** Raise this when the demo data changes shape, so existing demos are rebuilt. */
+const DEMO_VERSION = 3;
 
 export interface NewAccountSeed {
   cooperativeName: string;
@@ -679,7 +694,14 @@ export async function ensureDemoSeeded(): Promise<boolean> {
   if (seeding) return seeding;
   seeding = (async () => {
     const marker = await db.settings.get('seeded');
-    if (marker) return false;
+    if (marker) {
+      // A demo made by an older version of the app lacks what newer screens
+      // show (daily work, activities and pay), so it is built again. It is
+      // sample data, so nothing real is lost.
+      const version = await db.settings.get('demoVersion');
+      if (version?.value === DEMO_VERSION) return false;
+      await Promise.all(db.tables.map((t) => t.clear()));
+    }
     await seedDatabase();
     await db.settings.put({ key: 'isDemo', value: true });
     return true;

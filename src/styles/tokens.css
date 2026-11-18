@@ -89,8 +89,8 @@
   --money-negative: var(--c-red-600);
 
   /* --- type --- */
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
-  --font-num: 'Inter', 'SF Mono', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Poppins', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-num: 'Poppins', 'Segoe UI', system-ui, sans-serif;
 
   --fs-xs: 0.6875rem;   /* 11px, labels, table meta */
   --fs-sm: 0.8125rem;   /* 13px, table body, secondary */

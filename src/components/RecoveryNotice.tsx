@@ -21,7 +21,7 @@ function waiting(): string | null {
 }
 
 export function RecoveryNotice() {
-  const { toast } = useStore();
+  const { toast, membership } = useStore();
   const [code, setCode] = useState<string | null>(waiting);
 
   useEffect(() => {
@@ -39,6 +39,20 @@ export function RecoveryNotice() {
       /* it is gone when the tab closes anyway */
     }
     setCode(null);
+  };
+
+  // The app cannot send a text by itself (that needs a paid SMS service), so
+  // it opens the phone's own Messages app with the code ready to send to the
+  // person's own number. One tap on Send and the code is kept in their SMS.
+  const message = tx('Smart Agri-Ledger recovery code: {code}. Keep this message. It sets a new password if you forget yours.', { code });
+  const myNumber = (membership?.email ?? '').includes('@') ? '' : (membership?.email ?? '').replace(/[^+\d]/g, '');
+  const smsLink = `sms:${myNumber}?body=${encodeURIComponent(message)}`;
+  const share = async () => {
+    try {
+      await navigator.share({ text: message });
+    } catch {
+      /* closed without sharing */
+    }
   };
 
   return (
@@ -60,7 +74,7 @@ export function RecoveryNotice() {
           </Button>
           <span className="spacer" />
           <Button variant="primary" icon="check" onClick={done}>
-            {tx('I have written it down')}
+            {tx('I saved it')}
           </Button>
         </>
       }
@@ -69,8 +83,16 @@ export function RecoveryNotice() {
         <p className="num" style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: 1, textAlign: 'center', overflowWrap: 'anywhere' }}>
           {code}
         </p>
+        <div className="row gap-2 wrap" style={{ justifyContent: 'center' }}>
+          <a className="btn btn--secondary" href={smsLink}>
+            {tx('Send it to my phone by SMS')}
+          </a>
+          {typeof navigator.share === 'function' && (
+            <Button onClick={() => void share()}>{tx('Share (WhatsApp...)')}</Button>
+          )}
+        </div>
         <Callout tone="warn" icon="alert">
-          {tx('If you forget your password, this code is the only way to set a new one. Keep it on paper, somewhere safe, not only on this phone. You can make a new code in Settings; that cancels this one.')}
+          {tx('If you forget your password, this code is the only way to set a new one. Send it to your phone and also keep it on paper, somewhere safe. You can make a new code in Settings; that cancels this one.')}
         </Callout>
       </div>
     </Modal>

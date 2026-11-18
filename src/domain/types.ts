@@ -92,6 +92,8 @@ export interface Crop {
   /** Default price per unit in whole RWF, used to prefill harvest forms. */
   defaultPricePerUnit: number;
   colour: string;
+  /** True once the owner has typed the name, so it is shown as typed in every language. */
+  renamed?: boolean;
 }
 
 export type Unit = 'KG' | 'TONNE' | 'BAG' | 'CRATE' | 'LITRE' | 'BUNCH' | 'PIECE';

@@ -16,7 +16,12 @@ import { usePrefs } from '../i18n';
 import { LANGUAGES } from '../i18n/strings';
 import * as activityService from '../services/activityService';
 
-import { tx } from '../i18n/tx';
+import { cropLabel, tx } from '../i18n/tx';
+import * as cropService from '../services/cropService';
+import { Modal } from '../components/ui/Modal';
+import { Field, Input, MoneyInput } from '../components/ui/primitives';
+import { formatMoney } from '../domain/money';
+import type { Crop, Unit } from '../domain/types';
 import { newRecoveryCode } from '../cloud/account';
 import { txr } from '../i18n/rich';
 /* Plain words for the codes stored in the audit trail. */
@@ -93,6 +98,25 @@ function SettingsHome() {
     const est = await navigator.storage.estimate();
     return { usage: est.usage ?? 0, quota: est.quota ?? 0 };
   });
+
+  const [cropEdit, setCropEdit] = useState<{ id?: string; name: string; unit: Unit; price: string } | null>(null);
+  const removeCrop = async (c: Crop) => {
+    if (!user) return;
+    const r = await confirm({
+      title: tx('Delete {name}?', { name: cropLabel(c) }),
+      message: tx('It is taken off the price list. A crop that workers or records already use cannot be deleted.'),
+      confirmLabel: tx('Delete'),
+      tone: 'danger',
+    });
+    if (!r.ok) return;
+    try {
+      await cropService.deleteCrop(user, c.id);
+      refresh();
+      toast({ tone: 'success', title: tx('Crop deleted'), message: cropLabel(c) });
+    } catch (e) {
+      fail(e);
+    }
+  };
 
   const reset = async () => {
     const answer = await confirm({
@@ -370,24 +394,42 @@ function SettingsHome() {
           <div className="card__head">
             <div className="row gap-2">
               <Icon name="sprout" size={17} />
-              <h2 className="section-title">{tx('Crops and cooperatives')}</h2>
+              <h2 className="section-title">{tx('Crops and prices')}</h2>
             </div>
+            <span className="spacer" />
+            {(can('settings.manage') || can('harvest.create')) && (
+              <Button size="sm" icon="plus" onClick={() => setCropEdit({ name: '', unit: 'KG', price: '' })}>
+                {tx('Add crop')}
+              </Button>
+            )}
           </div>
           <div className="card__body">
-            <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              {tx('Crop price list')}
+            <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>
+              {can('settings.manage')
+                ? tx('The price fills in when produce is recorded. Change a price, add your own crops, and delete the ones you do not grow.')
+                : tx('The price fills in when produce is recorded. You can add a crop; only the owner sets and changes prices.')}
             </p>
-            <div className="row gap-2 wrap" style={{ marginBottom: 'var(--s-4)' }}>
-              {crops.map((c) => (
-                <span className="chip" key={c.id}>
-                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 2, background: c.colour }} />
-                  {c.name} · {c.defaultPricePerUnit.toLocaleString()} RWF/{c.defaultUnit}
-                </span>
+            <div className="stack" style={{ marginBottom: 'var(--s-4)' }}>
+              {[...crops].sort((a, b) => cropLabel(a).localeCompare(cropLabel(b))).map((c) => (
+                <div key={c.id} className="row gap-2" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 2, background: c.colour, flex: 'none' }} />
+                  <span className="strong" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{cropLabel(c)}</span>
+                  <span className="spacer" />
+                  <span className="num" style={{ whiteSpace: 'nowrap' }}>
+                    {c.defaultPricePerUnit > 0 ? `${formatMoney(c.defaultPricePerUnit)} / ${c.defaultUnit}` : <span className="muted">{tx('No price yet')} / {c.defaultUnit}</span>}
+                  </span>
+                  {can('settings.manage') && (
+                    <>
+                      <Button size="sm" variant="ghost" icon="edit" aria-label={tx('Edit {name}', { name: cropLabel(c) })} onClick={() => setCropEdit({ id: c.id, name: cropLabel(c), unit: c.defaultUnit, price: String(c.defaultPricePerUnit) })} />
+                      <Button size="sm" variant="quiet-danger" icon="trash" aria-label={tx('Delete {name}', { name: cropLabel(c) })} onClick={() => void removeCrop(c)} />
+                    </>
+                  )}
+                </div>
               ))}
             </div>
 
             <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>
-              {tx('Cooperatives')}
+              {tx('Groups')}
             </p>
             <div className="row gap-2 wrap">
               {cooperatives.map((c) => (
@@ -453,7 +495,68 @@ function SettingsHome() {
         </section>
         )}
       </div>
+      {cropEdit && <CropModal value={cropEdit} onClose={() => setCropEdit(null)} />}
     </>
+  );
+}
+
+function CropModal({ value, onClose }: { value: { id?: string; name: string; unit: Unit; price: string }; onClose: () => void }) {
+  const { user, refresh, toast, fail, can } = useStore();
+  const owner = can('settings.manage');
+  const [name, setName] = useState(value.name);
+  const [unit, setUnit] = useState<Unit>(value.unit);
+  const [price, setPrice] = useState(value.price);
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setBusy(true);
+    try {
+      await cropService.saveCrop(user, { id: value.id, name, unit, price });
+      refresh();
+      toast({ tone: 'success', title: value.id ? tx('Crop saved') : tx('Crop added'), message: name });
+      onClose();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={value.id ? tx('Edit {name}', { name: value.name }) : tx('Add crop')}
+      footer={
+        <>
+          <span className="spacer" />
+          <Button variant="ghost" onClick={onClose}>{tx('Cancel')}</Button>
+          <Button variant="primary" type="submit" form="crop-form" loading={busy} icon="check">{tx('Save')}</Button>
+        </>
+      }
+    >
+      <form id="crop-form" onSubmit={save} className="formgrid">
+        <Field label={tx('Crop')} required full>
+          <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={40} />
+        </Field>
+        <Field label={tx('Sold by')} required>
+          <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as Unit)}>
+            {cropService.UNITS.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+        </Field>
+        {owner ? (
+          <Field label={tx('Price for one')} required suffix="RWF">
+            <MoneyInput value={price} onChange={(e) => setPrice(e.target.value)} />
+          </Field>
+        ) : (
+          <p className="muted" style={{ fontSize: 'var(--fs-sm)', alignSelf: 'end' }}>
+            {tx('The owner sets the price. Until then, type the price yourself when you record this crop.')}
+          </p>
+        )}
+      </form>
+    </Modal>
   );
 }
 

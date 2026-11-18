@@ -66,7 +66,7 @@ export function translated<T extends object>(table: T): T {
 }
 
 /** A crop's name in the language in use. Crop names users add stay as typed. */
-export function cropLabel(crop: { id: string; name: string } | undefined | null): string {
+export function cropLabel(crop: { id: string; name: string; renamed?: boolean } | undefined | null): string {
   if (!crop) return '-';
-  return current === 'rw' ? CROP_NAMES_RW[crop.id] ?? crop.name : crop.name;
+  return current === 'rw' && !crop.renamed ? CROP_NAMES_RW[crop.id] ?? crop.name : crop.name;
 }

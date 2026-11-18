@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
 import { PrefsProvider } from './i18n';
+// Poppins is shipped with the app, not fetched from a font service, so it
+// shows the same with no signal.
+import '@fontsource/poppins/400.css';
+import '@fontsource/poppins/500.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';

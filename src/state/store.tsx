@@ -452,10 +452,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !account) return;
     (async () => {
-      const [notifs, types, groups] = await Promise.all([db.notifications.toArray(), catalog(), db.cooperatives.toArray()]);
+      const [notifs, types, groups, cropList] = await Promise.all([db.notifications.toArray(), catalog(), db.cooperatives.toArray(), db.crops.toArray()]);
       setNotifications(notifs.sort((a, b) => (a.at < b.at ? 1 : -1)));
       setActivityTypes(types);
       setCooperatives(groups);
+      setCrops(cropList);
     })();
   }, [revision, ready, account]);
 

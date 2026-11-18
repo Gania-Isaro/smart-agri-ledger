@@ -71,8 +71,17 @@ $$;
 drop policy if exists records_read on public.records;
 create policy records_read on public.records for select using (public.can_reach(coop_id, group_id));
 
+-- A manager may also add a crop to the shared list, but only without a price:
+-- prices are the owner's. Changing a crop that exists stays owner-only, because
+-- that is an update and the update rule below has no such exception.
 drop policy if exists records_insert on public.records;
-create policy records_insert on public.records for insert with check (public.can_write(coop_id, group_id, tbl, id));
+create policy records_insert on public.records for insert with check (
+  public.can_write(coop_id, group_id, tbl, id)
+  or (
+    public.is_member(coop_id) and tbl = 'crops' and group_id is null
+    and coalesce((data ->> 'defaultPricePerUnit')::numeric, 0) = 0
+  )
+);
 
 drop policy if exists records_update on public.records;
 create policy records_update on public.records for update
