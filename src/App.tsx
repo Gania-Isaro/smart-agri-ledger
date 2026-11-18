@@ -32,6 +32,7 @@ import { usePrefs } from './i18n';
 import { tx } from './i18n/tx';
 import { clearRefused } from './cloud/sync';
 import { RecoveryNotice } from './components/RecoveryNotice';
+import { InstallBar } from './components/InstallApp';
 
 /* Page titles in the top bar, by first path segment. */
 const TITLES: Record<string, string> = {
@@ -111,6 +112,7 @@ export function App() {
         <TopBar title={title} search={search} onSearch={setSearch} onOpenNotifications={() => setNotifOpen(true)} />
 
         <main className="app__content" id="main">
+          <InstallBar />
           {/* Nobody should mistake generated figures for their own records. */}
           {isDemo && (
             <div className="callout callout--warn no-print" style={{ marginBottom: 'var(--s-4)' }}>

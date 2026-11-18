@@ -25,6 +25,7 @@ import { CloudLogin } from './CloudLogin';
 import { supabase } from '../cloud/client';
 
 import { tx } from '../i18n/tx';
+import { InstallButton } from '../components/InstallApp';
 type Mode = 'signin' | 'signup' | 'forgot';
 
 export function Login() {
@@ -105,6 +106,9 @@ export function Login() {
             )}
           </>
         )}
+        <div className="no-print" style={{ marginTop: 'var(--s-5)', paddingTop: 'var(--s-4)', borderTop: '1px solid var(--border)' }}>
+          <InstallButton block />
+        </div>
       </div>
     </div>
   );

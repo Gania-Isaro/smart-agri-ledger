@@ -12,6 +12,10 @@ import '@fontsource/poppins/700.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
+import { startInstallWatch } from './lib/install';
+
+// Before anything renders: Chrome offers to install only once, early.
+startInstallWatch();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
