@@ -92,8 +92,8 @@ export function MoneyTotals() {
               <Card label={tx('Owed now')} value={t.all.owedNow} foot={tx('Still to pay, all time')} warn />
             </div>
 
-            <div style={{ overflowX: 'auto', marginTop: 'var(--s-4)' }}>
-              <table className="grid" style={{ width: '100%', minWidth: 780 }}>
+            <div className="mt-table" style={{ overflowX: 'auto', marginTop: 'var(--s-4)' }}>
+              <table className="grid" style={{ width: '100%', minWidth: 640 }}>
                 <thead>
                   <tr>
                     {[tx('Group'), tx('Workers'), tx('Days worked'), tx('Work pay'), tx('Produce'), tx('Other money added'), tx('Deductions'), tx('Total'), tx('Paid'), tx('Owed now')].map((h, i) => (
@@ -138,6 +138,25 @@ export function MoneyTotals() {
                   </tfoot>
                 )}
               </table>
+            </div>
+            {/* On a phone: one card per group, nothing to scroll sideways. */}
+            <div className="mt-cards">
+              {[...t.groups, ...(t.groups.length > 1 ? [{ ...t.all, groupId: '__all', name: tx('All groups') }] : [])].map((g) => (
+                <div key={g.groupId} className="mt-card" role={g.groupId === '__all' ? undefined : 'button'} onClick={() => g.groupId !== '__all' && navigate(`/farmers?coop=${g.groupId}`)}>
+                  <b>{g.name}</b>
+                  <span className="muted" style={{ fontSize: 'var(--fs-sm)' }}> · {tx('{count} workers', { count: g.workers })} · {tx('{count} days worked', { count: formatNumber(g.days) })}</span>
+                  <div className="mt-card__grid">
+                    <div><span>{tx('Work pay')}</span><b>{formatMoney(g.workPay)}</b></div>
+                    <div><span>{tx('Produce')}</span><b>{formatMoney(g.produce)}</b></div>
+                    <div><span>{tx('Other money added')}</span><b>{formatMoney(g.other)}</b></div>
+                    <div><span>{tx('Deductions')}</span><b>{g.deductions ? `-${formatMoney(g.deductions)}` : formatMoney(0)}</b></div>
+                    <div><span>{tx('Total')}</span><b>{formatMoney(totalsService.totalCost(g))}</b></div>
+                    <div><span>{tx('Paid')}</span><b>{formatMoney(g.paid)}</b></div>
+                    <div><span>{tx('Owed now')}</span><b className={g.owedNow > 0 ? 'pos' : ''}>{formatMoney(g.owedNow)}</b></div>
+                  </div>
+                </div>
+              ))}
+              {t.groups.length === 0 && <p className="muted">{tx('Nothing recorded in this period.')}</p>}
             </div>
             <p className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 'var(--s-2)' }}>
               {tx('Total = work pay + produce + other money added − deductions.')}

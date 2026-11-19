@@ -666,7 +666,7 @@ function PaidHistory({ search }: { search: string }) {
   const rows = query.data ?? [];
   const total = rows.reduce((s, r) => s + r.amount, 0);
   const columns: ColumnDef<PaidRow>[] = [
-    { key: 'date', header: tx('Date'), width: 120, mobile: 'subtitle', sortValue: (r) => r.date, exportValue: (r) => r.date, render: (r) => <span className="num">{formatDate(r.date)}</span> },
+    { key: 'date', header: tx('Date'), width: 100, mobile: 'subtitle', sortValue: (r) => r.date, exportValue: (r) => r.date, render: (r) => <span className="num" title={formatDate(r.date)}>{formatDateShort(r.date)}</span> },
     {
       key: 'worker', header: tx('Worker'), width: 200, mobile: 'title',
       sortValue: (r) => r.farmer?.lastName ?? '', searchValue: (r) => `${r.farmer?.firstName ?? ''} ${r.farmer?.lastName ?? ''} ${r.farmer?.code ?? ''}`,

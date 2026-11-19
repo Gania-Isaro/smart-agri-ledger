@@ -1,4 +1,4 @@
-import { translated, tx, txn } from '../i18n/tx';
+import { translated, tx, txLang, txn } from '../i18n/tx';
 
 /** Date helpers. Everything the app stores is an ISO 'YYYY-MM-DD' string. */
 
@@ -30,6 +30,9 @@ export function formatDateShort(iso: string | undefined | null): string {
   if (!iso) return '-';
   const d = parseISODate(iso.slice(0, 10));
   if (Number.isNaN(d.getTime())) return '-';
+  // Kinyarwanda month names are whole words (Ugushyingo), too long for a
+  // table cell, so the compact form there is day/month.
+  if (txLang() === 'rw') return `${d.getDate()}/${d.getMonth() + 1}`;
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 

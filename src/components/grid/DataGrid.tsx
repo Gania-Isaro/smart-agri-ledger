@@ -125,6 +125,27 @@ export function DataGrid<T>({
 
   const visible = useMemo(() => columns.filter((c) => !hidden.includes(c.key)), [columns, hidden]);
 
+  /*
+   * Fit the sheet to the space it has. Each column has a preferred width; when
+   * they add up to more than the screen allows, every column is narrowed by the
+   * same share (down to 60% of its width) so the whole row stays in view on a
+   * laptop instead of the last columns (often the money) being cut off. Only
+   * when even that is not enough does the sheet scroll sideways.
+   */
+  const [space, setSpace] = useState(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setSpace(el.clientWidth));
+    ro.observe(el);
+    setSpace(el.clientWidth);
+    return () => ro.disconnect();
+  });
+  const fixed = selectable ? 40 : 0;
+  const natural = visible.reduce((sum, c) => sum + (widths[c.key] ?? c.width), 0);
+  const shrink = space > 0 && natural + fixed > space ? Math.max(0.6, (space - fixed - 2) / natural) : 1;
+  const colWidth = (c: (typeof visible)[number]) => Math.max(56, Math.floor((widths[c.key] ?? c.width) * shrink));
+
   useEffect(() => {
     if (storageKey) writeStored(storageKey, 'sort', sort);
   }, [sort, storageKey]);
@@ -422,7 +443,7 @@ export function DataGrid<T>({
             onScroll={(e) => setScrolled(e.currentTarget.scrollLeft > 2)}
           >
             <table
-              className="grid"
+              className={`grid ${shrink < 1 ? 'grid--tight' : ''}`}
               ref={tableRef}
               onKeyDown={onGridKey}
               tabIndex={0}
@@ -445,7 +466,7 @@ export function DataGrid<T>({
                   )}
                   {visible.map((c, i) => {
                     const isSorted = sort?.key === c.key;
-                    const width = widths[c.key] ?? c.width;
+                    const width = colWidth(c);
                     return (
                       <th
                         key={c.key}
@@ -456,7 +477,7 @@ export function DataGrid<T>({
                            top and gives the resize handle a positioned ancestor.
                            Forcing `relative` would silently unstick the frozen
                            first column and shift it out of line with its body. */
-                        style={{ width, minWidth: c.minWidth ?? width }}
+                        style={{ width, minWidth: Math.min(c.minWidth ?? width, width) }}
                         aria-sort={isSorted ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                       >
                         {c.sortValue ? (
@@ -534,7 +555,7 @@ export function DataGrid<T>({
                             ]
                               .filter(Boolean)
                               .join(' ')}
-                            style={{ width: widths[c.key] ?? c.width }}
+                            style={{ width: colWidth(c), maxWidth: colWidth(c) }}
                             onClick={() => {
                               setActive({ row: r, col: ci });
                               if (!editable && onRowClick && ci === 0) onRowClick(row);

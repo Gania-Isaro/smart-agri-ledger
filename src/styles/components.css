@@ -970,6 +970,10 @@ table.grid {
   display: flex;
   align-items: center;
   gap: 7px;
+  /* One line per row: long text ends in "...", it never pushes the row taller. */
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
   min-width: 0;
   width: 100%;
 }
@@ -2347,3 +2351,89 @@ button.workthumb:hover { outline: 2px solid var(--primary); outline-offset: 1px;
 
 /* Section tabs that must all stay visible on a phone wrap instead of scrolling. */
 .tabs--wrap { flex-wrap: wrap; overflow: visible; row-gap: 0; }
+
+/* ---- tables that fit ---- */
+
+/* Narrowed columns: a heading may take two short lines rather than be cut. */
+.grid th .th {
+  height: auto;
+  min-height: 38px;
+  white-space: normal;
+  line-height: 1.2;
+  /* Whole words only: a word too long for a narrowed column is clipped, never split. */
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow: hidden;
+}
+/* A narrowed sheet uses less padding, so more of each word fits. */
+.grid--tight th .th { padding-left: 8px; padding-right: 8px; }
+.grid--tight td .cell { padding-left: 8px; padding-right: 8px; }
+.grid td .cell > * {
+  min-width: 0;
+}
+.grid td .cell .truncate,
+.grid td .cell > span:not(.badge):not(.avatar) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The owner's money table: a sheet when there is room, one card per group on a phone. */
+.mt-cards { display: none; }
+@media (max-width: 700px) {
+  .mt-table { display: none; }
+  .mt-cards { display: grid; gap: var(--s-2); margin-top: var(--s-4); }
+}
+.mt-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+  background: var(--surface);
+}
+.mt-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-top: var(--s-2);
+  font-size: var(--fs-sm);
+}
+.mt-card__grid span { color: var(--text-muted); display: block; font-size: var(--fs-xs, 0.75rem); }
+.mt-card__grid b { font-variant-numeric: tabular-nums; }
+
+/* ---- short laptop screens (or a zoomed-in browser): a tighter sidebar so every
+   item fits without scrolling ---- */
+.sidebar__nav { scrollbar-width: thin; }
+@media (min-width: 1025px) and (max-height: 760px) {
+  .navitem { padding-top: 5px; padding-bottom: 5px; }
+  .sidebar__group { margin-top: var(--s-2); }
+  .sidebar__grouplabel { padding-bottom: 2px; }
+  .sidebar__nav { padding-top: var(--s-2); padding-bottom: var(--s-2); }
+  .sidebar__foot { padding-top: var(--s-2); padding-bottom: var(--s-2); }
+}
+@media (min-width: 1025px) and (max-height: 620px) {
+  .navitem { padding-top: 3px; padding-bottom: 3px; font-size: var(--fs-sm); }
+}
+
+/* ---- top bar on phones and touch screens ---- */
+.searchbox { min-width: 0; }
+/* The Ctrl K hint only means something with a keyboard. */
+@media (max-width: 900px), (pointer: coarse) {
+  .searchbox__kbd { display: none; }
+  .searchbox input { padding-right: var(--s-3); }
+}
+@media (max-width: 560px) {
+  /* Give the search box the room: "Online" becomes just its coloured dot. */
+  .offline-pill { padding: 6px; }
+  .offline-pill__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .offline-pill i { width: 8px; height: 8px; }
+  .searchbox { min-width: 120px; }
+  .topbar { gap: var(--s-2); }
+  /* The search box, not an empty gap, takes the free space. */
+  .topbar > .spacer { display: none; }
+}

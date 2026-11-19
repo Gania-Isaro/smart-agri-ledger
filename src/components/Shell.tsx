@@ -274,7 +274,7 @@ export function TopBar({
         }
       >
         <i />
-        {online ? t('misc.online') : t('misc.offline')}
+        <span className="offline-pill__text">{online ? t('misc.online') : t('misc.offline')}</span>
       </span>
 
       {/* Language and theme are one click from every screen: a shared tablet

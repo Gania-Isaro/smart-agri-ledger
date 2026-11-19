@@ -7,10 +7,11 @@
  * 640px wide so a month of photos stays small enough to keep on the phone and
  * to sync later.
  *
- * Phones and browsers that refuse live camera access (or a page not served
- * over https) fall back to the phone's own camera screen through a file input
- * with `capture`, which still opens the camera rather than the gallery on
- * most phones.
+ * On a phone the main button opens the phone's own camera (a file input with
+ * `capture`), which works on every phone, iPhones included, and takes the best
+ * picture. The live camera inside the page is the main button on a laptop with
+ * a webcam, and a second choice on a phone. If the live camera cannot start,
+ * the person is told so instead of the button silently doing nothing.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,6 +20,11 @@ import { Icon } from './ui/Icon';
 
 import { tx } from '../i18n/tx';
 const MAX_SIDE = 640;
+/** How long to wait for the live camera before saying it did not start. */
+const START_TIMEOUT_MS = 7000;
+
+/** A phone or tablet: a touch screen with no mouse. */
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
 const QUALITY = 0.72;
 
 export interface CapturedPhoto {
@@ -75,7 +81,9 @@ export function CameraCapture({
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [live, setLive] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const touch = isTouch();
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -88,28 +96,49 @@ export function CameraCapture({
       setError(null);
       stop();
       if (!navigator.mediaDevices?.getUserMedia) {
+        // No live camera in this browser: the phone's own camera does the job.
         fileRef.current?.click();
         return;
       }
+      setStarting(true);
+      let timer = 0;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: mode }, width: { ideal: 1280 } },
-          audio: false,
-        });
+        const stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: mode }, width: { ideal: 1280 } },
+            audio: false,
+          }),
+          new Promise<never>((_, reject) => {
+            timer = window.setTimeout(() => reject(new Error('timeout')), START_TIMEOUT_MS);
+          }),
+        ]);
         streamRef.current = stream;
         setLive(true);
-        requestAnimationFrame(() => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            void videoRef.current.play().catch(() => undefined);
-          }
-        });
       } catch {
-        setError(tx('The camera could not be opened. Allow camera access, or use the phone camera button below.'));
+        setError(
+          touch
+            ? tx('The live camera did not start on this phone. Use Take photo instead: it opens the phone’s own camera.')
+            : tx('The camera could not be opened. Allow camera access, or use the phone camera button below.'),
+        );
+      } finally {
+        window.clearTimeout(timer);
+        setStarting(false);
       }
     },
-    [facing, stop],
+    [facing, stop, touch],
   );
+
+  // Attach the camera to the picture once it is on screen. (Waiting a frame was
+  // not always enough on iPhones, and the picture stayed empty.)
+  useEffect(() => {
+    const v = videoRef.current;
+    const stream = streamRef.current;
+    if (!live || !v || !stream) return;
+    v.srcObject = stream;
+    v.setAttribute('playsinline', 'true');
+    v.muted = true;
+    void v.play().catch(() => undefined);
+  }, [live, facing]);
 
   useEffect(() => stop, [stop]);
 
@@ -149,7 +178,7 @@ export function CameraCapture({
         {value && !live ? (
           <img src={value.dataUrl} alt={tx('Photo of {label}', { label })} className="camera__img" />
         ) : live ? (
-          <video ref={videoRef} className={`camera__img ${facing === 'user' ? 'camera__img--mirror' : ''}`} playsInline muted />
+          <video ref={videoRef} className={`camera__img ${facing === 'user' ? 'camera__img--mirror' : ''}`} playsInline muted autoPlay />
         ) : (
           <div className="camera__empty">
             <Icon name="camera" size={32} />
@@ -172,14 +201,26 @@ export function CameraCapture({
             </Button>
           </>
         ) : (
-          <>
-            <Button variant={value ? 'secondary' : 'primary'} icon="camera" onClick={() => void start()} type="button">
-              {value ? tx('Retake photo') : tx('Open camera')}
-            </Button>
-            <Button variant="ghost" onClick={() => fileRef.current?.click()} type="button">
-              {tx('Use phone camera')}
-            </Button>
-          </>
+          touch ? (
+            <>
+              {/* Phones: the phone's own camera first, it always works. */}
+              <Button variant={value ? 'secondary' : 'primary'} icon="camera" onClick={() => fileRef.current?.click()} type="button">
+                {value ? tx('Retake photo') : tx('Take photo')}
+              </Button>
+              <Button variant="ghost" loading={starting} onClick={() => void start()} type="button">
+                {tx('Use the live camera')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant={value ? 'secondary' : 'primary'} icon="camera" loading={starting} onClick={() => void start()} type="button">
+                {value ? tx('Retake photo') : tx('Open camera')}
+              </Button>
+              <Button variant="ghost" onClick={() => fileRef.current?.click()} type="button">
+                {tx('Use phone camera')}
+              </Button>
+            </>
+          )
         )}
       </div>
 

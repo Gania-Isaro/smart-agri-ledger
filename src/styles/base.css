@@ -176,12 +176,15 @@ svg {
 
 .app__content {
   flex: 1;
+  /* room under the last row so the round + button never hides it */
+  --fab-room: 84px;
   /* Positioned, so hidden screen-reader labels inside a long list stay inside
      this scrolling area instead of stretching the whole page. */
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--s-6);
+  padding-bottom: calc(var(--s-6) + var(--fab-room));
   scroll-padding-top: var(--s-6);
 }
 

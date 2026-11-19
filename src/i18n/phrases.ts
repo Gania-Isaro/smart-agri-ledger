@@ -1103,4 +1103,6 @@ export const RW_PHRASES: Record<string, string> = {
   "Tap the menu (three dots) at the top right.": "Kanda menu (utudomo dutatu) hejuru iburyo.",
   "Use it as an app.": "Yikoreshe nka porogaramu.",
   "This worker belongs to another group. You can only change workers in your own group.": "Uyu mukozi ari mu rindi tsinda. Ushobora guhindura abakozi bo mu itsinda ryawe gusa.",
+  "The live camera did not start on this phone. Use Take photo instead: it opens the phone’s own camera.": "Kamera yo muri porogaramu ntiyafunguye kuri iyi telefone. Koresha Fata ifoto: ifungura kamera ya telefone.",
+  "Use the live camera": "Koresha kamera yo muri porogaramu",
 };

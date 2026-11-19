@@ -144,7 +144,7 @@ export function App() {
         <button
           // Overview and a worker's page already have this button at the top;
           // on a wide screen the second, floating one only gets in the way.
-          className={`fab ${section === 'overview' || (section === 'farmers' && route.segments[1] && !['groups', 'work'].includes(route.segments[1])) ? 'fab--dup' : ''}`}
+          className={`fab ${section === 'overview' || section === 'activities' || (section === 'farmers' && route.segments[1] && !['groups', 'work'].includes(route.segments[1])) ? 'fab--dup' : ''}`}
           onClick={() => setComposerOpen(true)}
           aria-label={t('action.recordActivity')}
         >

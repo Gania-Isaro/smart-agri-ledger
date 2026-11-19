@@ -11,6 +11,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
 import type { StatusMeta } from '../../domain/status';
 import { useT } from '../../i18n';
@@ -438,9 +439,13 @@ export function Popover({
     };
   }, [anchorRef, onClose]);
 
-  return (
-    <div className="popover" ref={ref} style={style} role="dialog">
+  // Drawn at the top of the page and placed against the screen itself. Inside
+  // the top bar it was offset by the sidebar's width and ran off the right
+  // edge on laptops and wide screens.
+  return createPortal(
+    <div className="popover" ref={ref} style={{ ...style, position: 'fixed' }} role="dialog">
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
