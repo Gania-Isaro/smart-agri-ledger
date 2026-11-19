@@ -10,6 +10,7 @@ import * as audit from './audit';
 import { financialsByFarmer } from './ledgerService';
 
 import { tx } from '../i18n/tx';
+import { assertGroup } from './reach';
 export class ValidationError extends Error {
   readonly field?: string;
   constructor(message: string, field?: string) {
@@ -104,6 +105,7 @@ export async function update(user: User, id: ID, patch: Partial<Farmer>): Promis
   assertCan(user, 'farmer.edit');
   const before = await db.farmers.get(id);
   if (!before) throw new ValidationError(tx('That worker no longer exists.'));
+  assertGroup(user, before.cooperativeId);
 
   const after: Farmer = { ...before, ...patch, id: before.id };
   after.cooperativeId = ownGroup(user, after.cooperativeId);
@@ -150,6 +152,7 @@ export async function remove(user: User, id: ID): Promise<void> {
   assertCan(user, 'farmer.archive');
   const before = await db.farmers.get(id);
   if (!before) return;
+  assertGroup(user, before.cooperativeId);
   if ((await historyCount(id)) > 0) {
     throw new ValidationError(tx('{code} has records in the books, so it can only be archived, not deleted.', { code: before.code }));
   }
@@ -168,6 +171,7 @@ export async function archive(user: User, id: ID, archived: boolean): Promise<Fa
   assertCan(user, 'farmer.archive');
   const before = await db.farmers.get(id);
   if (!before) throw new ValidationError(tx('That worker no longer exists.'));
+  assertGroup(user, before.cooperativeId);
 
   const financials = (await financialsByFarmer()).get(id);
   if (archived && financials && financials.balance !== 0) {
@@ -185,6 +189,7 @@ export async function archive(user: User, id: ID, archived: boolean): Promise<Fa
 export async function setStatus(user: User, ids: ID[], status: FarmerStatus): Promise<number> {
   assertCan(user, 'farmer.edit');
   const rows = await db.farmers.bulkGet(ids);
+  for (const f of rows) if (f) assertGroup(user, f.cooperativeId);
   const updated = rows.filter(Boolean).map((f) => ({ ...(f as Farmer), status }));
   await db.farmers.bulkPut(updated);
   await audit.record(user, 'farmer', ids.join(','), 'update', `Set status "${status}" on ${updated.length} worker(s)`);
@@ -219,6 +224,7 @@ export async function listWithFinancials(includeArchived = false): Promise<Farme
 /** Bulk register from an import. Rejects the whole file if any row is invalid. */
 export async function importFarmers(user: User, drafts: FarmerDraft[]): Promise<Farmer[]> {
   assertCan(user, 'data.import');
+  drafts = drafts.map((d) => ({ ...d, cooperativeId: ownGroup(user, d.cooperativeId) }));
   drafts.forEach((d, i) => {
     try {
       validate(d);

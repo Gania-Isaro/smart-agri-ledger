@@ -34,6 +34,7 @@ import type {
 import * as audit from './audit';
 
 import { tx as T } from '../i18n/tx';
+import { assertWorker } from './reach';
 export class LedgerError extends Error {}
 
 export interface PostInput {
@@ -63,6 +64,7 @@ async function nextCode(): Promise<string> {
  */
 export async function post(user: User, input: PostInput): Promise<LedgerTransaction> {
   assertCan(user, 'ledger.post');
+  await assertWorker(user, input.farmerId);
   return write(user, input);
 }
 
@@ -131,6 +133,7 @@ export async function voidTransaction(
 
   const original = await db.transactions.get(transactionId);
   if (!original) throw new LedgerError(T('That transaction does not exist.'));
+  await assertWorker(user, original.farmerId);
   if (original.voided) throw new LedgerError(T('{code} has already been voided.', { code: original.code }));
   if (original.reversesId) throw new LedgerError(T('A reversal entry cannot itself be voided.'));
 

@@ -12,6 +12,7 @@ import { refreshFarmerStatus } from './activityService';
 import { ValidationError } from './farmerService';
 
 import { tx as T } from '../i18n/tx';
+import { assertWorker } from './reach';
 export interface HarvestRow extends Harvest {
   gross: number;
   net: number;
@@ -38,6 +39,7 @@ export async function get(id: ID): Promise<HarvestRow | undefined> {
 export async function setStatus(user: User, ids: ID[], status: HarvestStatus): Promise<number> {
   assertCan(user, status === 'verified' || status === 'rejected' ? 'harvest.verify' : 'harvest.edit');
   const rows = (await db.harvests.bulkGet(ids)).filter(Boolean) as Harvest[];
+  for (const h of rows) await assertWorker(user, h.farmerId);
 
   for (const h of rows) {
     /*
@@ -77,6 +79,7 @@ export async function correct(
 
   const before = await db.harvests.get(id);
   if (!before) throw new ValidationError(T('That harvest record no longer exists.'));
+  await assertWorker(user, before.farmerId);
   if (before.status === 'rejected') throw new ValidationError(T('A rejected harvest cannot be edited. Record a new delivery instead.'));
 
   const after: Harvest = {

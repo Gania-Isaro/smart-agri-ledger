@@ -1102,4 +1102,5 @@ export const RW_PHRASES: Record<string, string> = {
   "Tap the Share button (the square with an arrow pointing up) at the bottom of the screen.": "Kanda buto ya Share (agasanduku karimo akambi kerekeza hejuru) hasi kuri ecran.",
   "Tap the menu (three dots) at the top right.": "Kanda menu (utudomo dutatu) hejuru iburyo.",
   "Use it as an app.": "Yikoreshe nka porogaramu.",
+  "This worker belongs to another group. You can only change workers in your own group.": "Uyu mukozi ari mu rindi tsinda. Ushobora guhindura abakozi bo mu itsinda ryawe gusa.",
 };

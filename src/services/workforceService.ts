@@ -20,6 +20,7 @@ import { postSystem, voidTransaction } from './ledgerService';
 import { refreshFarmerStatus } from './activityService';
 
 import { tx as T } from '../i18n/tx';
+import { assertGroup } from './reach';
 const RATE_KEY = 'work.dailyRate';
 export const DEFAULT_DAILY_RATE = 3000;
 
@@ -125,6 +126,7 @@ export async function recordDay(user: User, input: WorkDayInput): Promise<WorkDa
   assertCan(user, 'worker.manage');
   const farmer = await db.farmers.get(input.farmerId);
   if (!farmer) throw new ValidationError(T('Choose who worked.'), 'farmerId');
+  assertGroup(user, farmer.cooperativeId);
   if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the worker first.', { code: farmer.code }), 'farmerId');
 
   const date = input.date || today();
@@ -193,6 +195,7 @@ export async function removeDay(user: User, id: ID, reason: string): Promise<voi
   const before = await db.workdays.get(id);
   if (!before) return;
   const farmer = await db.farmers.get(before.farmerId);
+  if (farmer) assertGroup(user, farmer.cooperativeId);
 
   // Undo the payment made at the time first, then the day's pay itself.
   if (before.paidTxId) {

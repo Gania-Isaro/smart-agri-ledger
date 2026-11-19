@@ -35,6 +35,7 @@ import { ValidationError } from './farmerService';
 import { ConfirmationRequired } from './activityService';
 
 import { tx as T } from '../i18n/tx';
+import { assertGroup, assertWorker } from './reach';
 /* --------------------------------------------------------------- create */
 
 export interface PaymentDraft {
@@ -60,6 +61,7 @@ export async function create(user: User, draft: PaymentDraft): Promise<Payment> 
 
   const farmer = await db.farmers.get(draft.farmerId);
   if (!farmer) throw new ValidationError(T('Select a worker.'), 'farmerId');
+  assertGroup(user, farmer.cooperativeId);
   const amount = toPositiveMoney(draft.amount, 'Amount');
   if (!draft.reason?.trim()) throw new ValidationError(T('Say what this payment is for.'), 'reason');
 
@@ -143,6 +145,7 @@ export async function transition(
 
   const before = await db.payments.get(id);
   if (!before) throw new ValidationError(T('That payment no longer exists.'));
+  await assertWorker(user, before.farmerId);
   if (before.status === to) return before;
   if (!canTransitionPayment(before.status, to)) {
     throw new ValidationError(T('A {status} payment cannot be moved to {to}.', { status: before.status, to }));

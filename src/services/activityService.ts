@@ -32,6 +32,7 @@ import { ValidationError } from './farmerService';
 
 import { tx as T, txLang } from '../i18n/tx';
 import { ACTIVITY_LABELS_RW, FIELD_LABELS_RW } from '../i18n/strings';
+import { assertGroup, assertWorker } from './reach';
 /** A financial activity that would overdraw an account raises this instead of
  *  silently posting, so the UI can ask for an explicit confirmation. */
 export class ConfirmationRequired extends Error {
@@ -235,6 +236,7 @@ export async function createActivity(user: User, input: ActivityInput): Promise<
 
   const farmer = await db.farmers.get(input.farmerId);
   if (!farmer) throw new ValidationError(T('Select a worker.'), 'farmerId');
+  assertGroup(user, farmer.cooperativeId);
   if (farmer.archived) throw new ValidationError(T('{code} is archived. Restore the worker before recording activity.', { code: farmer.code }));
 
   validateFields(type, input.data);
@@ -381,6 +383,7 @@ export async function updateActivity(user: User, id: ID, patch: Partial<Activity
   assertCan(user, 'activity.edit');
   const before = await db.activities.get(id);
   if (!before) throw new ValidationError(T('That activity no longer exists.'));
+  await assertWorker(user, before.farmerId);
 
   if (before.transactionId) {
     throw new ValidationError(
@@ -408,6 +411,7 @@ export async function updateActivity(user: User, id: ID, patch: Partial<Activity
 export async function setActivityStatus(user: User, ids: ID[], status: ActivityStatus): Promise<number> {
   assertCan(user, status === 'verified' ? 'activity.verify' : 'activity.edit');
   const rows = (await db.activities.bulkGet(ids)).filter(Boolean) as Activity[];
+  for (const a of rows) await assertWorker(user, a.farmerId);
   const updated = rows.map((a) => ({ ...a, status, updatedAt: nowStamp() }));
   await db.activities.bulkPut(updated);
   await audit.record(user, 'activity', ids.join(','), 'update', `Set "${status}" on ${updated.length} activity record(s)`);
